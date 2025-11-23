@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "configurations": [
+    {
+      "name": "Poetry Run Analyze (Module)",
+      "type": "python",
+      "request": "launch",
+      "module": "src.main",
+      "justMyCode": true,
+      "python": "${command:python.interpreterPath}",
+      "cwd": "${workspaceFolder}",
+      "env": {}
+    }
+  ]
+}

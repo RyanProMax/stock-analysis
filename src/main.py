@@ -29,35 +29,17 @@ def print_report(report):
 
 
 def main():
-    print("正在初始化股票分析系统...")
+    try:
+        stock_symbom = "600519"
 
-    while True:
-        try:
-            user_input = input("\n请输入股票代码 (如 600519，输入 q 退出): ").strip()
+        df = DataLoader.get_stock_daily(stock_symbom)
 
-            if user_input.lower() in ["q", "quit", "exit"]:
-                print("👋 再见！")
-                break
+        if df is not None:
+            report = StockAnalyzer(df, stock_symbom).analyze()
+            print_report(report)
 
-            if not user_input:
-                continue
-
-            # 1. 获取数据
-            df = DataLoader.get_stock_daily(user_input)
-
-            if df is not None:
-                # 2. 运行策略
-                analyzer = StockAnalyzer(df, user_input)
-                report = analyzer.analyze()
-
-                # 3. 打印结果
-                print_report(report)
-
-        except KeyboardInterrupt:
-            print("\n程序已终止。")
-            break
-        except Exception as e:
-            print(f"⚠️ 发生未知错误: {e}")
+    except Exception as e:
+        print(f"⚠️ 发生未知错误: {e}")
 
 
 if __name__ == "__main__":
