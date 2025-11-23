@@ -9,6 +9,7 @@ dependencies = [
     "akshare (>=1.17.87,<2.0.0)",
     "pandas (>=2.3.3,<3.0.0)",
     "stockstats (>=0.6.5,<0.7.0)",
+    "rich (>=14.2.0,<15.0.0)",
 ]
 
 [build-system]
