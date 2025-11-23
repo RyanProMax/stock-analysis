@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "Poetry Run Analyze (Module)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
-      "module": "src.main",
+      "module": "main",
       "justMyCode": true,
       "python": "${command:python.interpreterPath}",
       "cwd": "${workspaceFolder}",

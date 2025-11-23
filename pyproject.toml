@@ -10,6 +10,8 @@ dependencies = [
     "pandas (>=2.3.3,<3.0.0)",
     "stockstats (>=0.6.5,<0.7.0)",
     "rich (>=14.2.0,<15.0.0)",
+    "fastapi (>=0.121.3,<0.122.0)",
+    "uvicorn[standard] (>=0.38.0,<0.39.0)",
 ]
 
 [build-system]
@@ -20,5 +22,4 @@ build-backend = "poetry.core.masonry.api"
 packages = [{ include = "src" }]
 
 [tool.poetry.scripts]
-# start script: poetry run analyze
-analyze = "src.main:main"
+start = "main:start"
