@@ -1,0 +1,11 @@
+# 移动平均线周期
+MA_SHORT = 5
+MA_LONG = 20
+
+# RSI 阈值
+RSI_OVERSOLD = 30  # 超卖 (恐慌)
+RSI_OVERBOUGHT = 70  # 超买 (贪婪)
+
+# KDJ 阈值
+KDJ_J_OVERSOLD = 0
+KDJ_J_OVERBOUGHT = 100
