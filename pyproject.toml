@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = [{ name = "Ryan", email = "627311610@qq.com" }]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "akshare (>=1.17.87,<2.0.0)",
     "pandas (>=2.3.3,<3.0.0)",
@@ -13,6 +13,10 @@ dependencies = [
     "fastapi (>=0.121.3,<0.122.0)",
     "uvicorn[standard] (>=0.38.0,<0.39.0)",
 ]
+
+[dependency-groups]
+dev = ["taskipy (>=1.14.1,<2.0.0)"]
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -23,3 +27,7 @@ packages = [{ include = "src" }]
 
 [tool.poetry.scripts]
 start = "main:start"
+
+[tool.taskipy.tasks]
+build = "docker build --build-arg USE_CHINA_MIRROR=true -t stock-analysis ."
+run_docker = "docker run -d -p 8000:8000 --name stock-app stock-analysis"
