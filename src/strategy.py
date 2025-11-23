@@ -1,10 +1,13 @@
 from stockstats import StockDataFrame
 import pandas as pd
 from dataclasses import dataclass, field
+
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich import box
+from rich.progress import Progress, BarColumn, TextColumn
+
 from typing import List, Optional
 
 
@@ -32,34 +35,38 @@ class AnalysisReport:
     price: float
     score: int
     advice: str
-    trend_status: str  # 新增：趋势状态 (如：多头排列/空头排列)
-    stop_loss_price: float  # 新增：建议止损价
+    # 趋势状态: 多空排列
+    trend_status: str
+    stop_loss_price: float
     data_and_indicators: Optional[pd.DataFrame]
     bullish_signals: List[str] = field(default_factory=list)
     bearish_signals: List[str] = field(default_factory=list)
 
+    # 贪恐指数
+    fear_greed_index: float = 50.0  # 默认中性
+    fear_greed_label: str = "中性"
+
 
 class StockAnalyzer:
-    # 扩充了主流因子：均线、ATR、WR、OBV
     INDICATORS_TO_CALCULATE = [
         "macd",
         "macdh",
-        "macds",  # MACD
-        "rsi_14",  # RSI
+        "macds",
+        "rsi_14",
         "kdjk",
         "kdjd",
-        "kdjj",  # KDJ
+        "kdjj",
         "boll",
         "boll_ub",
-        "boll_lb",  # Bollinger
+        "boll_lb",
         "close_5_sma",
         "close_10_sma",
         "close_20_sma",
-        "close_60_sma",  # 均线系统
-        "vr",  # 量比 (Volume Ratio)
-        "wr_14",  # 威廉指标 (Williams %R)
-        "atr",  # ATR (用于止损)
-        "volume",  # 成交量
+        "close_60_sma",
+        "vr",
+        "wr_14",
+        "atr",
+        "volume",
     ]
 
     def __init__(self, df: pd.DataFrame, symbol: str, stock_name: str):
@@ -68,42 +75,71 @@ class StockAnalyzer:
         self.stock_name = stock_name
         self.stock = StockDataFrame.retype(df.copy())
 
-        # 计算指标
         for indicator in self.INDICATORS_TO_CALCULATE:
             self.stock.get(indicator)
 
-    def analyze(self) -> AnalysisReport | None:
-        """执行多因子加权分析"""
-        # 获取最后一行 (最新数据)
-        last_row = self.stock.iloc[-1]
+    # 贪恐指数计算
+    def _calculate_fear_greed(self, row, close) -> tuple[float, str]:
+        """
+        计算个股情绪指数 (0-100)
+        逻辑：RSI(40%) + Bollinger%B(40%) + WR(20%)
+        """
+        # 1. RSI (0-100)
+        rsi = row.get("rsi_14", 50)
 
-        # 获取前一天数据 (用于比较变化，如金叉死叉)
+        # 2. 布林带位置 %B (归一化到 0-100)
+        lb = row.get("boll_lb", close * 0.9)
+        ub = row.get("boll_ub", close * 1.1)
+        if ub != lb:
+            pct_b = (close - lb) / (ub - lb) * 100
+        else:
+            pct_b = 50
+        pct_b = max(0, min(100, pct_b))  # 截断极端值
+
+        # 3. 威廉指标 WR (-100 到 0) -> 映射为 (0 到 100)
+        wr = row.get("wr_14", -50)
+        wr_score = wr + 100
+
+        # 合成指数
+        fg_index = (rsi * 0.4) + (pct_b * 0.4) + (wr_score * 0.2)
+
+        # 生成标签
+        if fg_index <= 20:
+            label = "🥶 极度恐慌"
+        elif fg_index <= 40:
+            label = "😨 恐慌"
+        elif fg_index <= 60:
+            label = "😐 中性"
+        elif fg_index <= 80:
+            label = "🤤 贪婪"
+        else:
+            label = "🔥 极度贪婪"
+
+        return fg_index, label
+
+    def analyze(self) -> AnalysisReport | None:
+        last_row = self.stock.iloc[-1]
         prev_row = self.stock.iloc[-2] if len(self.stock) > 1 else last_row
 
         close = float(last_row.get("close", 0.0))
         if close == 0.0:
             return None
 
-        # --- 提取因子 ---
+        # --- 提取原有指标 ---
         macd_h = last_row.get("macdh", 0.0)
         rsi = last_row.get("rsi_14", 50.0)
-        k, d, j = (
-            last_row.get("kdjk", 50),
-            last_row.get("kdjd", 50),
-            last_row.get("kdjj", 50),
-        )
-        wr = last_row.get("wr_14", -50.0)  # WR通常是 -100 到 0
-
-        # 均线
+        wr = last_row.get("wr_14", -50.0)
         ma5 = last_row.get("close_5_sma", 0)
         ma20 = last_row.get("close_20_sma", 0)
         ma60 = last_row.get("close_60_sma", 0)
-
-        # 波动率
         atr = last_row.get("atr", 0)
+        boll_lb = last_row.get("boll_lb", 0)
+        boll_ub = last_row.get("boll_ub", 0)
 
-        # --- 核心策略逻辑 (加权打分制) ---
-        score = 50  # 基础分 50
+        fg_index, fg_label = self._calculate_fear_greed(last_row, close)
+
+        # 初始基础分
+        score = 50
         bull_signals = []
         bear_signals = []
 
@@ -128,7 +164,7 @@ class StockAnalyzer:
         # MACD
         if macd_h > 0:
             score += 5
-            if macd_h > prev_row.get("macdh", 0):  # 红柱增长
+            if macd_h > prev_row.get("macdh", 0):
                 bull_signals.append("MACD 动能增强")
         else:
             score -= 5
@@ -155,18 +191,25 @@ class StockAnalyzer:
 
         # 3. 价格形态与量能 (权重: 20分)
         # 布林带
-        boll_lb = last_row.get("boll_lb", 0)
-        boll_ub = last_row.get("boll_ub", 0)
-        if close <= boll_lb * 1.01:  # 接近下轨
+        if close <= boll_lb * 1.01:
             score += 10
             bull_signals.append("股价触及布林下轨，支撑较强")
         elif close >= boll_ub * 0.99:
             score -= 10
             bear_signals.append("股价触及布林上轨，压力较大")
 
+        # 贪恐指数逆向策略
+        if fg_index < 20:
+            score += 15
+            bull_signals.append(f"情绪极度恐慌 ({fg_index:.0f})，往往是阶段性底部")
+        elif fg_index > 80:
+            score -= 15
+            bear_signals.append(f"情绪极度贪婪 ({fg_index:.0f})，警惕高位获利回吐")
+
         # 4. 风险风控计算 (ATR)
         # 建议止损价 = 当前价 - 2倍ATR (常规波动范围之外)
         stop_loss = close - (2 * atr) if atr > 0 else close * 0.95
+        score = max(0, min(100, score))
 
         # --- 生成建议 ---
         if score >= cfg.STRONG_BUY_SCORE:
@@ -180,10 +223,6 @@ class StockAnalyzer:
         else:
             advice = "🏃‍♂️ 坚决清仓 (Strong Sell)"
 
-        # 限制 Score 范围 0-100
-        score = max(0, min(100, score))
-
-        # 构建最终 DataFrame
         final_cols = [
             c
             for c in ["open", "close", "high", "low", "volume"]
@@ -201,6 +240,8 @@ class StockAnalyzer:
             data_and_indicators=self.stock[final_cols],
             bullish_signals=bull_signals,
             bearish_signals=bear_signals,
+            fear_greed_index=fg_index,
+            fear_greed_label=fg_label,
         )
 
         self.print_report(report)
@@ -215,7 +256,32 @@ class StockAnalyzer:
 
         last = report.data_and_indicators.iloc[-1]
 
-        # --- 1. 表格构建 ---
+        # 贪恐指数仪表盘
+        # 颜色逻辑：低(恐慌)=绿色机会，高(贪婪)=红色风险
+        fg_color = (
+            "green"
+            if report.fear_greed_index < 40
+            else ("red" if report.fear_greed_index > 60 else "yellow")
+        )
+
+        fg_bar = Progress(
+            TextColumn("[bold]情绪仪表盘[/]"),
+            BarColumn(bar_width=None, complete_style=fg_color),
+            TextColumn(
+                f"[{fg_color}]{report.fear_greed_index:.1f} ({report.fear_greed_label})"
+            ),
+            expand=True,
+        )
+        fg_bar.add_task("sentiment", total=100, completed=int(report.fear_greed_index))
+
+        fg_panel = Panel(
+            fg_bar,
+            title="🧠 市场心理 (Fear & Greed)",
+            border_style="white",
+            padding=(0, 2),
+        )
+
+        # 表格构建
         table = Table(
             box=box.ROUNDED, show_header=True, header_style="bold white on blue"
         )
@@ -273,12 +339,10 @@ class StockAnalyzer:
         dist_ub = (bb_ub - report.price) / report.price * 100
         table.add_row("通道", "距布林上轨", f"{dist_ub:.1f}%", "空间越大上涨潜力越大")
 
-        # --- 2. 面板构建 ---
+        # 面板构建
         score_color = (
             "red" if report.score < 40 else ("green" if report.score > 70 else "yellow")
         )
-
-        # 信号文本
         bull_txt = (
             "\n".join([f"[green]✅ {s}[/]" for s in report.bullish_signals])
             or "[dim]无明显多头信号[/]"
@@ -288,11 +352,6 @@ class StockAnalyzer:
             or "[dim]无明显空头信号[/]"
         )
 
-        summary_grid = Table.grid(expand=True)
-        summary_grid.add_column(ratio=1)
-        summary_grid.add_column(ratio=1)
-
-        # 左侧：综合评分
         left_panel = Panel(
             f"\n[bold {score_color} reverse]  {report.score} 分  [/]\n\n"
             f"建议: [bold {score_color}]{report.advice}[/]\n"
@@ -308,13 +367,13 @@ class StockAnalyzer:
             border_style="white",
         )
 
-        # --- 3. 输出 ---
+        # 输出
         console.print("\n")
         console.print(
-            f"[bold underline]🔍 深度股票分析报告: {self.stock_name} ({self.symbol})[/]"
+            f"[bold underline]🔍 股票分析报告: {self.stock_name} ({self.symbol})[/]\n"
         )
+        console.print(fg_panel)  # 优先显示情绪面板
         console.print(table)
-
         from rich.columns import Columns
 
         console.print(Columns([left_panel, right_panel]))
