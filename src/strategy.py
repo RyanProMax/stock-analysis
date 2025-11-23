@@ -47,9 +47,10 @@ class StockAnalyzer:
         # "atr",  # ATR
     ]
 
-    def __init__(self, df: pd.DataFrame, symbol: str):
+    def __init__(self, df: pd.DataFrame, symbol: str, stock_name: str):
         self.raw_df = df
         self.symbol = symbol
+        self.stock_name = stock_name
         # 将原始 DataFrame 转换为 StockDataFrame 对象
         self.stock = StockDataFrame.retype(df.copy())
 
@@ -215,9 +216,11 @@ class StockAnalyzer:
                 if report.score < cfg.STRONG_SELL_SCORE
                 else ("green" if report.score >= cfg.STRONG_BUY_SCORE else "yellow")
             )
+
             summary_panel = Panel(
                 f"📅 数据日期: [bold]{report.data_and_indicators.index[-1].strftime('%Y-%m-%d')}[/]\n"
                 f"💰 股票代码: [bold]{report.symbol}[/]\n"
+                f"💸 股票名称: [bold]{self.stock_name}[/]\n"
                 f"🏆 综合评分: [{score_color} bold]{report.score}[/] 分\n"
                 f"💡 操作建议: [{score_color}]{report.advice}[/]",
                 title="📊 分析摘要",

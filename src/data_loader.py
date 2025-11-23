@@ -1,106 +1,149 @@
+import re
 import akshare as ak
 import pandas as pd
-from typing import Optional
+from typing import Optional, Tuple
 
 
 class DataLoader:
-    # 东方财富列名映射
-    EASTMONEY_MAP = {
+    CN_EASTMONEY_MAP = {
         "日期": "date",
         "开盘": "open",
         "收盘": "close",
         "最高": "high",
         "最低": "low",
         "成交量": "volume",
+        "成交额": "amount",
+        "换手率": "turnover",
+    }
+
+    US_MAP = {
+        "日期": "date",
+        "开盘": "open",
+        "最高": "high",
+        "最低": "low",
+        "收盘": "close",
+        "成交量": "volume",
     }
 
     @staticmethod
-    def get_stock_daily(symbol: str) -> Optional[pd.DataFrame]:
+    def get_stock_daily(symbol: str) -> Tuple[Optional[pd.DataFrame], str]:
         """
-        获取指定股票的日线数据 (前复权)
-        具备自动切换源功能：东方财富 -> 新浪财经
-        :param symbol: 股票代码 (如 "600519")
-        :return: 清洗后的 DataFrame 或 None
+        统一入口：获取 [日线数据] 和 [股票名称]
+        :param symbol: 股票代码 (如 "600519", "NVDA")
+        :return: (DataFrame, stock_name)
+                 如果数据获取失败，DataFrame 为 None, name 为 symbol
         """
+        symbol = str(symbol).strip().upper()
+        stock_name = symbol  # 默认名称为代码，防失败
+        df = None
 
-        # --- 策略 1: 尝试从 [东方财富] 获取 ---
+        # --- 1. 判断市场并分发 ---
+        if re.search(r"[A-Za-z]", symbol):
+            # === 美股处理 ===
+            # 1.1 获取名称
+            try:
+                stock_name = DataLoader._get_us_name(symbol)
+            except Exception:
+                pass  # 名称获取失败不应阻塞数据获取
+
+            # 1.2 获取数据
+            df = DataLoader._get_us_stock_data(symbol)
+        else:
+            # === A股处理 ===
+            # 1.1 获取名称
+            try:
+                stock_name = DataLoader._get_cn_name(symbol)
+            except Exception:
+                pass
+
+            # 1.2 获取数据
+            df = DataLoader._get_cn_stock_data(symbol)
+
+        return df, stock_name
+
+    # ---------------------------------------------------------
+    #  A股 (CN) 专用方法
+    # ---------------------------------------------------------
+    @staticmethod
+    def _get_cn_name(symbol: str) -> str:
+        """获取A股名称 (使用东方财富个股信息接口)"""
         try:
-            print(f"📡 [1/2] 正在尝试从 东方财富 获取 [{symbol}] 数据...")
-            df = ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq")
+            # 返回包含 '股票代码', '股票简称' 等信息的 DataFrame
+            df_info = ak.stock_individual_info_em(symbol=symbol)
+            # 筛选出 '股票简称' 对应的值
+            name_row = df_info[df_info["item"] == "股票简称"]
+            if not name_row.empty:
+                return name_row["value"].values[0]
+        except Exception as e:
+            print(f"⚠️ 获取A股名称失败: {e}")
+        return symbol
 
+    @staticmethod
+    def _get_cn_stock_data(symbol: str) -> Optional[pd.DataFrame]:
+        # 策略 1: 东方财富
+        try:
+            print(f"🇨🇳 [1/2] 正在获取 A股数据: [{symbol}] (EastMoney)...")
+            df = ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq")
             if not df.empty:
                 return DataLoader._standardize_df(
-                    df, DataLoader.EASTMONEY_MAP, source="EastMoney"
+                    df, DataLoader.CN_EASTMONEY_MAP, "CN_EastMoney"
                 )
-            else:
-                print("⚠️ 东方财富返回数据为空，尝试备用源...")
+        except Exception:
+            pass
 
-        except Exception as e:
-            print(f"⚠️ 东方财富接口连接失败 ({e})，准备切换备用源...")
-
-        # --- 策略 2: 尝试从 [新浪财经] 获取 (作为灾备) ---
+        # 策略 2: 新浪 (备用)
         try:
-            print(f"📡 [2/2] 正在切换至 新浪财经 获取 [{symbol}] 数据...")
-
-            # 新浪接口通常需要区分 sh/sz 前缀
-            # 简单判断逻辑: 6开头为sh, 其他(0/3)为sz
+            print(f"🇨🇳 [2/2] 切换备用源: [{symbol}] (Sina)...")
             sina_symbol = f"sh{symbol}" if symbol.startswith("6") else f"sz{symbol}"
-
             df = ak.stock_zh_a_daily(symbol=sina_symbol, adjust="qfq")
-
             if not df.empty:
-                # 新浪返回的列名通常已经是 open/close 等英文，不需要复杂的中文映射
-                # 但为了保险，我们只转换 date 列并设置索引
-                return DataLoader._standardize_df(df, {}, source="Sina")
-            else:
-                print("❌ 新浪财经也未找到数据，请检查股票代码是否正确。")
-
+                return DataLoader._standardize_df(df, {}, "CN_Sina")
         except Exception as e:
-            print(f"❌ 所有数据源均获取失败。最后错误: {e}")
+            print(f"❌ A股数据获取全失败: {e}")
 
         return None
 
+    # ---------------------------------------------------------
+    #  美股 (US) 专用方法
+    # ---------------------------------------------------------
+    @staticmethod
+    def _get_us_name(symbol: str) -> str:
+        """获取美股名称"""
+        return symbol
+
+    @staticmethod
+    def _get_us_stock_data(symbol: str) -> Optional[pd.DataFrame]:
+        print(f"🇺🇸 正在获取 美股数据: [{symbol}] ...")
+        try:
+            df = ak.stock_us_daily(symbol=symbol, adjust="qfq")
+            if not df.empty:
+                return DataLoader._standardize_df(df, DataLoader.US_MAP, "US_Sina")
+        except Exception as e:
+            print(f"❌ 美股接口失败: {e}")
+        return None
+
+    # ---------------------------------------------------------
+    #  通用清洗工具
+    # ---------------------------------------------------------
     @staticmethod
     def _standardize_df(
         df: pd.DataFrame, rename_map: dict, source: str
     ) -> pd.DataFrame:
-        """
-        内部工具方法：标准化 DataFrame 格式
-        1. 重命名列
-        2. 转换日期格式
-        3. 设置日期为索引
-        """
-        # 1. 重命名列 (如果提供了映射)
         if rename_map:
             df.rename(columns=rename_map, inplace=True)
-
-        # 2. 确保包含必要的列 (防止后续 stockstats 计算报错)
-        required_cols = ["open", "close", "high", "low", "volume"]
-
-        # 针对新浪等已经是英文列名的情况，确保列名都是小写
         df.columns = [c.lower() for c in df.columns]
 
-        # 检查必要列是否存在
-        if not all(col in df.columns for col in required_cols):
-            # 这种情况下可能是源数据列名非常特殊，打印出来方便调试
-            print(f"⚠️ {source} 返回的列名不符合预期: {df.columns.tolist()}")
-
-        # 3. 处理日期索引
-        # 不同的接口日期的列名可能叫 'date' 或者 '日期'
-        date_col = None
-        if "date" in df.columns:
-            date_col = "date"
-        elif "日期" in df.columns:
-            date_col = "日期"
-
+        # 处理日期
+        date_col = next((c for c in ["date", "日期"] if c in df.columns), None)
         if date_col:
             df[date_col] = pd.to_datetime(df[date_col])
             df.set_index(date_col, inplace=True)
-            df.index.name = "date"  # 统一索引名称
-        else:
-            # 如果没有日期列，但索引本身就是日期（某些接口特性）
-            if not isinstance(df.index, pd.DatetimeIndex):
-                print(f"⚠️ 警告: 无法在 {source} 数据中找到日期列，数据可能不准确。")
+            df.index.name = "date"
+            df.sort_index(inplace=True)
 
-        print(f"✅ 成功从 [{source}] 获取并清洗数据 ({len(df)} 条)")
+        # 强转数值
+        for col in ["open", "close", "high", "low", "volume"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
         return df
