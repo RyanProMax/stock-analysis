@@ -13,35 +13,37 @@ class DataLoader:
         """
         print(f"📡 正在从 AkShare 获取 [{symbol}] 数据...")
         try:
-            # 1. 获取数据
+            # fetch data
             df = ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq")
 
             if df.empty:
                 print(f"❌ 未找到股票 {symbol} 的数据，请检查代码。")
                 return None
 
-            df_slice = df.iloc[:, :11].copy()
+            # stockstats 需要特定的列名，所以在这里进行重命名
+            df.rename(
+                columns={
+                    "日期": "date",
+                    "股票代码": "symbol",
+                    "开盘": "open",
+                    "收盘": "close",
+                    "最高": "high",
+                    "最低": "low",
+                    "成交量": "volume",
+                    "成交额": "turnover",
+                    "振幅": "amplitude",
+                    "涨跌幅": "chg_pct",
+                    "涨跌额": "chg_amt",
+                    "换手率": "turnover_rate",
+                },
+                inplace=True,
+            )
 
-            # 2. 命名列
-            df_slice.columns = [
-                "date",
-                "open",
-                "close",
-                "high",
-                "low",
-                "volume",
-                "turnover",
-                "amplitude",
-                "chg_pct",
-                "chg_amt",
-                "turnover_rate",
-            ]
+            # 格式化日期索引
+            df["date"] = pd.to_datetime(df["date"])
+            df.set_index("date", inplace=True)
 
-            # 3. 格式化日期索引
-            df_slice["date"] = pd.to_datetime(df_slice["date"])
-            df_slice.set_index("date", inplace=True)
-
-            return df_slice
+            return df
         except Exception as e:
             print(f"❌ 数据获取发生异常: {e}")
             return None
