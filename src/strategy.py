@@ -1,142 +1,194 @@
 from stockstats import StockDataFrame
 import pandas as pd
 from dataclasses import dataclass, field
-
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich import box
-
 from typing import List, Optional
-import src.config as cfg
+
+
+class Config:
+    RSI_OVERSOLD = 30
+    RSI_OVERBOUGHT = 70
+
+    KDJ_J_OVERSOLD = 10
+    KDJ_J_OVERBOUGHT = 90
+
+    STRONG_BUY_SCORE = 80
+    BUY_SCORE = 60
+    NEUTRAL_SCORE = 40
+    STRONG_SELL_SCORE = 20
+
+
+cfg = Config()
 
 
 @dataclass
 class AnalysisReport:
-    """封装单次完整的股票分析结果，包括原始数据、指标和建议。"""
+    """封装单次完整的股票分析结果"""
 
-    symbol: str  # 股票代码
-    price: float  # 分析时的最新价格
-    score: int  # 基于多因子策略计算出的综合得分
-    advice: str  # 根据得分生成的最终投资建议 (如：买入、卖出、观望)
-    # 存储包含日期、开盘、收盘、最高、最低以及所有计算因子指标的 DataFrame
-    data_and_indicators: Optional[pd.DataFrame] = None
-    bullish_signals: List[str] = field(default_factory=list)  # 看涨信号描述列表
-    bearish_signals: List[str] = field(default_factory=list)  # 看跌信号描述列表
+    symbol: str
+    price: float
+    score: int
+    advice: str
+    trend_status: str  # 新增：趋势状态 (如：多头排列/空头排列)
+    stop_loss_price: float  # 新增：建议止损价
+    data_and_indicators: Optional[pd.DataFrame]
+    bullish_signals: List[str] = field(default_factory=list)
+    bearish_signals: List[str] = field(default_factory=list)
 
 
 class StockAnalyzer:
-    # 预定义需要计算的所有指标名称
-    # stockstats 在计算这些指标时，会自动依赖于'open', 'close', 'high', 'low', 'volume'
+    # 扩充了主流因子：均线、ATR、WR、OBV
     INDICATORS_TO_CALCULATE = [
         "macd",
         "macdh",
         "macds",  # MACD
-        "rsi_14",  # RSI (默认14日)
+        "rsi_14",  # RSI
         "kdjk",
         "kdjd",
-        "kdjj",  # KDJ (默认9日)
+        "kdjj",  # KDJ
         "boll",
         "boll_ub",
-        "boll_lb",  # Bollinger Bands (默认20日)
-        # "dma",
-        # "pdi",
-        # "mdi",
-        # "dx",  # 其他常用指标 (DMA, DMI等)
-        # "tr",
-        # "atr",  # ATR
+        "boll_lb",  # Bollinger
+        "close_5_sma",
+        "close_10_sma",
+        "close_20_sma",
+        "close_60_sma",  # 均线系统
+        "vr",  # 量比 (Volume Ratio)
+        "wr_14",  # 威廉指标 (Williams %R)
+        "atr",  # ATR (用于止损)
+        "volume",  # 成交量
     ]
 
     def __init__(self, df: pd.DataFrame, symbol: str, stock_name: str):
         self.raw_df = df
         self.symbol = symbol
         self.stock_name = stock_name
-        # 将原始 DataFrame 转换为 StockDataFrame 对象
         self.stock = StockDataFrame.retype(df.copy())
 
-        # 提前计算所有所需的指标
+        # 计算指标
         for indicator in self.INDICATORS_TO_CALCULATE:
             self.stock.get(indicator)
 
-    def analyze(self) -> AnalysisReport:
-        """
-        执行多因子综合分析，并返回一个 AnalysisReport 对象
-        """
-        # 提取最后一行数据（包含元数据和所有计算的因子指标）
+    def analyze(self) -> AnalysisReport | None:
+        """执行多因子加权分析"""
+        # 获取最后一行 (最新数据)
         last_row = self.stock.iloc[-1]
 
-        # 提取关键指标值
+        # 获取前一天数据 (用于比较变化，如金叉死叉)
+        prev_row = self.stock.iloc[-2] if len(self.stock) > 1 else last_row
+
         close = float(last_row.get("close", 0.0))
         if close == 0.0:
-            print(f"Warning: Close price is 0 or missing for {self.symbol}")
+            return None
 
-        macd = last_row.get("macd", 0.0)
-        macdh = last_row.get("macdh", 0.0)
+        # --- 提取因子 ---
+        macd_h = last_row.get("macdh", 0.0)
         rsi = last_row.get("rsi_14", 50.0)
-        k = last_row.get("kdjk", 50.0)
-        d = last_row.get("kdjd", 50.0)
-        j = last_row.get("kdjj", 50.0)
-        boll_lb = last_row.get("boll_lb", close * 0.9)  # 默认值应谨慎设置
-        boll_ub = last_row.get("boll_ub", close * 1.1)
+        k, d, j = (
+            last_row.get("kdjk", 50),
+            last_row.get("kdjd", 50),
+            last_row.get("kdjj", 50),
+        )
+        wr = last_row.get("wr_14", -50.0)  # WR通常是 -100 到 0
 
-        # --- 逻辑打分 ---
-        score = 0  # 初始化总分
-        bull_signals = []  # 初始化看涨信号列表
-        bear_signals = []  # 初始化看跌信号列表
+        # 均线
+        ma5 = last_row.get("close_5_sma", 0)
+        ma20 = last_row.get("close_20_sma", 0)
+        ma60 = last_row.get("close_60_sma", 0)
 
-        # 策略 A: MACD 趋势判断
-        if macd > 0 and macdh > 0:
-            score += 25
-            bull_signals.append(f"MACD 处于多头区域且红柱持续 (MACD={macd:.2f})")
-        elif macd < 0:
-            score -= 15
-            bear_signals.append(f"MACD 处于零轴下方空头趋势 (MACD={macd:.2f})")
+        # 波动率
+        atr = last_row.get("atr", 0)
 
-        # 策略 B: RSI 情绪判断
-        if rsi < cfg.RSI_OVERSOLD:
-            score += 30
-            bull_signals.append(f"RSI 进入超卖区 ({rsi:.2f})，市场极度恐慌，反弹概率大")
-        elif rsi > cfg.RSI_OVERBOUGHT:
-            score -= 20
-            bear_signals.append(f"RSI 进入超买区 ({rsi:.2f})，谨防高位回调")
+        # --- 核心策略逻辑 (加权打分制) ---
+        score = 50  # 基础分 50
+        bull_signals = []
+        bear_signals = []
 
-        # 策略 C: KDJ 短线买卖信号
-        if j < cfg.KDJ_J_OVERSOLD:
+        # 1. 趋势判定 (权重最高: 40分)
+        # 逻辑：不做逆势单，均线多头排列才给高分
+        trend_status = "震荡/不明确"
+        if close > ma20 and ma20 > ma60:
             score += 20
-            bull_signals.append(f"KDJ J值({j:.2f}) 进入超卖区，短线超跌")
-        elif j > cfg.KDJ_J_OVERBOUGHT:
+            trend_status = "📈 多头趋势 (中期看涨)"
+            bull_signals.append("价格站上 MA20/MA60，趋势向好")
+        elif close < ma20 and ma20 < ma60:
+            score -= 20
+            trend_status = "📉 空头趋势 (中期看跌)"
+            bear_signals.append("价格跌破 MA20/MA60，趋势走坏")
+
+        if close > ma5:
+            score += 5
+        else:
+            score -= 5
+
+        # 2. 动能与超买超卖 (权重: 30分)
+        # MACD
+        if macd_h > 0:
+            score += 5
+            if macd_h > prev_row.get("macdh", 0):  # 红柱增长
+                bull_signals.append("MACD 动能增强")
+        else:
+            score -= 5
+
+        # RSI (结合趋势过滤)
+        if rsi < cfg.RSI_OVERSOLD:
+            # 在多头趋势中，超卖是黄金坑；在空头趋势中，超卖可能还要跌
+            if close > ma60:
+                score += 20
+                bull_signals.append(f"RSI超卖 ({rsi:.1f}) + 趋势向上 = 黄金买点")
+            else:
+                score += 10
+                bull_signals.append(f"RSI超卖 ({rsi:.1f})，存在反弹需求")
+        elif rsi > cfg.RSI_OVERBOUGHT:
             score -= 15
-            bear_signals.append(f"KDJ J值({j:.2f}) 进入超买区，短线过热")
+            bear_signals.append(f"RSI超买 ({rsi:.1f})，注意回调")
 
-        # 策略 D: 布林带位置
-        if close < boll_lb:
-            score += 25
-            bull_signals.append("股价跌破布林下轨，是潜在的买入机会")
-        elif close > boll_ub:
+        # 威廉指标 W&R (灵敏度高)
+        if wr < -80:  # 超卖
+            score += 5
+            bull_signals.append(f"WR进入底部区域 ({wr:.1f})")
+        elif wr > -20:  # 超买
+            score -= 5
+
+        # 3. 价格形态与量能 (权重: 20分)
+        # 布林带
+        boll_lb = last_row.get("boll_lb", 0)
+        boll_ub = last_row.get("boll_ub", 0)
+        if close <= boll_lb * 1.01:  # 接近下轨
+            score += 10
+            bull_signals.append("股价触及布林下轨，支撑较强")
+        elif close >= boll_ub * 0.99:
             score -= 10
-            bear_signals.append("股价突破布林上轨，注意回落风险")
+            bear_signals.append("股价触及布林上轨，压力较大")
 
-        # --- 根据总分生成综合投资建议 ---
+        # 4. 风险风控计算 (ATR)
+        # 建议止损价 = 当前价 - 2倍ATR (常规波动范围之外)
+        stop_loss = close - (2 * atr) if atr > 0 else close * 0.95
+
+        # --- 生成建议 ---
         if score >= cfg.STRONG_BUY_SCORE:
             advice = "🚀 强烈买入 (Strong Buy)"
-        elif score >= cfg.HOLD_SCORE:
-            advice = "📈 谨慎看多 (Buy/Hold)"
-        elif score > cfg.NEUTRAL_SCORE:
-            advice = "👀 观望 (Neutral)"
+        elif score >= cfg.BUY_SCORE:
+            advice = "📈 建议买入 (Buy)"
+        elif score >= cfg.NEUTRAL_SCORE:
+            advice = "👀 观望/持有 (Hold)"
+        elif score >= cfg.STRONG_SELL_SCORE:
+            advice = "📉 建议减仓 (Sell)"
         else:
-            advice = "📉 建议卖出/规避 (Sell)"
+            advice = "🏃‍♂️ 坚决清仓 (Strong Sell)"
 
-        # 确保 data_and_indicators 仅包含元数据和计算后的指标
-        columns_to_keep = [
-            "open",
-            "close",
-            "high",
-            "low",
-            "volume",
-        ] + self.INDICATORS_TO_CALCULATE
-        # 筛选出DataFrame中实际存在的列
-        final_df = self.stock[
-            [col for col in columns_to_keep if col in self.stock.columns]
+        # 限制 Score 范围 0-100
+        score = max(0, min(100, score))
+
+        # 构建最终 DataFrame
+        final_cols = [
+            c
+            for c in ["open", "close", "high", "low", "volume"]
+            + self.INDICATORS_TO_CALCULATE
+            if c in self.stock.columns
         ]
 
         report = AnalysisReport(
@@ -144,96 +196,125 @@ class StockAnalyzer:
             price=close,
             score=score,
             advice=advice,
-            data_and_indicators=final_df,  # 返回包含所有数据的完整 DataFrame
+            trend_status=trend_status,
+            stop_loss_price=stop_loss,
+            data_and_indicators=self.stock[final_cols],
             bullish_signals=bull_signals,
             bearish_signals=bear_signals,
         )
-        self.print_report(report)
 
+        self.print_report(report)
         return report
 
     def print_report(self, report: AnalysisReport):
-        # --- 指标表格 ---
-        if report.data_and_indicators is not None:
-            table = Table(
-                box=box.SIMPLE_HEAVY,
-                show_header=True,
-                header_style="bold cyan",
-            )
-            table.add_column("指标名称")
-            table.add_column("数值", justify="left", style="bold")
-            table.add_column("状态/参考", justify="left")
-            last = report.data_and_indicators.iloc[-1]
-            rsi = last.get("rsi_14", 50)
-            k, d, j = last.get("kdjk", 0), last.get("kdjd", 0), last.get("kdjj", 0)
+        console = Console()
 
-            # 添加行数据
-            table.add_row("最新价格", f"¥ {report.price:.2f}", "")
-            table.add_row("成交量", f"{int(last['volume'])/10000:.2f} 万", "")
-            # 分隔线
-            table.add_section()
+        if report.data_and_indicators is None or report.data_and_indicators.empty:
+            console.print("[bold red]错误：数据为空。[/]")
+            return
 
-            table.add_row(
-                "MACD 趋势",
-                f"{last.get('macd',0):.2f}",
-                "",
-            )
-            table.add_row("MACD 动能", f"{last.get('macdh',0):.2f}", "")
-            table.add_row(
-                "RSI (14)",
-                f"{rsi:.2f}",
-                f"{'[red]🔴 超买[/]' if rsi > 70 else ('[green]🟢 超卖[/]' if rsi < 30 else '[yellow]🟡 中性[/]')}",
-            )
-            table.add_row(
-                "KDJ (J)",
-                f"{last.get('kdjj',0):.2f}",
-                f"{'[red]🔴 超买[/]' if j > 100 else ('[green]🟢 超卖(机会)[/]' if j < 0 else '[yellow]🟡 中性[/]')}",
-            )
-            table.add_row("KDJ (K/D)", f"{k:.1f} / {d:.1f}" "")
-            table.add_row(
-                "布林上轨", f"{last.get('boll_ub',0):.2f}", "[magenta]压力位[/]"
-            )
-            table.add_row(
-                "布林下轨", f"{last.get('boll_lb',0):.2f}", "[magenta]支撑位[/]"
-            )
+        last = report.data_and_indicators.iloc[-1]
 
-            # --- 组装信号文本 ---
-            bull_text = (
-                "\n".join([f"✅ {s}" for s in report.bullish_signals])
-                if report.bullish_signals
-                else "[dim]无明显看涨信号[/]"
-            )
-            bear_text = (
-                "\n".join([f"❌ {s}" for s in report.bearish_signals])
-                if report.bearish_signals
-                else "[dim]无明显看跌信号[/]"
-            )
+        # --- 1. 表格构建 ---
+        table = Table(
+            box=box.ROUNDED, show_header=True, header_style="bold white on blue"
+        )
+        table.add_column("维度", style="dim")
+        table.add_column("指标", style="bold cyan")
+        table.add_column("数值", justify="right")
+        table.add_column("状态分析", justify="left")
 
-            # --- 打印组合面板 ---
-            # 顶部摘要
-            score_color = (
-                "red"
-                if report.score < cfg.STRONG_SELL_SCORE
-                else ("green" if report.score >= cfg.STRONG_BUY_SCORE else "yellow")
-            )
+        # 基础数据
+        table.add_row(
+            "基础",
+            "最新价格",
+            f"¥ {report.price:.2f}",
+            f"[bold]{report.trend_status}[/]",
+        )
+        table.add_row(
+            "基础",
+            "建议止损",
+            f"¥ {report.stop_loss_price:.2f}",
+            "[italic red]跌破此位离场[/]",
+        )
+        table.add_section()
 
-            summary_panel = Panel(
-                f"📅 数据日期: [bold]{report.data_and_indicators.index[-1].strftime('%Y-%m-%d')}[/]\n"
-                f"💰 股票代码: [bold]{report.symbol}[/]\n"
-                f"💸 股票名称: [bold]{self.stock_name}[/]\n"
-                f"🏆 综合评分: [{score_color} bold]{report.score}[/] 分\n"
-                f"💡 操作建议: [{score_color}]{report.advice}[/]",
-                title="📊 分析摘要",
-                border_style="blue",
-            )
+        # 趋势
+        ma5, ma20 = last.get("close_5_sma", 0), last.get("close_20_sma", 0)
+        ma_gap = (ma5 - ma20) / ma20 * 100
+        table.add_row(
+            "趋势",
+            "MA5 vs MA20",
+            f"{ma_gap:+.2f}%",
+            "[green]金叉发散[/]" if ma5 > ma20 else "[red]空头压制[/]",
+        )
 
-            # 信号面板
-            signal_panel = Panel(
-                f"{bull_text}\n\n{bear_text}", title="⚡ 交易信号", border_style="white"
-            )
+        # 动能
+        rsi = last.get("rsi_14", 50)
+        rsi_style = (
+            "[red]超买[/]" if rsi > 70 else ("[green]超卖[/]" if rsi < 30 else "中性")
+        )
+        table.add_row("动能", "RSI (14)", f"{rsi:.1f}", rsi_style)
 
-            console = Console()
-            console.print("\n")
-            console.print(summary_panel)
-            console.print(table)
-            console.print(signal_panel)
+        macd = last.get("macdh", 0)
+        macd_style = "[red]空头力度[/]" if macd < 0 else "[green]多头力度[/]"
+        table.add_row("动能", "MACD 柱", f"{macd:.3f}", macd_style)
+
+        wr = last.get("wr_14", -50)
+        table.add_row(
+            "动能",
+            "Williams %R",
+            f"{wr:.1f}",
+            "[green]底部超卖[/]" if wr < -80 else "正常",
+        )
+
+        # 波动
+        bb_ub = last.get("boll_ub", 0)
+        dist_ub = (bb_ub - report.price) / report.price * 100
+        table.add_row("通道", "距布林上轨", f"{dist_ub:.1f}%", "空间越大上涨潜力越大")
+
+        # --- 2. 面板构建 ---
+        score_color = (
+            "red" if report.score < 40 else ("green" if report.score > 70 else "yellow")
+        )
+
+        # 信号文本
+        bull_txt = (
+            "\n".join([f"[green]✅ {s}[/]" for s in report.bullish_signals])
+            or "[dim]无明显多头信号[/]"
+        )
+        bear_txt = (
+            "\n".join([f"[red]❌ {s}[/]" for s in report.bearish_signals])
+            or "[dim]无明显空头信号[/]"
+        )
+
+        summary_grid = Table.grid(expand=True)
+        summary_grid.add_column(ratio=1)
+        summary_grid.add_column(ratio=1)
+
+        # 左侧：综合评分
+        left_panel = Panel(
+            f"\n[bold {score_color} reverse]  {report.score} 分  [/]\n\n"
+            f"建议: [bold {score_color}]{report.advice}[/]\n"
+            f"趋势: {report.trend_status}",
+            title="🎯 综合评级",
+            border_style=score_color,
+        )
+
+        # 右侧：信号详情
+        right_panel = Panel(
+            f"{bull_txt}\n\n[white dim]---[/]\n\n{bear_txt}",
+            title="⚡ 信号侦测",
+            border_style="white",
+        )
+
+        # --- 3. 输出 ---
+        console.print("\n")
+        console.print(
+            f"[bold underline]🔍 深度股票分析报告: {self.stock_name} ({self.symbol})[/]"
+        )
+        console.print(table)
+
+        from rich.columns import Columns
+
+        console.print(Columns([left_panel, right_panel]))
