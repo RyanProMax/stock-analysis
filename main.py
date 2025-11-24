@@ -1,6 +1,9 @@
+import os
 import uvicorn
 from fastapi import FastAPI
 from src.controller import index as controller
+
+port = int(os.environ.get("PORT", 8080))
 
 # Create the FastAPI app
 app = FastAPI(
@@ -21,7 +24,7 @@ def read_root():
 
 
 def start():
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
 
 
 if __name__ == "__main__":

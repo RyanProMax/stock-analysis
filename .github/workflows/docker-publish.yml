@@ -1,4 +1,4 @@
-name: Build and Publish Docker Image
+name: Build, Publish, Clean and Deploy
 
 on:
   push:
@@ -8,13 +8,18 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  
+  GCP_PROJECT_ID: stock-analysis-479216
+  SERVICE_NAME: stock-analyzer-service
+  REGION: us-central1
 
 jobs:
-  build-and-push:
+  build-deploy-clean:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write 
+      id-token: write  # 用于 Google Cloud 身份认证
 
     steps:
       - name: Checkout repository
@@ -58,3 +63,18 @@ jobs:
           package-type: 'container'
           min-versions-to-keep: 3
           delete-only-untagged-versions: 'false'
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          region: ${{ env.REGION }}
+          flags: '--allow-unauthenticated' 
+          env_vars: |
+            ENV=production
