@@ -6,8 +6,20 @@ from typing import List
 # like pandas DataFrames, making it suitable for JSON output.
 
 
+class StockAnalysisRequest(BaseModel):
+    symbols: List[str]
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "symbols": ["NVDA", "AAPL", "600519"],
+            }
+        }
+
+
 class AnalysisReportResponse(BaseModel):
     symbol: str
+    stock_name: str | None = None
     price: float
     score: int
     advice: str

@@ -1,32 +1,33 @@
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException
+from typing import List
 
 from src.service import index as service
-from .schemas import AnalysisReportResponse
+from .schemas import AnalysisReportResponse, StockAnalysisRequest
 
 router = APIRouter()
 
 
-@router.get(
-    "/analyze/{symbol}",
-    response_model=AnalysisReportResponse,
-    summary="Analyze a stock symbol",
+@router.post(
+    "/analyze",
+    response_model=List[AnalysisReportResponse],
+    summary="批量分析股票列表",
     tags=["Analysis"],
 )
-def analyze_stock(
-    symbol: str = Path(
-        ...,
-        title="Stock Symbol",
-        description="The stock symbol to analyze (e.g., 'NVDA', '600519')",
-    )
-):
+def analyze_stocks(payload: StockAnalysisRequest):
     """
-    Performs a technical analysis on the given stock symbol and returns a report.
+    根据传入的股票代码列表执行批量分析，返回成功分析的结果列表。
     """
-    print(f"symbol: {symbol}")
-    report = service.run_stock_analysis(symbol)
-    if report is None:
+    normalized = [symbol.strip().upper() for symbol in payload.symbols if symbol.strip()]
+    if not normalized:
+        raise HTTPException(
+            status_code=400,
+            detail="请至少提供一个有效的股票代码。",
+        )
+
+    reports = service.run_batch_stock_analysis(normalized)
+    if not reports:
         raise HTTPException(
             status_code=404,
-            detail=f"Could not retrieve or analyze data for symbol '{symbol}'. Please ensure it's a valid symbol.",
+            detail="无法获取任何股票的数据，请确认代码是否有效。",
         )
-    return report
+    return reports
