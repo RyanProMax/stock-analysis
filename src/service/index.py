@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 
 from .data_loader import DataLoader
 from .model import AnalysisReport
-from .strategy import StockAnalyzer
+from .strategy import StockAnalyzer  # StockAnalyzer 是 MultiFactorAnalyzer 的别名，保持向后兼容
 
 CACHE: Dict[str, AnalysisReport | None] = {}
 
