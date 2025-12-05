@@ -13,7 +13,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
     核心设计理念：
     1. 多因子分类：将指标分为趋势、波动率、动量、量能、基本面五大类
-    2. 因子分类：技术面因子（趋势、波动率、动量、量能）和基本面因子（价值投资）
+    2. 因子分类：技术面因子和基本面因子
     3. 信号输出：每个因子独立输出多/空信号，便于理解分析来源
 
     技术面因子包括：
@@ -123,7 +123,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="ma",
-            name="MA均线因子",
+            name="MA均线",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -150,7 +150,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="ema",
-            name="EMA指数均线因子",
+            name="EMA指数均线",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -184,7 +184,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="macd",
-            name="MACD因子",
+            name="MACD",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -216,7 +216,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="rsi",
-            name="RSI因子",
+            name="RSI",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -244,7 +244,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="kdj",
-            name="KDJ因子",
+            name="KDJ",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -270,7 +270,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="wr",
-            name="WR威廉指标因子",
+            name="WR威廉指标",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -308,7 +308,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="bollinger",
-            name="布林带因子",
+            name="布林带",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -332,7 +332,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="atr",
-            name="ATR因子",
+            name="ATR",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -341,7 +341,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
     def _analyze_sentiment(self, fg_index: float) -> FactorDetail:
         """
-        情绪因子分析（贪恐指数）
+        贪恐指数分析
         评估指标：逆向情绪指标（恐慌买入/贪婪卖出）
         """
         bull, bear = [], []
@@ -369,7 +369,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="sentiment",
-            name="情绪因子",
+            name="贪恐指数",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -420,7 +420,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="volume_ratio",
-            name="成交量比率因子",
+            name="成交量比率",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -446,7 +446,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="vr",
-            name="VR成交量比率因子",
+            name="VR成交量比率",
             category="技术面",
             status=status,
             bullish_signals=bull,
@@ -470,7 +470,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if financial_data is None:
             return FactorDetail(
                 key="revenue_growth",
-                name="营收增长率因子",
+                name="营收增长率",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -481,7 +481,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if revenue_growth is None:
             return FactorDetail(
                 key="revenue_growth",
-                name="营收增长率因子",
+                name="营收增长率",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -522,7 +522,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="revenue_growth",
-            name="营收增长率因子",
+            name="营收增长率",
             category="基本面",
             status=status,
             bullish_signals=bull,
@@ -539,7 +539,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if financial_data is None:
             return FactorDetail(
                 key="debt_ratio",
-                name="资产负债率因子",
+                name="资产负债率",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -550,7 +550,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if debt_ratio is None:
             return FactorDetail(
                 key="debt_ratio",
-                name="资产负债率因子",
+                name="资产负债率",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -581,7 +581,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="debt_ratio",
-            name="资产负债率因子",
+            name="资产负债率",
             category="基本面",
             status=status,
             bullish_signals=bull,
@@ -598,7 +598,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if financial_data is None:
             return FactorDetail(
                 key="pe_ratio",
-                name="市盈率因子",
+                name="市盈率",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -609,7 +609,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if pe_ratio is None or pe_ratio <= 0:
             return FactorDetail(
                 key="pe_ratio",
-                name="市盈率因子",
+                name="市盈率",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -649,7 +649,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="pe_ratio",
-            name="市盈率因子",
+            name="市盈率",
             category="基本面",
             status=status,
             bullish_signals=bull,
@@ -666,7 +666,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if financial_data is None:
             return FactorDetail(
                 key="pb_ratio",
-                name="市净率因子",
+                name="市净率",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -677,7 +677,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if pb_ratio is None or pb_ratio <= 0:
             return FactorDetail(
                 key="pb_ratio",
-                name="市净率因子",
+                name="市净率",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -710,7 +710,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="pb_ratio",
-            name="市净率因子",
+            name="市净率",
             category="基本面",
             status=status,
             bullish_signals=bull,
@@ -727,7 +727,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if financial_data is None:
             return FactorDetail(
                 key="roe",
-                name="ROE因子",
+                name="ROE",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -738,7 +738,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         if roe is None:
             return FactorDetail(
                 key="roe",
-                name="ROE因子",
+                name="ROE",
                 category="基本面",
                 status="-",
                 bullish_signals=[],
@@ -769,189 +769,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
 
         return FactorDetail(
             key="roe",
-            name="ROE因子",
-            category="基本面",
-            status=status,
-            bullish_signals=bull,
-            bearish_signals=bear,
-        )
-
-    def _analyze_fundamental(self, financial_data: dict | None) -> FactorDetail:
-        """
-        价值投资因子分析（基本面分析）
-
-        评估指标：
-        - 营收增长率：反映公司成长性（>20% 优秀，<0% 衰退）
-        - 资产负债率：反映财务健康度（<50% 健康，>70% 风险高）
-        - 市盈率（PE）：反映估值水平（<15 低估，>30 高估）
-        - 市净率（PB）：反映资产价值（<1 低估，>3 高估）
-        - ROE（净资产收益率）：反映盈利能力（>15% 优秀，<5% 较差）
-        """
-        bull, bear = [], []
-        status_parts = []
-
-        if financial_data is None or not financial_data:
-            return FactorDetail(
-                key="fundamental",
-                name="价值投资因子",
-                category="基本面",
-                status="-",
-                bullish_signals=[],
-                bearish_signals=[],
-            )
-
-        # 1. 营收增长率
-        revenue_growth = financial_data.get("revenue_growth")
-        if revenue_growth is not None:
-            if revenue_growth > 20:
-                bull.append(
-                    self._create_signal(
-                        "fundamental",
-                        f"营收增长强劲 ({revenue_growth:.1f}%)，成长性优秀",
-                    )
-                )
-                status_parts.append(f"营收增长{revenue_growth:.1f}%")
-            elif revenue_growth > 10:
-                bull.append(
-                    self._create_signal(
-                        "fundamental", f"营收稳定增长 ({revenue_growth:.1f}%)"
-                    )
-                )
-                status_parts.append(f"营收增长{revenue_growth:.1f}%")
-            elif revenue_growth > 0:
-                status_parts.append(f"营收增长{revenue_growth:.1f}%")
-            elif revenue_growth > -10:
-                bear.append(
-                    self._create_signal(
-                        "fundamental", f"营收增长放缓 ({revenue_growth:.1f}%)"
-                    )
-                )
-                status_parts.append(f"营收增长{revenue_growth:.1f}%")
-            else:
-                bear.append(
-                    self._create_signal(
-                        "fundamental", f"营收负增长 ({revenue_growth:.1f}%)，经营承压"
-                    )
-                )
-                status_parts.append(f"营收增长{revenue_growth:.1f}%")
-
-        # 2. 资产负债率（越低越好）
-        debt_ratio = financial_data.get("debt_ratio")
-        if debt_ratio is not None:
-            if debt_ratio < 30:
-                bull.append(
-                    self._create_signal(
-                        "fundamental", f"负债率低 ({debt_ratio:.1f}%)，财务结构健康"
-                    )
-                )
-                status_parts.append(f"负债率{debt_ratio:.1f}%")
-            elif debt_ratio < 50:
-                bull.append(
-                    self._create_signal(
-                        "fundamental", f"负债率适中 ({debt_ratio:.1f}%)"
-                    )
-                )
-                status_parts.append(f"负债率{debt_ratio:.1f}%")
-            elif debt_ratio < 70:
-                status_parts.append(f"负债率{debt_ratio:.1f}%")
-            else:
-                bear.append(
-                    self._create_signal(
-                        "fundamental", f"负债率偏高 ({debt_ratio:.1f}%)，财务风险需关注"
-                    )
-                )
-                status_parts.append(f"负债率{debt_ratio:.1f}%")
-
-        # 3. 市盈率（越低越好，但需结合行业）
-        pe_ratio = financial_data.get("pe_ratio")
-        if pe_ratio is not None and pe_ratio > 0:
-            if pe_ratio < 10:
-                bull.append(
-                    self._create_signal(
-                        "fundamental", f"PE={pe_ratio:.1f}，估值偏低，合理范围是 10-20"
-                    )
-                )
-                status_parts.append(f"PE={pe_ratio:.1f}")
-            elif pe_ratio < 20:
-                bull.append(
-                    self._create_signal(
-                        "fundamental", f"PE={pe_ratio:.1f}，估值合理，合理范围是 10-20"
-                    )
-                )
-                status_parts.append(f"PE={pe_ratio:.1f}")
-            elif pe_ratio < 30:
-                status_parts.append(f"PE={pe_ratio:.1f}")
-            elif pe_ratio < 50:
-                bear.append(
-                    self._create_signal(
-                        "fundamental", f"PE={pe_ratio:.1f}，估值偏高，合理范围是 10-20"
-                    )
-                )
-                status_parts.append(f"PE={pe_ratio:.1f}")
-            else:
-                bear.append(
-                    self._create_signal(
-                        "fundamental", f"PE={pe_ratio:.1f}，估值过高，合理范围是 10-20"
-                    )
-                )
-                status_parts.append(f"PE={pe_ratio:.1f}")
-
-        # 4. 市净率（越低越好）
-        pb_ratio = financial_data.get("pb_ratio")
-        if pb_ratio is not None and pb_ratio > 0:
-            if pb_ratio < 1:
-                bull.append(
-                    self._create_signal(
-                        "fundamental", f"PB={pb_ratio:.2f}，估值偏低，合理范围是 1-2"
-                    )
-                )
-                status_parts.append(f"PB={pb_ratio:.2f}")
-            elif pb_ratio < 2:
-                bull.append(
-                    self._create_signal(
-                        "fundamental", f"PB={pb_ratio:.2f}，估值合理，合理范围是 1-2"
-                    )
-                )
-                status_parts.append(f"PB={pb_ratio:.2f}")
-            elif pb_ratio < 3:
-                status_parts.append(f"PB={pb_ratio:.2f}")
-            else:
-                bear.append(
-                    self._create_signal(
-                        "fundamental", f"PB={pb_ratio:.2f}，估值偏高，合理范围是 1-2"
-                    )
-                )
-                status_parts.append(f"PB={pb_ratio:.2f}")
-
-        # 5. ROE（越高越好）
-        roe = financial_data.get("roe")
-        if roe is not None:
-            if roe > 20:
-                bull.append(
-                    self._create_signal(
-                        "fundamental", f"ROE优秀 ({roe:.1f}%)，盈利能力强劲"
-                    )
-                )
-                status_parts.append(f"ROE={roe:.1f}%")
-            elif roe > 15:
-                bull.append(self._create_signal("fundamental", f"ROE良好 ({roe:.1f}%)"))
-                status_parts.append(f"ROE={roe:.1f}%")
-            elif roe > 10:
-                status_parts.append(f"ROE={roe:.1f}%")
-            elif roe > 5:
-                status_parts.append(f"ROE={roe:.1f}%")
-            else:
-                bear.append(
-                    self._create_signal(
-                        "fundamental", f"ROE偏低 ({roe:.1f}%)，盈利能力较弱"
-                    )
-                )
-                status_parts.append(f"ROE={roe:.1f}%")
-
-        status = " | ".join(status_parts) if status_parts else "数据完整"
-        return FactorDetail(
-            key="fundamental",
-            name="价值投资因子",
+            name="ROE",
             category="基本面",
             status=status,
             bullish_signals=bull,
@@ -1018,7 +836,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
         1. 提取最新行情数据和技术指标
         2. 获取财务数据（营收、负债、市盈率等）
         3. 计算贪恐指数（用于波动率因子）
-        4. 分别分析五大因子（趋势/波动率/动量/量能/价值投资）
+        4. 分别分析细粒度因子（技术面因子和基本面因子）
         5. 汇总各因子的多/空信号
         """
         last_row = self.stock.iloc[-1]
@@ -1046,7 +864,7 @@ class MultiFactorAnalyzer(BaseStockAnalyzer):
             else volume_ma5
         )
 
-        # --- 获取财务数据（价值投资因子）---
+        # --- 获取财务数据（基本面因子）---
         financial_data = None
         try:
             financial_data = DataLoader.get_financial_data(self.symbol)
