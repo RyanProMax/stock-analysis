@@ -18,5 +18,9 @@
       "envManager": "ms-python.python:venv",
       "packageManager": "ms-python.python:pip"
     }
-  ]
+  ],
+  "cursorpyright.analysis.extraPaths": [
+    "./src"
+  ],
+  "cursorpyright.analysis.typeCheckingMode": "basic"
 }

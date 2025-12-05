@@ -12,6 +12,7 @@ dependencies = [
     "rich (>=14.2.0,<15.0.0)",
     "fastapi (>=0.121.3,<0.122.0)",
     "uvicorn[standard] (>=0.38.0,<0.39.0)",
+    "yfinance (>=0.2.50,<1.0.0)",
 ]
 
 [dependency-groups]

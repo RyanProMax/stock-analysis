@@ -3,7 +3,9 @@ from typing import Dict, List, Optional
 
 from .data_loader import DataLoader
 from .model import AnalysisReport
-from .strategy import StockAnalyzer  # StockAnalyzer 是 MultiFactorAnalyzer 的别名，保持向后兼容
+from .strategy import (
+    StockAnalyzer,
+)  # StockAnalyzer 是 MultiFactorAnalyzer 的别名，保持向后兼容
 
 CACHE: Dict[str, AnalysisReport | None] = {}
 
@@ -29,7 +31,11 @@ def _analyze_symbol(symbol: str, refresh: bool = False) -> Optional[AnalysisRepo
         CACHE[cache_key] = report
         return report
     except Exception as e:
+        import traceback
+
         print(f"Error in analysis service for symbol {symbol}: {e}")
+        print("完整错误堆栈:")
+        traceback.print_exc()
         CACHE[_build_cache_key(symbol)] = None
         return None
 

@@ -55,73 +55,91 @@ def print_report(report: AnalysisReport):
         f"¥ {report.price:.2f}",
         f"[bold]{report.trend_status}[/]",
     )
-    table.add_row(
-        "基础",
-        "建议止损",
-        f"¥ {report.stop_loss_price:.2f}",
-        "[italic red]跌破此位离场[/]",
-    )
     table.add_section()
 
-    # 趋势
-    ma5, ma20 = last.get("close_5_sma", 0), last.get("close_20_sma", 0)
-    ma_gap = (ma5 - ma20) / ma20 * 100
-    table.add_row(
-        "趋势",
-        "MA5 vs MA20",
-        f"{ma_gap:+.2f}%",
-        "[green]金叉发散[/]" if ma5 > ma20 else "[red]空头压制[/]",
-    )
+    # 处理信号格式（支持字典和字符串两种格式，向后兼容）
+    def format_signal(signal):
+        if isinstance(signal, dict):
+            return signal.get("message", str(signal))
+        return str(signal)
 
-    # 动能
-    rsi = last.get("rsi_14", 50)
-    rsi_style = (
-        "[red]超买[/]" if rsi > 70 else ("[green]超卖[/]" if rsi < 30 else "中性")
-    )
-    table.add_row("动能", "RSI (14)", f"{rsi:.1f}", rsi_style)
+    # 按分类组织因子
+    technical_factors = []
+    fundamental_factors = []
 
-    macd = last.get("macdh", 0)
-    macd_style = "[red]空头力度[/]" if macd < 0 else "[green]多头力度[/]"
-    table.add_row("动能", "MACD 柱", f"{macd:.3f}", macd_style)
+    if report.trend_factor:
+        technical_factors.append(report.trend_factor)
+    if report.volatility_factor:
+        technical_factors.append(report.volatility_factor)
+    if report.momentum_factor:
+        technical_factors.append(report.momentum_factor)
+    if report.volume_factor:
+        technical_factors.append(report.volume_factor)
+    if report.fundamental_factor:
+        fundamental_factors.append(report.fundamental_factor)
 
-    wr = last.get("wr_14", -50)
-    table.add_row(
-        "动能",
-        "Williams %R",
-        f"{wr:.1f}",
-        "[green]底部超卖[/]" if wr < -80 else "正常",
-    )
+    # 构建因子详情面板
+    factor_panels = []
 
-    # 波动
-    bb_ub = last.get("boll_ub", 0)
-    dist_ub = (bb_ub - report.price) / report.price * 100
-    table.add_row("通道", "距布林上轨", f"{dist_ub:.1f}%", "空间越大上涨潜力越大")
+    # 技术面因子
+    if technical_factors:
+        tech_content = []
+        for factor in technical_factors:
+            tech_content.append(f"\n[bold cyan]{factor.name}[/]")
+            tech_content.append(f"状态: {factor.status}")
+            if factor.bullish_signals:
+                tech_content.append("\n[green]多头信号:[/]")
+                for sig in factor.bullish_signals:
+                    tech_content.append(f"  ✅ {format_signal(sig)}")
+            if factor.bearish_signals:
+                tech_content.append("\n[red]空头信号:[/]")
+                for sig in factor.bearish_signals:
+                    tech_content.append(f"  ❌ {format_signal(sig)}")
+            tech_content.append("")
 
-    # 面板构建
-    score_color = (
-        "red" if report.score < 40 else ("green" if report.score > 70 else "yellow")
-    )
+        tech_panel = Panel(
+            "\n".join(tech_content),
+            title="📊 技术面因子",
+            border_style="cyan",
+        )
+        factor_panels.append(tech_panel)
+
+    # 基本面因子
+    if fundamental_factors:
+        fund_content = []
+        for factor in fundamental_factors:
+            fund_content.append(f"\n[bold yellow]{factor.name}[/]")
+            fund_content.append(f"状态: {factor.status}")
+            if factor.bullish_signals:
+                fund_content.append("\n[green]多头信号:[/]")
+                for sig in factor.bullish_signals:
+                    fund_content.append(f"  ✅ {format_signal(sig)}")
+            if factor.bearish_signals:
+                fund_content.append("\n[red]空头信号:[/]")
+                for sig in factor.bearish_signals:
+                    fund_content.append(f"  ❌ {format_signal(sig)}")
+            fund_content.append("")
+
+        fund_panel = Panel(
+            "\n".join(fund_content),
+            title="💼 基本面因子",
+            border_style="yellow",
+        )
+        factor_panels.append(fund_panel)
+
+    # 汇总信号面板
     bull_txt = (
-        "\n".join([f"[green]✅ {s}[/]" for s in report.bullish_signals])
+        "\n".join([f"[green]✅ {format_signal(s)}[/]" for s in report.bullish_signals])
         or "[dim]无明显多头信号[/]"
     )
     bear_txt = (
-        "\n".join([f"[red]❌ {s}[/]" for s in report.bearish_signals])
+        "\n".join([f"[red]❌ {format_signal(s)}[/]" for s in report.bearish_signals])
         or "[dim]无明显空头信号[/]"
     )
 
-    left_panel = Panel(
-        f"\n[bold {score_color} reverse]  {report.score} 分  [/]\n\n"
-        f"建议: [bold {score_color}]{report.advice}[/]\n"
-        f"趋势: {report.trend_status}",
-        title="🎯 综合评级",
-        border_style=score_color,
-    )
-
-    # 右侧：信号详情
-    right_panel = Panel(
+    signal_panel = Panel(
         f"{bull_txt}\n\n[white dim]---[/]\n\n{bear_txt}",
-        title="⚡ 信号侦测",
+        title="⚡ 汇总信号",
         border_style="white",
     )
 
@@ -132,6 +150,14 @@ def print_report(report: AnalysisReport):
     )
     console.print(fg_panel)  # 优先显示情绪面板
     console.print(table)
+
     from rich.columns import Columns
 
-    console.print(Columns([left_panel, right_panel]))
+    # 显示因子详情
+    if factor_panels:
+        console.print("\n")
+        console.print(Columns(factor_panels))
+
+    # 显示汇总信号
+    console.print("\n")
+    console.print(signal_panel)

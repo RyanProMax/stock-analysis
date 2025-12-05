@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 
 class Config:
@@ -8,13 +8,20 @@ class Config:
     RSI_OVERBOUGHT = 70
     KDJ_J_OVERSOLD = 10
     KDJ_J_OVERBOUGHT = 90
-    STRONG_BUY_SCORE = 80
-    BUY_SCORE = 60
-    NEUTRAL_SCORE = 40
-    STRONG_SELL_SCORE = 20
 
 
 cfg = Config()
+
+
+@dataclass
+class FactorDetail:
+    """因子详情"""
+
+    name: str  # 因子名称
+    category: str  # 因子分类：基本面/技术面
+    status: str  # 因子状态描述
+    bullish_signals: List[Dict[str, Any]] = field(default_factory=list)
+    bearish_signals: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -24,12 +31,17 @@ class AnalysisReport:
     symbol: str
     stock_name: str
     price: float
-    score: int
-    advice: str
     trend_status: str
-    stop_loss_price: float
     data_and_indicators: Optional[pd.DataFrame]
-    bullish_signals: List[str] = field(default_factory=list)
-    bearish_signals: List[str] = field(default_factory=list)
+    # 各因子详情
+    trend_factor: Optional[FactorDetail] = None
+    volatility_factor: Optional[FactorDetail] = None
+    momentum_factor: Optional[FactorDetail] = None
+    volume_factor: Optional[FactorDetail] = None
+    fundamental_factor: Optional[FactorDetail] = None
+    # 汇总信号
+    bullish_signals: List[Dict[str, Any]] = field(default_factory=list)
+    bearish_signals: List[Dict[str, Any]] = field(default_factory=list)
+    # 基础指标
     fear_greed_index: float = 50.0
     fear_greed_label: str = "中性"

@@ -42,29 +42,10 @@ class BaseStockAnalyzer(ABC):
         执行股票分析（抽象方法，子类必须实现）
 
         Returns:
-            AnalysisReport: 分析报告对象，包含评分、建议、信号等信息
+            AnalysisReport: 分析报告对象，包含因子详情和信号等信息
             None: 分析失败（如数据不足、价格异常等）
         """
         pass
-
-    @staticmethod
-    def _average_score(components: list[float]) -> int:
-        """
-        计算因子组内指标的平均得分（去相关性处理）
-
-        原理：同类指标（如 RSI/KDJ/WR）存在相关性，通过平均化处理
-        可以降低单一指标的权重，避免重复计算带来的偏差
-
-        Args:
-            components: 0-1 之间的标准化得分列表
-
-        Returns:
-            0-100 之间的整数得分
-        """
-        filtered = [c for c in components if c is not None]
-        if not filtered:
-            return 50
-        return int(round(sum(filtered) / len(filtered) * 100))
 
     @staticmethod
     def _clamp_ratio(value: float) -> float:
