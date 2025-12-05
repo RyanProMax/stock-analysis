@@ -10,29 +10,23 @@ from .model import AnalysisReport
 def print_report(report: AnalysisReport):
     console = Console()
 
-    if report.data_and_indicators is None or report.data_and_indicators.empty:
-        console.print("[bold red]错误：数据为空。[/]")
-        return
-
-    last = report.data_and_indicators.iloc[-1]
-
     # 贪恐指数仪表盘
     # 颜色逻辑：低(恐慌)=绿色机会，高(贪婪)=红色风险
     fg_color = (
         "green"
-        if report.fear_greed_index < 40
-        else ("red" if report.fear_greed_index > 60 else "yellow")
+        if report.fear_greed.index < 40
+        else ("red" if report.fear_greed.index > 60 else "yellow")
     )
 
     fg_bar = Progress(
         TextColumn("[bold]情绪仪表盘[/]"),
         BarColumn(bar_width=None, complete_style=fg_color),
         TextColumn(
-            f"[{fg_color}]{report.fear_greed_index:.1f} ({report.fear_greed_label})"
+            f"[{fg_color}]{report.fear_greed.index:.1f} ({report.fear_greed.label})"
         ),
         expand=True,
     )
-    fg_bar.add_task("sentiment", total=100, completed=int(report.fear_greed_index))
+    fg_bar.add_task("sentiment", total=100, completed=int(report.fear_greed.index))
 
     fg_panel = Panel(
         fg_bar,
@@ -53,7 +47,7 @@ def print_report(report: AnalysisReport):
         "基础",
         "最新价格",
         f"¥ {report.price:.2f}",
-        f"[bold]{report.trend_status}[/]",
+        "",
     )
     table.add_section()
 
@@ -67,16 +61,11 @@ def print_report(report: AnalysisReport):
     technical_factors = []
     fundamental_factors = []
 
-    if report.trend_factor:
-        technical_factors.append(report.trend_factor)
-    if report.volatility_factor:
-        technical_factors.append(report.volatility_factor)
-    if report.momentum_factor:
-        technical_factors.append(report.momentum_factor)
-    if report.volume_factor:
-        technical_factors.append(report.volume_factor)
-    if report.fundamental_factor:
-        fundamental_factors.append(report.fundamental_factor)
+    for factor in report.factors:
+        if factor.category == "技术面":
+            technical_factors.append(factor)
+        elif factor.category == "基本面":
+            fundamental_factors.append(factor)
 
     # 构建因子详情面板
     factor_panels = []
@@ -127,13 +116,19 @@ def print_report(report: AnalysisReport):
         )
         factor_panels.append(fund_panel)
 
-    # 汇总信号面板
+    # 汇总所有因子的信号
+    all_bull_signals = []
+    all_bear_signals = []
+    for factor in report.factors:
+        all_bull_signals.extend(factor.bullish_signals)
+        all_bear_signals.extend(factor.bearish_signals)
+
     bull_txt = (
-        "\n".join([f"[green]✅ {format_signal(s)}[/]" for s in report.bullish_signals])
+        "\n".join([f"[green]✅ {format_signal(s)}[/]" for s in all_bull_signals])
         or "[dim]无明显多头信号[/]"
     )
     bear_txt = (
-        "\n".join([f"[red]❌ {format_signal(s)}[/]" for s in report.bearish_signals])
+        "\n".join([f"[red]❌ {format_signal(s)}[/]" for s in all_bear_signals])
         or "[dim]无明显空头信号[/]"
     )
 
