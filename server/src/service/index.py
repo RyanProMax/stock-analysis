@@ -3,9 +3,8 @@ from typing import Dict, List, Optional
 
 from .data_loader import DataLoader
 from .model import AnalysisReport
-from .strategy import (
-    StockAnalyzer,
-)  # StockAnalyzer 是 MultiFactorAnalyzer 的别名，保持向后兼容
+from .factors import MultiFactorAnalyzer
+from .console_report import console_report
 
 CACHE: Dict[str, AnalysisReport | None] = {}
 
@@ -26,9 +25,12 @@ def _analyze_symbol(symbol: str, refresh: bool = False) -> Optional[AnalysisRepo
             CACHE[cache_key] = None
             return None
 
-        analyzer = StockAnalyzer(df, symbol, stock_name)
+        analyzer = MultiFactorAnalyzer(df, symbol, stock_name)
         report = analyzer.analyze()
         CACHE[cache_key] = report
+        if report is not None:
+            console_report(report)
+
         return report
     except Exception as e:
         import traceback
@@ -47,9 +49,7 @@ def run_stock_analysis(symbol: str, refresh: bool = False) -> Optional[AnalysisR
     return _analyze_symbol(symbol, refresh)
 
 
-def run_batch_stock_analysis(
-    symbols: List[str], refresh: bool = False
-) -> List[AnalysisReport]:
+def run_batch_stock_analysis(symbols: List[str], refresh: bool = False) -> List[AnalysisReport]:
     """
     批量执行股票分析，自动跳过获取失败的股票，仅返回成功结果。
     """

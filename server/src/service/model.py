@@ -39,9 +39,11 @@ class AnalysisReport:
     symbol: str
     stock_name: str
     price: float
-    # 所有因子详情（数组形式，细粒度因子）
-    factors: List[FactorDetail] = field(default_factory=list)
     # 基础指标
-    fear_greed: FearGreed = field(
-        default_factory=lambda: FearGreed(index=50.0, label="中性")
-    )
+    fear_greed: FearGreed = field(default_factory=lambda: FearGreed(index=50.0, label="中性"))
+    # 技术面因子
+    technical_factors: List[FactorDetail] = field(default_factory=list)
+    # 基本面因子
+    fundamental_factors: List[FactorDetail] = field(default_factory=list)
+    # Qlib 因子
+    qlib_factors: List[FactorDetail] = field(default_factory=list)

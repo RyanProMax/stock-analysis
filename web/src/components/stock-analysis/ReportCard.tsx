@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown } from 'lucide-react'
 import { useState } from 'react'
-import type { AnalysisReport } from '../../types'
+import type { AnalysisReport, FactorDetail } from '../../types'
 
 interface ReportCardProps {
   report: AnalysisReport
@@ -53,7 +53,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
     return emojiMatch ? emojiMatch[0] : ''
   }
 
-  const getFactorStatus = (factor: (typeof report.factors)[0]) => {
+  const getFactorStatus = (factor: FactorDetail) => {
     const bullishCount = factor.bullish_signals.length
     const bearishCount = factor.bearish_signals.length
     if (bullishCount > bearishCount) return 'bullish'
@@ -105,7 +105,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
     })
   }
 
-  const toggleAllFactors = (factors: typeof report.factors, expand: boolean) => {
+  const toggleAllFactors = (factors: FactorDetail[], expand: boolean) => {
     setExpandedFactors(prev => {
       const newSet = new Set(prev)
       factors.forEach(factor => {
@@ -120,8 +120,9 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
     })
   }
 
-  const technicalFactors = report.factors.filter(f => f.category === '技术面')
-  const fundamentalFactors = report.factors.filter(f => f.category === '基本面')
+  const technicalFactors = report.technical_factors
+  const fundamentalFactors = report.fundamental_factors
+  const qlibFactors = report.qlib_factors
   const fearGreedTheme = getFearGreedTheme(report.fear_greed.index)
   const emoji = getEmojiFromLabel(report.fear_greed.label)
   const labelText = report.fear_greed.label
@@ -246,7 +247,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
 
           {/* 基本面因子 */}
           {fundamentalFactors.length > 0 && (
-            <div>
+            <div className="mb-6 last:mb-0">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-base font-light text-gray-900 dark:text-gray-100">基本面</h3>
                 <button
@@ -267,6 +268,46 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {fundamentalFactors.map(factor => {
+                  const factorKey = `${report.symbol}-${factor.key}`
+                  const isExpanded = expandedFactors.has(factorKey)
+                  const factorStatus = getFactorStatus(factor)
+                  const statusStyle = getFactorStatusStyle(factorStatus)
+
+                  return (
+                    <FactorItem
+                      key={factor.key}
+                      factor={factor}
+                      isExpanded={isExpanded}
+                      statusStyle={statusStyle}
+                      onToggle={() => toggleFactor(factorKey)}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Qlib 因子 */}
+          {qlibFactors.length > 0 && (
+            <div>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-base font-light text-gray-900 dark:text-gray-100">Qlib因子</h3>
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    const categoryFactorKeys = qlibFactors.map(f => `${report.symbol}-${f.key}`)
+                    const allExpanded = categoryFactorKeys.every(key => expandedFactors.has(key))
+                    toggleAllFactors(qlibFactors, !allExpanded)
+                  }}
+                  className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {qlibFactors.every(f => expandedFactors.has(`${report.symbol}-${f.key}`))
+                    ? '收起全部'
+                    : '展开全部'}
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {qlibFactors.map(factor => {
                   const factorKey = `${report.symbol}-${factor.key}`
                   const isExpanded = expandedFactors.has(factorKey)
                   const factorStatus = getFactorStatus(factor)

@@ -7,7 +7,7 @@ from rich.progress import Progress, BarColumn, TextColumn
 from .model import AnalysisReport
 
 
-def print_report(report: AnalysisReport):
+def console_report(report: AnalysisReport):
     console = Console()
 
     # 贪恐指数仪表盘
@@ -21,9 +21,7 @@ def print_report(report: AnalysisReport):
     fg_bar = Progress(
         TextColumn("[bold]情绪仪表盘[/]"),
         BarColumn(bar_width=None, complete_style=fg_color),
-        TextColumn(
-            f"[{fg_color}]{report.fear_greed.index:.1f} ({report.fear_greed.label})"
-        ),
+        TextColumn(f"[{fg_color}]{report.fear_greed.index:.1f} ({report.fear_greed.label})"),
         expand=True,
     )
     fg_bar.add_task("sentiment", total=100, completed=int(report.fear_greed.index))
@@ -57,15 +55,9 @@ def print_report(report: AnalysisReport):
             return signal.get("message", str(signal))
         return str(signal)
 
-    # 按分类组织因子
-    technical_factors = []
-    fundamental_factors = []
-
-    for factor in report.factors:
-        if factor.category == "技术面":
-            technical_factors.append(factor)
-        elif factor.category == "基本面":
-            fundamental_factors.append(factor)
+    # 直接使用报告中的分类因子
+    technical_factors = report.technical_factors
+    fundamental_factors = report.fundamental_factors
 
     # 构建因子详情面板
     factor_panels = []
@@ -119,7 +111,7 @@ def print_report(report: AnalysisReport):
     # 汇总所有因子的信号
     all_bull_signals = []
     all_bear_signals = []
-    for factor in report.factors:
+    for factor in technical_factors + fundamental_factors + report.qlib_factors:
         all_bull_signals.extend(factor.bullish_signals)
         all_bear_signals.extend(factor.bearish_signals)
 
@@ -140,9 +132,7 @@ def print_report(report: AnalysisReport):
 
     # 输出
     console.print("\n")
-    console.print(
-        f"[bold underline]🔍 股票分析报告: {report.stock_name} ({report.symbol})[/]\n"
-    )
+    console.print(f"[bold underline]🔍 股票分析报告: {report.stock_name} ({report.symbol})[/]\n")
     console.print(fg_panel)  # 优先显示情绪面板
     console.print(table)
 

@@ -39,8 +39,10 @@ class AnalysisReportResponse(BaseModel):
     symbol: str
     stock_name: str | None = None
     price: float
-    factors: List[FactorDetailResponse]
     fear_greed: FearGreedResponse
+    technical_factors: List[FactorDetailResponse]
+    fundamental_factors: List[FactorDetailResponse]
+    qlib_factors: List[FactorDetailResponse]
 
     class Config:
         orm_mode = True
