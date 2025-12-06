@@ -1,6 +1,6 @@
-const path = require('path')
+import path from 'path'
 
-module.exports = {
+const config = {
   'web/**/*.{ts,tsx,js,jsx}': (filenames) => {
     const relativeFiles = filenames.map((f) => path.relative('web', f)).join(' ')
     return [
@@ -17,4 +17,6 @@ module.exports = {
     return `sh -c "cd server && poetry run black --line-length 100 ${relativeFiles}"`
   },
 }
+
+export default config
 

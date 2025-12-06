@@ -1,0 +1,111 @@
+import { useState, useEffect } from 'react'
+import { AlertTriangle } from 'lucide-react'
+import { Form } from './Form'
+import { ReportCard } from './ReportCard'
+import { stockApi } from '../../api/client'
+import type { AnalysisReport } from '../../types'
+
+// 预设股票代码列表
+const DEFAULT_SYMBOLS = ['TQQQ', 'TECL', 'NVDA', 'GOOGL', 'TSLA', 'AAPL', 'YINN', 'BABA', 'CONL']
+
+export function StockAnalysis() {
+  const [reports, setReports] = useState<AnalysisReport[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS)
+
+  const fetchStockData = async (symbolList: string[]) => {
+    try {
+      setLoading(true)
+      setError(null)
+      const reports = await stockApi.analyzeStocks(symbolList)
+      setReports(reports)
+      if (reports.length === 0) {
+        setError('未获取到任何股票数据，请检查股票代码是否正确')
+      }
+    } catch (err: any) {
+      console.error('分析失败:', err)
+      setError(err.response?.data?.detail || '分析失败，请稍后重试')
+      setReports([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStockData(symbols)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleAnalysisComplete = (newReports: AnalysisReport[]) => {
+    setReports(newReports)
+    setError(null)
+  }
+
+  const handleSymbolsChange = (newSymbols: string[]) => {
+    setSymbols(newSymbols)
+    fetchStockData(newSymbols)
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* 标题 */}
+      <div className="mb-8 text-center">
+        <h1 className="text-2xl font-normal tracking-tight text-gray-900 sm:text-3xl dark:text-gray-100">
+          股票分析报告
+        </h1>
+      </div>
+
+      {/* 风险提示 */}
+      <div className="mb-8 flex items-center justify-center gap-1.5 text-center text-sm text-gray-500 dark:text-gray-400">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        <p>投资有风险，入市需谨慎。此报告仅供参考。</p>
+      </div>
+
+      {/* 错误提示 */}
+      {error && (
+        <div className="mb-8 rounded-lg border border-rose-200 bg-rose-50 p-4 dark:border-rose-800 dark:bg-rose-900/20">
+          <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400">
+            <AlertTriangle className="h-4 w-4" />
+            <p className="text-sm font-medium">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 加载状态 */}
+      {loading && reports.length === 0 && (
+        <div className="mb-8 text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900 dark:border-gray-100"></div>
+          <p className="mt-4 text-gray-500 dark:text-gray-400">加载中...</p>
+        </div>
+      )}
+
+      {/* 无数据提示 */}
+      {!loading && reports.length === 0 && !error && (
+        <div className="mb-8 text-center text-gray-500 dark:text-gray-400">
+          <p>暂无股票数据</p>
+        </div>
+      )}
+
+      {/* 股票列表 */}
+      {!loading && reports.length > 0 && (
+        <div className="mb-8 space-y-4">
+          {reports.map(report => (
+            <ReportCard key={report.symbol} report={report} />
+          ))}
+        </div>
+      )}
+
+      {/* 分析表单 */}
+      <div className="max-w-2xl">
+        <Form
+          onAnalysisComplete={handleAnalysisComplete}
+          loading={loading}
+          setLoading={setLoading}
+          defaultSymbols={DEFAULT_SYMBOLS}
+          onSymbolsChange={handleSymbolsChange}
+        />
+      </div>
+    </div>
+  )
+}
