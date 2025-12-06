@@ -70,3 +70,4 @@ jobs:
             --timeout=30s
           env_vars: |
             ENV=production
+            TUSHARE_TOKEN=${{ secrets.TUSHARE_TOKEN }}

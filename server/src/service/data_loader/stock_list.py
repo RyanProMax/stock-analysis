@@ -2,7 +2,8 @@
 股票列表服务
 
 提供获取A股和美股股票列表的功能
-支持 akshare 和 tushare 两种数据源
+- A股：支持 tushare 和 akshare 两种数据源
+- 美股：支持 tushare 和 NASDAQ API 两种数据源
 按日缓存，减少请求频率
 """
 
@@ -12,6 +13,7 @@ from typing import List, Dict, Optional, Any
 import pandas as pd
 import akshare as ak
 import tushare as ts
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -173,42 +175,140 @@ class StockListService:
         return []
 
     @classmethod
-    def get_us_stock_list(cls) -> List[Dict[str, Any]]:
+    def get_us_stock_list(
+        cls, use_tushare: bool = True, refresh: bool = False
+    ) -> List[Dict[str, Any]]:
         """
-        获取美股股票列表（转换为tushare格式）
+        获取美股股票列表（按tushare格式原样返回）
 
-        注意：由于 yfinance 没有直接的列表API，这里返回预设的常见美股列表
-        如果需要完整的美股列表，可以考虑使用其他数据源
+        Args:
+            use_tushare: 是否允许使用 tushare 作为兜底（优先使用 NASDAQ API）
+            refresh: 是否强制刷新缓存
 
         Returns:
-            List[Dict[str, Any]]: 股票列表，按tushare格式返回
+            List[Dict[str, Any]]: 股票列表，按tushare格式返回（ts_code, symbol, name, area, industry, market, list_date等）
         """
         # 检查缓存（如果缓存为空，也会重新获取）
         market = "美股"
-        if cls._is_cache_valid(market):
+        if not refresh and cls._is_cache_valid(market):
             print(
                 f"✓ 使用缓存的美股列表（{cls._cache_date[market]}），共 {len(cls._cache[market])} 只股票"
             )
             return cls._cache[market]
 
-        # 如果缓存为空，尝试重新获取
-        # 注意：目前美股列表为空，如果需要，可以在这里添加从其他数据源获取美股的逻辑
-        stocks = []
+        # 优先使用 NASDAQ API
+        print("⚠️ 尝试使用 NASDAQ API 获取美股列表...")
+        try:
+            # 请求 NASDAQ API
+            url = "https://api.nasdaq.com/api/screener/stocks"
+            params = {"tableonly": "true", "limit": "5000", "download": "true"}
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-        # 只有当获取到数据时才更新缓存（避免缓存空列表）
-        if len(stocks) > 0:
-            cls._cache[market] = stocks
-            cls._cache_date[market] = cls._get_cache_key()
-            print(f"✓ 获取美股列表，共 {len(stocks)} 只股票（已缓存）")
-        else:
-            # 如果获取失败或列表为空，清除缓存，下次重新尝试
-            if market in cls._cache:
-                del cls._cache[market]
-            if market in cls._cache_date:
-                del cls._cache_date[market]
-            print("⚠️ 美股列表为空，已清除缓存，下次将重新获取")
+            response = requests.get(url, params=params, headers=headers, timeout=30)
+            response.raise_for_status()
 
-        return stocks
+            data = response.json()
+
+            # 解析 NASDAQ API 返回的数据结构
+            # 根据实际 API 响应格式调整
+            stocks = []
+            if "data" in data and "rows" in data["data"]:
+                rows = data["data"]["rows"]
+                for row in rows:
+                    # 根据实际 API 返回的字段名调整
+                    symbol = str(row.get("symbol") or row.get("ticker") or "").strip()
+                    name = str(row.get("name") or row.get("companyName") or "").strip()
+                    industry = str(row.get("sector") or row.get("industry") or "").strip()
+
+                    if not symbol or not name or symbol == "nan" or name == "nan":
+                        continue
+
+                    # 转换为tushare格式
+                    stocks.append(
+                        {
+                            "ts_code": f"{symbol}.US",  # 美股使用 .US 后缀
+                            "symbol": symbol,
+                            "name": name,
+                            "area": "美国",
+                            "industry": (industry if industry and industry != "nan" else None),
+                            "market": "美股",
+                            "list_date": None,
+                        }
+                    )
+            elif "data" in data and isinstance(data["data"], list):
+                # 如果返回的是列表格式
+                for row in data["data"]:
+                    symbol = str(row.get("symbol") or row.get("ticker") or "").strip()
+                    name = str(row.get("name") or row.get("companyName") or "").strip()
+                    industry = str(row.get("sector") or row.get("industry") or "").strip()
+
+                    if not symbol or not name or symbol == "nan" or name == "nan":
+                        continue
+
+                    stocks.append(
+                        {
+                            "ts_code": f"{symbol}.US",
+                            "symbol": symbol,
+                            "name": name,
+                            "area": "美国",
+                            "industry": (industry if industry and industry != "nan" else None),
+                            "market": "美股",
+                            "list_date": None,
+                        }
+                    )
+
+            # 只有当获取到数据时才更新缓存（避免缓存空列表）
+            if len(stocks) > 0:
+                cls._cache[market] = stocks
+                cls._cache_date[market] = cls._get_cache_key()
+                print(f"✓ 使用 NASDAQ API 获取美股列表，共 {len(stocks)} 只股票（已缓存）")
+                return stocks
+            else:
+                # 如果获取失败或列表为空，清除缓存，下次重新尝试
+                if market in cls._cache:
+                    del cls._cache[market]
+                if market in cls._cache_date:
+                    del cls._cache_date[market]
+                print("⚠️ NASDAQ API 返回数据为空，尝试回退到 Tushare...")
+        except Exception as e:
+            print(f"⚠️ NASDAQ API 获取美股列表失败，回退到 Tushare: {type(e).__name__}: {e}")
+
+        # 回退到 tushare（如果可用且配置了 token）
+        if use_tushare:
+            tushare_pro = cls._get_tushare_pro()
+            if tushare_pro is not None:
+                try:
+                    # 使用 tushare 获取美股列表，获取所有字段
+                    df = tushare_pro.us_basic()
+                    # 将 DataFrame 转换为字典列表（原样返回tushare格式）
+                    stocks = df.to_dict("records")
+                    # 确保所有值都是字符串或可序列化类型
+                    for stock in stocks:
+                        for key, value in stock.items():
+                            if pd.isna(value):
+                                stock[key] = None
+                            else:
+                                stock[key] = (
+                                    str(value)
+                                    if not isinstance(value, (int, float, bool))
+                                    else value
+                                )
+
+                    # 更新缓存
+                    cls._cache[market] = stocks
+                    cls._cache_date[market] = cls._get_cache_key()
+                    print(f"✓ 使用 Tushare 获取美股列表，共 {len(stocks)} 只股票（已缓存）")
+                    return stocks
+                except Exception as e:
+                    print(f"⚠️ Tushare 获取美股列表也失败: {type(e).__name__}: {e}")
+
+        # 如果所有数据源都失败，清除缓存，下次重新尝试
+        if market in cls._cache:
+            del cls._cache[market]
+        if market in cls._cache_date:
+            del cls._cache_date[market]
+        print("⚠️ 所有数据源都失败，无法获取美股列表")
+        return []
 
     @classmethod
     def get_all_stock_list(cls) -> List[Dict[str, Any]]:

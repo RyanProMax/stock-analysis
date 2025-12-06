@@ -164,7 +164,6 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
           onBlur={handleBlur}
           onInputKeyDown={handleKeyDown}
           options={options}
-          loading={stockListLoading}
           filterOption={(input, option) => {
             const value = typeof option?.value === 'string' ? option.value : ''
             const label =
@@ -235,9 +234,9 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
           type="primary"
           icon={<SearchOutlined />}
           onClick={handleAnalyze}
-          loading={loading}
+          loading={loading || stockListLoading}
+          disabled={loading || stockListLoading || selectedSymbols.length === 0}
           size="large"
-          disabled={selectedSymbols.length === 0}
         >
           分析
         </Button>

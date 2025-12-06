@@ -76,7 +76,7 @@ def get_stock_list(market: Optional[str] = None, refresh: bool = False):
         if market == "A股":
             stocks = StockListService.get_a_stock_list(refresh=refresh)
         elif market == "美股":
-            stocks = StockListService.get_us_stock_list()
+            stocks = StockListService.get_us_stock_list(refresh=refresh)
         else:
             stocks = StockListService.get_all_stock_list()
 
