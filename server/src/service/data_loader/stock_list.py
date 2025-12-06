@@ -10,9 +10,9 @@ import os
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 import pandas as pd
+import akshare as ak
 import tushare as ts
 from dotenv import load_dotenv
-
 
 load_dotenv()
 
@@ -25,8 +25,10 @@ class StockListService:
     _tushare_pro = None
 
     # 按日缓存股票列表
+    # 缓存结构：{市场类型: 股票列表}
     _cache: Dict[str, List[Dict[str, Any]]] = {}
-    _cache_date: Optional[str] = None
+    # 每个市场类型的缓存日期：{市场类型: 日期字符串}
+    _cache_date: Dict[str, str] = {}
 
     @classmethod
     def _get_tushare_pro(cls):
@@ -55,36 +57,20 @@ class StockListService:
         return datetime.now().strftime("%Y-%m-%d")
 
     @classmethod
-    def _is_cache_valid(cls) -> bool:
-        """检查缓存是否有效（当天）"""
-        today = cls._get_cache_key()
-        return cls._cache_date == today and "A股" in cls._cache
+    def _is_cache_valid(cls, market: str) -> bool:
+        """
+        检查指定市场类型的缓存是否有效（当天）
 
-    # 常见美股列表（可以通过其他方式扩展）
-    US_STOCKS = [
-        # 科技股
-        {"code": "AAPL", "name": "Apple Inc.", "market": "美股"},
-        {"code": "MSFT", "name": "Microsoft Corporation", "market": "美股"},
-        {"code": "GOOGL", "name": "Alphabet Inc.", "market": "美股"},
-        {"code": "AMZN", "name": "Amazon.com Inc.", "market": "美股"},
-        {"code": "NVDA", "name": "NVIDIA Corporation", "market": "美股"},
-        {"code": "META", "name": "Meta Platforms Inc.", "market": "美股"},
-        {"code": "TSLA", "name": "Tesla Inc.", "market": "美股"},
-        {"code": "NFLX", "name": "Netflix Inc.", "market": "美股"},
-        # ETF
-        {"code": "TQQQ", "name": "ProShares UltraPro QQQ", "market": "美股"},
-        {"code": "TECL", "name": "Direxion Daily Technology Bull 3X", "market": "美股"},
-        {"code": "YINN", "name": "Direxion Daily FTSE China Bull 3X", "market": "美股"},
-        {"code": "CONL", "name": "GraniteShares 2x Long COIN Daily", "market": "美股"},
-        # 中概股
-        {"code": "BABA", "name": "Alibaba Group Holding Limited", "market": "美股"},
-        {"code": "JD", "name": "JD.com Inc.", "market": "美股"},
-        {"code": "PDD", "name": "Pinduoduo Inc.", "market": "美股"},
-        {"code": "BIDU", "name": "Baidu Inc.", "market": "美股"},
-        {"code": "NIO", "name": "NIO Inc.", "market": "美股"},
-        {"code": "XPEV", "name": "XPeng Inc.", "market": "美股"},
-        {"code": "LI", "name": "Li Auto Inc.", "market": "美股"},
-    ]
+        Args:
+            market: 市场类型（"A股" 或 "美股"）
+
+        Returns:
+            bool: 缓存是否有效
+        """
+        today = cls._get_cache_key()
+        return (
+            market in cls._cache and market in cls._cache_date and cls._cache_date[market] == today
+        )
 
     @classmethod
     def get_a_stock_list(
@@ -101,9 +87,12 @@ class StockListService:
             List[Dict[str, Any]]: 股票列表，按tushare格式返回（ts_code, symbol, name, area, industry, market, list_date等）
         """
         # 检查缓存
-        if not refresh and cls._is_cache_valid():
-            print(f"✓ 使用缓存的A股列表（{cls._cache_date}），共 {len(cls._cache['A股'])} 只股票")
-            return cls._cache["A股"]
+        market = "A股"
+        if not refresh and cls._is_cache_valid(market):
+            print(
+                f"✓ 使用缓存的A股列表（{cls._cache_date[market]}），共 {len(cls._cache[market])} 只股票"
+            )
+            return cls._cache[market]
 
         # 优先使用 tushare（如果可用且配置了 token）
         tushare_pro = cls._get_tushare_pro()
@@ -124,8 +113,9 @@ class StockListService:
                             )
 
                 # 更新缓存
-                cls._cache["A股"] = stocks
-                cls._cache_date = cls._get_cache_key()
+                market = "A股"
+                cls._cache[market] = stocks
+                cls._cache_date[market] = cls._get_cache_key()
                 print(f"✓ 使用 Tushare 获取A股列表，共 {len(stocks)} 只股票（已缓存）")
                 return stocks
             except Exception as e:
@@ -163,8 +153,9 @@ class StockListService:
                 )
 
             # 更新缓存
-            cls._cache["A股"] = stocks
-            cls._cache_date = cls._get_cache_key()
+            market = "A股"
+            cls._cache[market] = stocks
+            cls._cache_date[market] = cls._get_cache_key()
             print(f"✓ 使用 AkShare 获取A股列表，共 {len(stocks)} 只股票（已缓存）")
             return stocks
         except Exception as e:
@@ -185,27 +176,20 @@ class StockListService:
             List[Dict[str, Any]]: 股票列表，按tushare格式返回
         """
         # 检查缓存
-        if cls._is_cache_valid() and "美股" in cls._cache:
-            return cls._cache["美股"]
-
-        # 转换为tushare格式
-        stocks = []
-        for stock in cls.US_STOCKS:
-            stocks.append(
-                {
-                    "ts_code": f"{stock['code']}.US",
-                    "symbol": stock["code"],
-                    "name": stock["name"],
-                    "area": "美国",
-                    "industry": None,
-                    "market": "美股",
-                    "list_date": None,
-                }
+        market = "美股"
+        if cls._is_cache_valid(market):
+            print(
+                f"✓ 使用缓存的美股列表（{cls._cache_date[market]}），共 {len(cls._cache[market])} 只股票"
             )
+            return cls._cache[market]
+
+        # 美股列表为空（用户已删除预设列表）
+        # 如果需要，可以在这里添加从其他数据源获取美股的逻辑
+        stocks = []
 
         # 更新缓存
-        cls._cache["美股"] = stocks
-        cls._cache_date = cls._get_cache_key()
+        cls._cache[market] = stocks
+        cls._cache_date[market] = cls._get_cache_key()
         return stocks
 
     @classmethod

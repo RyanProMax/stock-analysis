@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from typing import List, Optional
 
 from src.service import index as service
-from src.service import stock_list as stock_list_service
+from src.service.data_loader.stock_list import StockListService
 from .schemas import (
     AnalysisReportResponse,
     StockAnalysisRequest,
@@ -74,11 +74,11 @@ def get_stock_list(market: Optional[str] = None, refresh: bool = False):
     """
     try:
         if market == "A股":
-            stocks = stock_list_service.StockListService.get_a_stock_list(refresh=refresh)
+            stocks = StockListService.get_a_stock_list(refresh=refresh)
         elif market == "美股":
-            stocks = stock_list_service.StockListService.get_us_stock_list()
+            stocks = StockListService.get_us_stock_list()
         else:
-            stocks = stock_list_service.StockListService.get_all_stock_list()
+            stocks = StockListService.get_all_stock_list()
 
         # 直接转换为响应格式（保持tushare格式）
         stock_responses = [
@@ -131,7 +131,7 @@ def search_stocks(payload: StockSearchRequest):
                 err_msg="搜索关键词不能为空",
             )
 
-        stocks = stock_list_service.StockListService.search_stocks(payload.keyword, payload.market)
+        stocks = StockListService.search_stocks(payload.keyword, payload.market)
 
         # 直接转换为响应格式（保持tushare格式）
         stock_responses = [
