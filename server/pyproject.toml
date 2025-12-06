@@ -13,7 +13,7 @@ dependencies = [
     "fastapi (>=0.121.3,<0.122.0)",
     "uvicorn[standard] (>=0.38.0,<0.39.0)",
     "yfinance (>=0.2.50,<1.0.0)",
-    "qlib (>=0.0.2.dev20,<0.0.3)",
+    "pyqlib (>=0.9.7,<0.10.0)",
 ]
 
 [dependency-groups]

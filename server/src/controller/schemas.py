@@ -23,8 +23,8 @@ class FactorDetailResponse(BaseModel):
     key: str
     name: str
     status: str
-    bullish_signals: List[Dict[str, Any]]
-    bearish_signals: List[Dict[str, Any]]
+    bullish_signals: List[str]
+    bearish_signals: List[str]
 
 
 class FearGreedResponse(BaseModel):

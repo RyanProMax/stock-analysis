@@ -50,18 +50,18 @@ class BaseFactor(ABC):
         pass
 
     @staticmethod
-    def _create_signal(signal_type: str, message: str) -> dict:
+    def _create_signal(signal_type: str, message: str) -> str:
         """
-        创建信号字典
+        创建信号字符串
 
         Args:
             signal_type: 信号类型，"fundamental"（基本面）或 "technical"（技术面）
             message: 信号内容
 
         Returns:
-            包含 type 和 message 的字典
+            信号消息字符串
         """
-        return {"type": signal_type, "message": message}
+        return message
 
     @staticmethod
     def _clamp_ratio(value: float) -> float:

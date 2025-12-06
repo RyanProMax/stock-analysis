@@ -24,6 +24,7 @@ export function StockAnalysis() {
       if (reports.length === 0) {
         setError('未获取到任何股票数据，请检查股票代码是否正确')
       }
+      console.log('reports', reports[0].qlib_factors.length)
     } catch (err: any) {
       console.error('分析失败:', err)
       setError(err.response?.data?.detail || '分析失败，请稍后重试')
@@ -35,8 +36,7 @@ export function StockAnalysis() {
 
   useEffect(() => {
     fetchStockData(symbols)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [symbols])
 
   const handleAnalysisComplete = (newReports: AnalysisReport[]) => {
     setReports(newReports)
@@ -45,7 +45,6 @@ export function StockAnalysis() {
 
   const handleSymbolsChange = (newSymbols: string[]) => {
     setSymbols(newSymbols)
-    fetchStockData(newSymbols)
   }
 
   return (

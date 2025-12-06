@@ -333,13 +333,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
 }
 
 interface FactorItemProps {
-  factor: {
-    key: string
-    name: string
-    status: string
-    bullish_signals: Array<{ factor: string; message: string }>
-    bearish_signals: Array<{ factor: string; message: string }>
-  }
+  factor: FactorDetail
   isExpanded: boolean
   statusStyle: {
     bg: string
@@ -397,7 +391,7 @@ const FactorItem: React.FC<FactorItemProps> = ({ factor, isExpanded, statusStyle
                   <li key={idx} className="flex items-start gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
                     <span className={`text-xs leading-relaxed ${statusStyle.detailText}`}>
-                      {signal.message}
+                      {signal}
                     </span>
                   </li>
                 ))}
@@ -417,7 +411,7 @@ const FactorItem: React.FC<FactorItemProps> = ({ factor, isExpanded, statusStyle
                   <li key={idx} className="flex items-start gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
                     <span className={`text-xs leading-relaxed ${statusStyle.detailText}`}>
-                      {signal.message}
+                      {signal}
                     </span>
                   </li>
                 ))}

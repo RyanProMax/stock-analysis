@@ -49,10 +49,8 @@ def console_report(report: AnalysisReport):
     )
     table.add_section()
 
-    # 处理信号格式（支持字典和字符串两种格式，向后兼容）
+    # 处理信号格式（信号现在是字符串）
     def format_signal(signal):
-        if isinstance(signal, dict):
-            return signal.get("message", str(signal))
         return str(signal)
 
     # 直接使用报告中的分类因子
@@ -107,6 +105,29 @@ def console_report(report: AnalysisReport):
             border_style="yellow",
         )
         factor_panels.append(fund_panel)
+
+    # Qlib 因子
+    if report.qlib_factors:
+        qlib_content = []
+        for factor in report.qlib_factors:
+            qlib_content.append(f"\n[bold magenta]{factor.name}[/]")
+            qlib_content.append(f"状态: {factor.status}")
+            if factor.bullish_signals:
+                qlib_content.append("\n[green]多头信号:[/]")
+                for sig in factor.bullish_signals:
+                    qlib_content.append(f"  ✅ {format_signal(sig)}")
+            if factor.bearish_signals:
+                qlib_content.append("\n[red]空头信号:[/]")
+                for sig in factor.bearish_signals:
+                    qlib_content.append(f"  ❌ {format_signal(sig)}")
+            qlib_content.append("")
+
+        qlib_panel = Panel(
+            "\n".join(qlib_content),
+            title="📈 Qlib 因子",
+            border_style="magenta",
+        )
+        factor_panels.append(qlib_panel)
 
     # 汇总所有因子的信号
     all_bull_signals = []
