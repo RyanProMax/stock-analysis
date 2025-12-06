@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Select, Button, Space } from 'antd'
-import { SearchOutlined, CloseOutlined } from '@ant-design/icons'
+import { Select, Button, Tag } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
 import type { SelectProps } from 'antd'
 import { stockApi } from '../../api/client'
 import type { StockInfo } from '../../types'
@@ -80,6 +80,7 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
   // 处理选择变化
   const handleChange = (value: string[]) => {
     setSelectedSymbols(value)
+    setInputValue('')
   }
 
   // 处理搜索输入
@@ -95,13 +96,30 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
     onSymbolsChange(selectedSymbols)
   }
 
-  // 处理输入框回车或失焦，自动添加股票代码
-  const handleBlur = () => {
-    if (inputValue && !selectedSymbols.includes(inputValue)) {
-      const newSymbols = [...selectedSymbols, inputValue]
-      setSelectedSymbols(newSymbols)
-      setInputValue('')
-    }
+  // 处理输入框失焦，自动添加股票代码（仅在用户手动输入且未选择选项时）
+  const handleBlur = (e: React.FocusEvent) => {
+    // 延迟执行，避免与 onChange 冲突
+    setTimeout(() => {
+      // 检查是否点击了下拉选项（通过检查焦点是否还在 Select 组件内）
+      const relatedTarget = e.relatedTarget as HTMLElement
+      const isClickingOption = relatedTarget?.closest('.ant-select-dropdown')
+
+      // 如果点击的是下拉选项，不添加输入值
+      if (isClickingOption) {
+        setInputValue('')
+        return
+      }
+
+      // 只有在输入值存在且未被选中时才添加
+      if (inputValue && !selectedSymbols.includes(inputValue)) {
+        const newSymbols = [...selectedSymbols, inputValue]
+        setSelectedSymbols(newSymbols)
+        setInputValue('')
+      } else {
+        // 清空输入值
+        setInputValue('')
+      }
+    }, 100)
   }
 
   // 处理输入框回车
@@ -145,15 +163,33 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
     return stockOptions
   }, [stockList, inputValue, selectedSymbols])
 
-  // 根据 symbol 获取股票名称
-  const getStockName = (symbol: string): string => {
-    const stock = stockList.find(s => s.symbol === symbol)
+  // 根据 symbol 获取股票信息
+  const getStockInfo = (symbol: string): StockInfo | undefined => {
+    return stockList.find(s => s.symbol === symbol)
+  }
+
+  // 判断是否是美股（通过 market 字段或 symbol 格式判断）
+  const isUSStock = (symbol: string): boolean => {
+    const stock = getStockInfo(symbol)
+    if (stock?.market === '美股') {
+      return true
+    }
+    // 如果没有 market 信息，通过 symbol 格式判断（美股通常是纯字母，A股是数字）
+    return /^[A-Z]+$/.test(symbol) && !/^\d+$/.test(symbol)
+  }
+
+  // 获取 tag 显示文本（美股显示 symbol，A股显示 name）
+  const getTagDisplayText = (symbol: string): string => {
+    if (isUSStock(symbol)) {
+      return symbol
+    }
+    const stock = getStockInfo(symbol)
     return stock?.name || symbol
   }
 
   return (
     <div className="w-full">
-      <Space.Compact className="w-full" size="middle">
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-0">
         <Select
           mode="multiple"
           showSearch
@@ -175,41 +211,23 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
           }}
           tagRender={props => {
             const { value, closable, onClose } = props
-            // 显示股票名称而不是 label
-            const displayName = getStockName(value as string)
+            const displayText = getTagDisplayText(value as string)
             return (
-              <span
-                className="ant-select-selection-item"
+              <Tag
+                closable={closable}
+                onClose={onClose}
                 style={{
+                  margin: 0,
+                  fontSize: '12px',
+                  lineHeight: '20px',
+                  height: '20px',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  padding: '0 8px',
-                  margin: '2px 4px 2px 0',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '4px',
-                  maxWidth: '100%',
+                  padding: '0 6px',
                 }}
               >
-                <span className="ant-select-selection-item-content" style={{ marginRight: '4px' }}>
-                  {displayName}
-                </span>
-                {closable && (
-                  <span
-                    className="ant-select-selection-item-remove"
-                    onClick={onClose}
-                    style={{
-                      cursor: 'pointer',
-                      marginLeft: '6px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <CloseOutlined style={{ fontSize: '14px', opacity: 0.7 }} />
-                  </span>
-                )}
-              </span>
+                {displayText}
+              </Tag>
             )
           }}
           optionRender={option => (
@@ -220,7 +238,7 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
               )}
             </div>
           )}
-          maxTagCount="responsive"
+          maxTagCount={undefined}
           size="large"
           disabled={loading || stockListLoading}
           className="flex-1 stock-select"
@@ -229,6 +247,14 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
             stockListLoading ? '正在加载...' : inputValue ? `按回车添加: ${inputValue}` : '暂无数据'
           }
           allowClear
+          styles={{
+            popup: {
+              root: {
+                maxHeight: 300,
+                overflow: 'auto',
+              },
+            },
+          }}
         />
         <Button
           type="primary"
@@ -237,11 +263,12 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
           loading={loading || stockListLoading}
           disabled={loading || stockListLoading || selectedSymbols.length === 0}
           size="large"
+          className="w-full sm:w-auto sm:ml-2"
         >
-          分析
+          <span className="sm:inline">分析</span>
         </Button>
-      </Space.Compact>
-      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+      </div>
+      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
         提示：可直接输入股票代码，按回车或点击外部区域添加；支持美股（如 NVDA、AAPL）和 A股（如
         600519）
       </div>

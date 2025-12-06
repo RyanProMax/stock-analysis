@@ -133,6 +133,12 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
     )
     .trim()
 
+  // 判断是否是美股（美股通常是纯字母代码，A股是数字代码）
+  const isUSStock = /^[A-Z]+$/.test(report.symbol) && !/^\d+$/.test(report.symbol)
+
+  // 获取显示名称（美股显示 symbol，A股显示 stock_name）
+  const displayName = isUSStock ? report.symbol : report.stock_name || report.symbol
+
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
       {/* 股票头部信息 - 可点击展开/收起 */}
@@ -149,7 +155,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               <ChevronDown className="h-5 w-5 shrink-0 text-gray-400" />
             )}
             <h2 className="w-[100px] truncate text-xl font-light text-gray-900 dark:text-gray-100">
-              {report.stock_name || report.symbol}
+              {displayName}
             </h2>
             <div className="text-left">
               <p className="hidden text-sm text-gray-500 sm:block dark:text-gray-400">当前价格</p>

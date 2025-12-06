@@ -59,6 +59,16 @@ body {
   background-color: rgba(255, 255, 255, 0.06) !important;
 }
 
+/* 支持 tag 换行显示，展示所有 tag */
+.stock-select .ant-select-selector {
+  min-height: auto !important;
+  height: auto !important;
+}
+
+.stock-select .ant-select-selection-overflow {
+  flex-wrap: wrap !important;
+}
+
 /* 修复下拉框透明问题 */
 .ant-select-dropdown {
   background-color: rgba(30, 30, 30, 0.95) !important;
