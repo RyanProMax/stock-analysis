@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Select, Button, Space } from 'antd'
 import { SearchOutlined, CloseOutlined } from '@ant-design/icons'
 import type { SelectProps } from 'antd'
@@ -33,6 +33,7 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
     return defaultSymbols
   })
   const [inputValue, setInputValue] = useState<string>('')
+  const hasAutoAnalyzed = useRef(false)
 
   // 加载股票列表
   useEffect(() => {
@@ -48,6 +49,22 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
       }
     })()
   }, [])
+
+  // 当股票列表加载完成且有选中的股票时，自动触发分析（仅初始化时执行一次）
+  useEffect(() => {
+    if (
+      !stockListLoading &&
+      stockList.length > 0 &&
+      selectedSymbols.length > 0 &&
+      !hasAutoAnalyzed.current
+    ) {
+      const timer = setTimeout(() => {
+        hasAutoAnalyzed.current = true
+        onSymbolsChange(selectedSymbols)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [stockListLoading, stockList.length, selectedSymbols, onSymbolsChange])
 
   // 保存用户选择到 localStorage
   useEffect(() => {
