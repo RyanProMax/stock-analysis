@@ -3,7 +3,7 @@ name = "stock-analysis"
 version = "0.1.0"
 description = ""
 authors = [{ name = "Ryan", email = "627311610@qq.com" }]
-readme = "README.md"
+readme = "../README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "akshare (>=1.17.87,<2.0.0)",
@@ -31,4 +31,4 @@ start = "main:start"
 
 [tool.taskipy.tasks]
 build = "docker build --build-arg USE_CHINA_MIRROR=true -t stock-analysis ."
-run_docker = "docker run -d -p 8000:8000 --name stock-app stock-analysis"
+run_docker = "docker run -d -p 8080:8080 --name stock-app stock-analysis"

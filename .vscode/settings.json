@@ -1,8 +1,8 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.defaultInterpreterPath": "${workspaceFolder}/server/.venv/bin/python",
   "python.analysis.typeCheckingMode": "basic",
   "python.analysis.extraPaths": [
-    "./src"
+    "./server"
   ],
   "editor.formatOnSave": true,
   "files.exclude": {
@@ -20,7 +20,7 @@
     }
   ],
   "cursorpyright.analysis.extraPaths": [
-    "./src"
+    "./server"
   ],
   "cursorpyright.analysis.typeCheckingMode": "basic"
 }

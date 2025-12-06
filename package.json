@@ -1,0 +1,24 @@
+{
+  "name": "stock-analysis",
+  "version": "1.0.0",
+  "description": "股票分析系统 - 前后端集成项目",
+  "scripts": {
+    "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:web\"",
+    "dev:web": "cd web && pnpm run dev",
+    "dev:server": "cd server && poetry run python main.py",
+    "build:web": "cd web && pnpm run build",
+    "install:web": "pnpm install && cd web && pnpm install"
+  },
+  "keywords": [
+    "stock",
+    "analysis",
+    "finance",
+    "react",
+    "fastapi"
+  ],
+  "author": "Ryan",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

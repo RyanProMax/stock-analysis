@@ -36,6 +36,6 @@ COPY . .
 
 RUN poetry install --only main --no-interaction --no-ansi
 
-EXPOSE 8000
+EXPOSE 8080
 
 CMD ["python", "main.py"]

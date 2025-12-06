@@ -1,0 +1,19 @@
+{
+  "venvPath": "server",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "include": [
+    "server"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.venv",
+    "web"
+  ],
+  "typeCheckingMode": "basic",
+  "extraPaths": [
+    "server"
+  ]
+}
+
