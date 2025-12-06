@@ -59,17 +59,20 @@ class StockListService:
     @classmethod
     def _is_cache_valid(cls, market: str) -> bool:
         """
-        检查指定市场类型的缓存是否有效（当天）
+        检查指定市场类型的缓存是否有效（当天且列表不为空）
 
         Args:
             market: 市场类型（"A股" 或 "美股"）
 
         Returns:
-            bool: 缓存是否有效
+            bool: 缓存是否有效（缓存存在、日期为今天、且列表不为空）
         """
         today = cls._get_cache_key()
         return (
-            market in cls._cache and market in cls._cache_date and cls._cache_date[market] == today
+            market in cls._cache
+            and market in cls._cache_date
+            and cls._cache_date[market] == today
+            and len(cls._cache[market]) > 0  # 缓存列表不能为空
         )
 
     @classmethod
@@ -86,7 +89,7 @@ class StockListService:
         Returns:
             List[Dict[str, Any]]: 股票列表，按tushare格式返回（ts_code, symbol, name, area, industry, market, list_date等）
         """
-        # 检查缓存
+        # 检查缓存（如果缓存为空，也会重新获取）
         market = "A股"
         if not refresh and cls._is_cache_valid(market):
             print(
@@ -160,6 +163,11 @@ class StockListService:
             return stocks
         except Exception as e:
             print(f"⚠️ 获取A股列表失败: {e}")
+            # 如果获取失败，清除缓存，下次重新尝试
+            if market in cls._cache:
+                del cls._cache[market]
+            if market in cls._cache_date:
+                del cls._cache_date[market]
             return []
 
         return []
@@ -175,7 +183,7 @@ class StockListService:
         Returns:
             List[Dict[str, Any]]: 股票列表，按tushare格式返回
         """
-        # 检查缓存
+        # 检查缓存（如果缓存为空，也会重新获取）
         market = "美股"
         if cls._is_cache_valid(market):
             print(
@@ -183,13 +191,23 @@ class StockListService:
             )
             return cls._cache[market]
 
-        # 美股列表为空（用户已删除预设列表）
-        # 如果需要，可以在这里添加从其他数据源获取美股的逻辑
+        # 如果缓存为空，尝试重新获取
+        # 注意：目前美股列表为空，如果需要，可以在这里添加从其他数据源获取美股的逻辑
         stocks = []
 
-        # 更新缓存
-        cls._cache[market] = stocks
-        cls._cache_date[market] = cls._get_cache_key()
+        # 只有当获取到数据时才更新缓存（避免缓存空列表）
+        if len(stocks) > 0:
+            cls._cache[market] = stocks
+            cls._cache_date[market] = cls._get_cache_key()
+            print(f"✓ 获取美股列表，共 {len(stocks)} 只股票（已缓存）")
+        else:
+            # 如果获取失败或列表为空，清除缓存，下次重新尝试
+            if market in cls._cache:
+                del cls._cache[market]
+            if market in cls._cache_date:
+                del cls._cache_date[market]
+            print("⚠️ 美股列表为空，已清除缓存，下次将重新获取")
+
         return stocks
 
     @classmethod

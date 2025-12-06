@@ -32,3 +32,20 @@ export interface StandardResponse<T> {
   data: T | null
   err_msg: string | null
 }
+
+// 股票信息
+export interface StockInfo {
+  ts_code: string
+  symbol: string
+  name: string
+  area?: string | null
+  industry?: string | null
+  market?: string | null
+  list_date?: string | null
+}
+
+// 股票列表响应
+export interface StockListResponse {
+  stocks: StockInfo[]
+  total: number
+}

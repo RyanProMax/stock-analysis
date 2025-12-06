@@ -148,8 +148,8 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
             ) : (
               <ChevronDown className="h-5 w-5 shrink-0 text-gray-400" />
             )}
-            <h2 className="w-20 truncate text-2xl font-light text-gray-900 dark:text-gray-100">
-              {report.symbol}
+            <h2 className="w-[100px] truncate text-xl font-light text-gray-900 dark:text-gray-100">
+              {report.stock_name || report.symbol}
             </h2>
             <div className="text-left">
               <p className="hidden text-sm text-gray-500 sm:block dark:text-gray-400">当前价格</p>

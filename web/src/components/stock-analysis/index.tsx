@@ -5,15 +5,11 @@ import { ReportCard } from './ReportCard'
 import { stockApi } from '../../api/client'
 import type { AnalysisReport } from '../../types'
 
-// 预设股票代码列表
-// const DEFAULT_SYMBOLS = ['TQQQ', 'TECL', 'NVDA', 'GOOGL', 'TSLA', 'AAPL', 'YINN', 'BABA', 'CONL']
-const DEFAULT_SYMBOLS = ['NVDA']
-
 export function StockAnalysis() {
   const [reports, setReports] = useState<AnalysisReport[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS)
+  const [symbols, setSymbols] = useState<string[]>([])
 
   const fetchStockData = async (symbolList: string[]) => {
     try {
@@ -34,7 +30,13 @@ export function StockAnalysis() {
   }
 
   useEffect(() => {
-    fetchStockData(symbols)
+    if (symbols.length > 0) {
+      fetchStockData(symbols)
+    } else {
+      // 清空报告
+      setReports([])
+      setError(null)
+    }
   }, [symbols])
 
   const handleSymbolsChange = (newSymbols: string[]) => {
@@ -61,11 +63,7 @@ export function StockAnalysis() {
 
       {/* 分析表单 - 移到报告上方 */}
       <div className="mb-8">
-        <Form
-          loading={loading}
-          defaultSymbols={DEFAULT_SYMBOLS}
-          onSymbolsChange={handleSymbolsChange}
-        />
+        <Form loading={loading} onSymbolsChange={handleSymbolsChange} />
       </div>
 
       {/* 错误提示 */}
