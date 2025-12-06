@@ -45,7 +45,6 @@ class MAFactor(BaseFactor):
         return FactorDetail(
             key="ma",
             name="MA均线",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -75,7 +74,6 @@ class EMAFactor(BaseFactor):
         return FactorDetail(
             key="ema",
             name="EMA指数均线",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -112,7 +110,6 @@ class MACDFactor(BaseFactor):
         return FactorDetail(
             key="macd",
             name="MACD",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -142,7 +139,6 @@ class RSIFactor(BaseFactor):
         return FactorDetail(
             key="rsi",
             name="RSI",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -172,7 +168,6 @@ class KDJFactor(BaseFactor):
         return FactorDetail(
             key="kdj",
             name="KDJ",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -200,7 +195,6 @@ class WRFactor(BaseFactor):
         return FactorDetail(
             key="wr",
             name="WR威廉指标",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -241,7 +235,6 @@ class BollingerFactor(BaseFactor):
         return FactorDetail(
             key="bollinger",
             name="布林带",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -268,7 +261,6 @@ class ATRFactor(BaseFactor):
         return FactorDetail(
             key="atr",
             name="ATR",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -302,7 +294,6 @@ class SentimentFactor(BaseFactor):
         return FactorDetail(
             key="sentiment",
             name="贪恐指数",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -347,7 +338,6 @@ class VolumeRatioFactor(BaseFactor):
         return FactorDetail(
             key="volume_ratio",
             name="成交量比率",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -375,7 +365,6 @@ class VRFactor(BaseFactor):
         return FactorDetail(
             key="vr",
             name="VR成交量比率",
-            category="技术面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,

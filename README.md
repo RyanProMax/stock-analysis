@@ -156,7 +156,6 @@ stock-analysis/
       {
         "key": "ma",
         "name": "MA均线",
-        "category": "技术面",
         "status": "📈 多头趋势",
         "bullish_signals": [...],
         "bearish_signals": [...]
@@ -177,7 +176,6 @@ def _analyze_new_factor(self, data) -> FactorDetail:
     return FactorDetail(
         key="new_factor",
         name="新因子",
-        category="技术面",  # 或 "基本面"
         status="状态描述",
         bullish_signals=[...],
         bearish_signals=[...],

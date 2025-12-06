@@ -6,7 +6,8 @@ import { stockApi } from '../../api/client'
 import type { AnalysisReport } from '../../types'
 
 // 预设股票代码列表
-const DEFAULT_SYMBOLS = ['TQQQ', 'TECL', 'NVDA', 'GOOGL', 'TSLA', 'AAPL', 'YINN', 'BABA', 'CONL']
+// const DEFAULT_SYMBOLS = ['TQQQ', 'TECL', 'NVDA', 'GOOGL', 'TSLA', 'AAPL', 'YINN', 'BABA', 'CONL']
+const DEFAULT_SYMBOLS = ['NVDA']
 
 export function StockAnalysis() {
   const [reports, setReports] = useState<AnalysisReport[]>([])

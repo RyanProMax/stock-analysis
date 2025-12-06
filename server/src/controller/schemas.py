@@ -22,7 +22,6 @@ class FactorDetailResponse(BaseModel):
 
     key: str
     name: str
-    category: str
     status: str
     bullish_signals: List[Dict[str, Any]]
     bearish_signals: List[Dict[str, Any]]

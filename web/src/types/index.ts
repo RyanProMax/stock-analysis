@@ -2,7 +2,6 @@
 export interface FactorDetail {
   key: string
   name: string
-  category: string
   status: string
   bullish_signals: Array<{
     factor: string

@@ -18,7 +18,6 @@ class FactorDetail:
 
     key: str  # 因子类型标识：trend/volatility/momentum/volume/fundamental
     name: str  # 因子名称
-    category: str  # 因子分类：基本面/技术面
     status: str  # 因子状态描述
     bullish_signals: List[Dict[str, Any]] = field(default_factory=list)
     bearish_signals: List[Dict[str, Any]] = field(default_factory=list)

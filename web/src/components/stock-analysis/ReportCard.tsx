@@ -203,48 +203,6 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
       {/* 因子列表 - 可折叠 */}
       {isStockExpanded && (
         <div className="p-4 sm:p-6">
-          {/* 技术面因子 */}
-          {technicalFactors.length > 0 && (
-            <div className="mb-6 last:mb-0">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-light text-gray-900 dark:text-gray-100">技术面</h3>
-                <button
-                  onClick={e => {
-                    e.stopPropagation()
-                    const categoryFactorKeys = technicalFactors.map(
-                      f => `${report.symbol}-${f.key}`
-                    )
-                    const allExpanded = categoryFactorKeys.every(key => expandedFactors.has(key))
-                    toggleAllFactors(technicalFactors, !allExpanded)
-                  }}
-                  className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  {technicalFactors.every(f => expandedFactors.has(`${report.symbol}-${f.key}`))
-                    ? '收起全部'
-                    : '展开全部'}
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {technicalFactors.map(factor => {
-                  const factorKey = `${report.symbol}-${factor.key}`
-                  const isExpanded = expandedFactors.has(factorKey)
-                  const factorStatus = getFactorStatus(factor)
-                  const statusStyle = getFactorStatusStyle(factorStatus)
-
-                  return (
-                    <FactorItem
-                      key={factor.key}
-                      factor={factor}
-                      isExpanded={isExpanded}
-                      statusStyle={statusStyle}
-                      onToggle={() => toggleFactor(factorKey)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
           {/* 基本面因子 */}
           {fundamentalFactors.length > 0 && (
             <div className="mb-6 last:mb-0">
@@ -268,6 +226,48 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {fundamentalFactors.map(factor => {
+                  const factorKey = `${report.symbol}-${factor.key}`
+                  const isExpanded = expandedFactors.has(factorKey)
+                  const factorStatus = getFactorStatus(factor)
+                  const statusStyle = getFactorStatusStyle(factorStatus)
+
+                  return (
+                    <FactorItem
+                      key={factor.key}
+                      factor={factor}
+                      isExpanded={isExpanded}
+                      statusStyle={statusStyle}
+                      onToggle={() => toggleFactor(factorKey)}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 技术面因子 */}
+          {technicalFactors.length > 0 && (
+            <div className="mb-6 last:mb-0">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-base font-light text-gray-900 dark:text-gray-100">技术面</h3>
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    const categoryFactorKeys = technicalFactors.map(
+                      f => `${report.symbol}-${f.key}`
+                    )
+                    const allExpanded = categoryFactorKeys.every(key => expandedFactors.has(key))
+                    toggleAllFactors(technicalFactors, !allExpanded)
+                  }}
+                  className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  {technicalFactors.every(f => expandedFactors.has(`${report.symbol}-${f.key}`))
+                    ? '收起全部'
+                    : '展开全部'}
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {technicalFactors.map(factor => {
                   const factorKey = `${report.symbol}-${factor.key}`
                   const isExpanded = expandedFactors.has(factorKey)
                   const factorStatus = getFactorStatus(factor)

@@ -2223,6 +2223,18 @@ files = [
 ]
 
 [[package]]
+name = "qlib"
+version = "0.0.2.dev20"
+description = "A Q Library for Data Scientist"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "qlib-0.0.2.dev20-py3-none-any.whl", hash = "sha256:3e1164ccb9ec46b6dff3d51f668463a5642971b6bd0c52ee1c44bafa25889d6f"},
+    {file = "qlib-0.0.2.dev20.tar.gz", hash = "sha256:2e07a250802d2b6f601952d74d82ed09ce25515324b9a1e53ec2c596d2f6b769"},
+]
+
+[[package]]
 name = "requests"
 version = "2.32.5"
 description = "Python HTTP for Humans."
@@ -2997,4 +3009,4 @@ repair = ["scipy (>=1.6.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "a9c0cb87d554927b8c87f4896d578fd4d1a17cd0f82981f4180e319d85a8d285"
+content-hash = "07e5d2f8339a1cf8a77c71b765922f44144b2cb07d9514492f6933757cf4c74d"

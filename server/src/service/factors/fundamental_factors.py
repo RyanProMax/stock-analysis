@@ -28,7 +28,6 @@ class RevenueGrowthFactor(BaseFactor):
             return FactorDetail(
                 key="revenue_growth",
                 name="营收增长率",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -39,7 +38,6 @@ class RevenueGrowthFactor(BaseFactor):
             return FactorDetail(
                 key="revenue_growth",
                 name="营收增长率",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -69,7 +67,6 @@ class RevenueGrowthFactor(BaseFactor):
         return FactorDetail(
             key="revenue_growth",
             name="营收增长率",
-            category="基本面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -87,7 +84,6 @@ class DebtRatioFactor(BaseFactor):
             return FactorDetail(
                 key="debt_ratio",
                 name="资产负债率",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -98,7 +94,6 @@ class DebtRatioFactor(BaseFactor):
             return FactorDetail(
                 key="debt_ratio",
                 name="资产负债率",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -125,7 +120,6 @@ class DebtRatioFactor(BaseFactor):
         return FactorDetail(
             key="debt_ratio",
             name="资产负债率",
-            category="基本面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -143,7 +137,6 @@ class PERatioFactor(BaseFactor):
             return FactorDetail(
                 key="pe_ratio",
                 name="市盈率",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -154,7 +147,6 @@ class PERatioFactor(BaseFactor):
             return FactorDetail(
                 key="pe_ratio",
                 name="市盈率",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -186,7 +178,6 @@ class PERatioFactor(BaseFactor):
         return FactorDetail(
             key="pe_ratio",
             name="市盈率",
-            category="基本面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -204,7 +195,6 @@ class PBRatioFactor(BaseFactor):
             return FactorDetail(
                 key="pb_ratio",
                 name="市净率",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -215,7 +205,6 @@ class PBRatioFactor(BaseFactor):
             return FactorDetail(
                 key="pb_ratio",
                 name="市净率",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -242,7 +231,6 @@ class PBRatioFactor(BaseFactor):
         return FactorDetail(
             key="pb_ratio",
             name="市净率",
-            category="基本面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,
@@ -260,7 +248,6 @@ class ROEFactor(BaseFactor):
             return FactorDetail(
                 key="roe",
                 name="ROE",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -271,7 +258,6 @@ class ROEFactor(BaseFactor):
             return FactorDetail(
                 key="roe",
                 name="ROE",
-                category="基本面",
                 status="-",
                 bullish_signals=[],
                 bearish_signals=[],
@@ -294,7 +280,6 @@ class ROEFactor(BaseFactor):
         return FactorDetail(
             key="roe",
             name="ROE",
-            category="基本面",
             status=status,
             bullish_signals=bull,
             bearish_signals=bear,

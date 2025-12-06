@@ -204,11 +204,12 @@ class MultiFactorAnalyzer:
             print(f"⚠️ 计算基本面因子失败: {e}")
             traceback.print_exc()
 
-        # 3. Qlib 158 因子库（可选，可以根据需要启用）
+        # 3. Qlib 158 因子库
         try:
             qlib_factors = self.qlib158_library.get_factors(
                 self.stock,
                 self.raw_df,
+                symbol=self.symbol,
             )
         except Exception as e:
             import traceback
