@@ -2,6 +2,8 @@
 
 一个基于多因子模型的股票分析系统，提供技术面和基本面分析，支持 A 股和美股。
 
+🌐 [https://ryanpromax.github.io/stock-analysis/](https://ryanpromax.github.io/stock-analysis/)
+
 ## 功能特性
 
 ### 技术面因子
@@ -217,7 +219,7 @@ cd web && pnpm run lint
 ### 调试
 
 - **前端**: 使用浏览器开发者工具和 React DevTools
-- **后端**: 使用 FastAPI 自动文档 http://localhost:8080/docs，查看控制台输出
+- **后端**: 使用 FastAPI 自动文档 http://localhost:8080/docs ，查看控制台输出
 
 ## 部署
 
