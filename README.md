@@ -28,8 +28,8 @@
 
 ## 技术栈
 
-**后端**: FastAPI, Python 3.12+, akshare, yfinance, pandas, stockstats  
 **前端**: React 18, TypeScript, Vite, Ant Design, Axios
+**后端**: FastAPI, Python 3.12+, akshare, yfinance, pandas, stockstats
 
 ## 快速开始
 
@@ -65,8 +65,8 @@ pnpm run dev
 
 这会同时启动前后端服务：
 
-- 后端: http://localhost:8080
 - 前端: http://localhost:3000
+- 后端: http://localhost:8080
 
 **分别启动**：
 
@@ -216,8 +216,8 @@ cd web && pnpm run lint
 
 ### 调试
 
-- **后端**: 使用 FastAPI 自动文档 http://localhost:8080/docs，查看控制台输出
 - **前端**: 使用浏览器开发者工具和 React DevTools
+- **后端**: 使用 FastAPI 自动文档 http://localhost:8080/docs，查看控制台输出
 
 ## 部署
 
@@ -242,8 +242,8 @@ poetry run task run_docker
 
 ### 生产环境配置
 
-1. **后端**: 设置环境变量 `PORT`（默认 8080），使用生产级 ASGI 服务器
-2. **前端**: 设置 `VITE_API_BASE_URL` 环境变量，运行 `pnpm run build` 构建生产版本
+1. **前端**: 设置 `VITE_API_BASE_URL` 环境变量，运行 `pnpm run build` 构建生产版本
+2. **后端**: 设置环境变量 `PORT`（默认 8080），使用生产级 ASGI 服务器
 
 ## 常见问题
 

@@ -7,7 +7,10 @@
     "dev:web": "cd web && pnpm run dev",
     "dev:server": "cd server && poetry run python main.py",
     "build:web": "cd web && pnpm run build",
-    "install:web": "pnpm install && cd web && pnpm install"
+    "install:web": "pnpm install && cd web && pnpm install",
+    "prepare": "husky",
+    "format": "cd web && pnpm run format",
+    "format:check": "cd web && pnpm run format:check"
   },
   "keywords": [
     "stock",
@@ -19,6 +22,8 @@
   "author": "Ryan",
   "license": "MIT",
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
   }
 }

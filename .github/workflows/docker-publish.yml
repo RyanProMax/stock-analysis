@@ -42,7 +42,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./server
+          file: ./server/Dockerfile
           push: true
           tags: ${{ env.GAR_REPO }}/${{ env.SERVICE_NAME }}:latest
           build-args: |

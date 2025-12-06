@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["taskipy (>=1.14.1,<2.0.0)"]
+dev = ["taskipy (>=1.14.1,<2.0.0)", "black (>=25.11.0,<26.0.0)"]
 
 
 [build-system]
