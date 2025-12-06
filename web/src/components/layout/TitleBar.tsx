@@ -13,16 +13,21 @@ export function TitleBar({ activeTab, onTabChange }: TitleBarProps) {
   return (
     <header className="pt-8">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-[50px] items-center justify-between">
           {/* 左侧：图标 + 标题 */}
           <button
             onClick={() => onTabChange('stock-analysis')}
             className="cursor-pointer flex items-center gap-3 transition-colors"
           >
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-gray-900 dark:bg-gray-100">
-              <span className="text-xs font-bold text-white dark:text-gray-900">S</span>
-            </div>
-            <h1 className="hidden sm:block text-xl font-medium text-gray-900 transition-colors hover:text-[var(--color-primary)] dark:text-gray-100 dark:hover:text-[var(--color-primary)]">
+            <img
+              src="/favicons/android-chrome-192x192.png"
+              alt="Stock Analysis"
+              className="h-[50px] w-[50px]"
+            />
+            <h1
+              className="hidden sm:block font-light text-gray-900 transition-colors hover:text-[var(--color-primary)] dark:text-gray-100 dark:hover:text-[var(--color-primary)]"
+              style={{ fontSize: '1.5rem' }}
+            >
               Stock Analysis
             </h1>
           </button>

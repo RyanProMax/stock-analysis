@@ -146,7 +146,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
             ) : (
               <ChevronDown className="h-5 w-5 shrink-0 text-gray-400" />
             )}
-            <h2 className="w-20 truncate text-xl font-normal text-gray-900 dark:text-gray-100">
+            <h2 className="w-20 truncate text-2xl font-light text-gray-900 dark:text-gray-100">
               {report.symbol}
             </h2>
             <div className="text-left">
@@ -168,7 +168,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-base">{emoji}</span>
-                <span className={`text-sm font-medium ${fearGreedTheme.text}`}>
+                <span className={`text-sm font-light ${fearGreedTheme.text}`}>
                   {report.fear_greed.index.toFixed(1)}
                 </span>
               </div>
@@ -180,11 +180,11 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
             <div className="mb-1 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-base">{emoji}</span>
-                <span className={`text-sm font-medium ${fearGreedTheme.text}`}>
+                <span className={`text-sm font-light ${fearGreedTheme.text}`}>
                   {report.fear_greed.index.toFixed(1)}
                 </span>
               </div>
-              <span className={`text-xs font-medium ${fearGreedTheme.text}`}>{labelText}</span>
+              <span className={`text-xs font-light ${fearGreedTheme.text}`}>{labelText}</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
               <div
@@ -206,7 +206,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
           {technicalFactors.length > 0 && (
             <div className="mb-6 last:mb-0">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">技术面</h3>
+                <h3 className="text-base font-light text-gray-900 dark:text-gray-100">技术面</h3>
                 <button
                   onClick={e => {
                     e.stopPropagation()
@@ -216,7 +216,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
                     const allExpanded = categoryFactorKeys.every(key => expandedFactors.has(key))
                     toggleAllFactors(technicalFactors, !allExpanded)
                   }}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   {technicalFactors.every(f => expandedFactors.has(`${report.symbol}-${f.key}`))
                     ? '收起全部'
@@ -248,7 +248,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
           {fundamentalFactors.length > 0 && (
             <div>
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">基本面</h3>
+                <h3 className="text-base font-light text-gray-900 dark:text-gray-100">基本面</h3>
                 <button
                   onClick={e => {
                     e.stopPropagation()
@@ -258,7 +258,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
                     const allExpanded = categoryFactorKeys.every(key => expandedFactors.has(key))
                     toggleAllFactors(fundamentalFactors, !allExpanded)
                   }}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   {fundamentalFactors.every(f => expandedFactors.has(`${report.symbol}-${f.key}`))
                     ? '收起全部'
@@ -329,9 +329,7 @@ const FactorItem: React.FC<FactorItemProps> = ({ factor, isExpanded, statusStyle
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full ${statusStyle.dot}`} />
-              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                {factor.name}
-              </h4>
+              <h4 className="text-sm font-light text-gray-900 dark:text-gray-100">{factor.name}</h4>
             </div>
             <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{factor.status || '-'}</p>
           </div>
@@ -351,7 +349,7 @@ const FactorItem: React.FC<FactorItemProps> = ({ factor, isExpanded, statusStyle
             <div className="mb-3">
               <div className="mb-2 flex items-center gap-2">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <h5 className={`text-xs font-medium ${statusStyle.detailText}`}>看涨信号</h5>
+                <h5 className={`text-xs font-light ${statusStyle.detailText}`}>看涨信号</h5>
               </div>
               <ul className="space-y-1.5">
                 {factor.bullish_signals.map((signal, idx) => (
@@ -371,7 +369,7 @@ const FactorItem: React.FC<FactorItemProps> = ({ factor, isExpanded, statusStyle
             <div>
               <div className="mb-2 flex items-center gap-2">
                 <TrendingDown className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
-                <h5 className={`text-xs font-medium ${statusStyle.detailText}`}>看跌信号</h5>
+                <h5 className={`text-xs font-light ${statusStyle.detailText}`}>看跌信号</h5>
               </div>
               <ul className="space-y-1.5">
                 {factor.bearish_signals.map((signal, idx) => (
