@@ -1,32 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { isEqual } from 'lodash-es'
 import { Search } from 'lucide-react'
-import { stockApi } from '../../api/client'
-import type { AnalysisReport } from '../../types'
 
 interface FormProps {
-  onAnalysisComplete: (reports: AnalysisReport[]) => void
   loading: boolean
-  setLoading: (loading: boolean) => void
   defaultSymbols?: string[]
-  onSymbolsChange?: (symbols: string[]) => void
+  onSymbolsChange: (symbols: string[]) => void
 }
 
-export const Form: React.FC<FormProps> = ({
-  onAnalysisComplete,
-  loading,
-  setLoading,
-  defaultSymbols = [],
-  onSymbolsChange,
-}) => {
-  const [inputValue, setInputValue] = useState(defaultSymbols.join(', '))
+export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymbolsChange }) => {
+  const [inputValue, setInputValue] = useState(() => defaultSymbols.join(', '))
+  const [prevSymbols, setPrevSymbols] = useState<string[]>(defaultSymbols)
 
-  useEffect(() => {
-    if (defaultSymbols.length > 0) {
-      setInputValue(defaultSymbols.join(', '))
-    }
-  }, [defaultSymbols])
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const symbols = inputValue
       .split(/[,，\s]+/)
@@ -38,22 +24,10 @@ export const Form: React.FC<FormProps> = ({
       return
     }
 
-    setLoading(true)
-    try {
-      const reports = await stockApi.analyzeStocks(symbols)
-      if (reports.length === 0) {
-        alert('未获取到任何股票数据，请检查股票代码是否正确')
-      } else {
-        onAnalysisComplete(reports)
-        if (onSymbolsChange) {
-          onSymbolsChange(symbols)
-        }
-      }
-    } catch (error: any) {
-      console.error('分析失败:', error)
-      alert(error.response?.data?.detail || '分析失败，请稍后重试')
-    } finally {
-      setLoading(false)
+    // 对比股票列表，如果相同则不重复请求
+    if (!isEqual(symbols, prevSymbols)) {
+      setPrevSymbols(symbols)
+      onSymbolsChange(symbols)
     }
   }
 
@@ -62,7 +36,12 @@ export const Form: React.FC<FormProps> = ({
       <input
         type="text"
         value={inputValue}
-        onChange={e => setInputValue(e.target.value)}
+        onChange={e => {
+          const newValue = e.target.value
+          if (newValue !== inputValue) {
+            setInputValue(newValue)
+          }
+        }}
         placeholder="输入股票代码，多个代码用逗号或空格分隔（如：NVDA, AAPL, 600519）"
         disabled={loading}
         className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:focus:border-blue-400"

@@ -1,6 +1,7 @@
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 import type { AnalysisReport, FactorDetail } from '../../types'
+import { FactorList } from './FactorList'
 
 interface ReportCardProps {
   report: AnalysisReport
@@ -203,226 +204,38 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
       {/* 因子列表 - 可折叠 */}
       {isStockExpanded && (
         <div className="p-4 sm:p-6">
-          {/* 基本面因子 */}
-          {fundamentalFactors.length > 0 && (
-            <div className="mb-6 last:mb-0">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-light text-gray-900 dark:text-gray-100">基本面</h3>
-                <button
-                  onClick={e => {
-                    e.stopPropagation()
-                    const categoryFactorKeys = fundamentalFactors.map(
-                      f => `${report.symbol}-${f.key}`
-                    )
-                    const allExpanded = categoryFactorKeys.every(key => expandedFactors.has(key))
-                    toggleAllFactors(fundamentalFactors, !allExpanded)
-                  }}
-                  className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  {fundamentalFactors.every(f => expandedFactors.has(`${report.symbol}-${f.key}`))
-                    ? '收起全部'
-                    : '展开全部'}
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {fundamentalFactors.map(factor => {
-                  const factorKey = `${report.symbol}-${factor.key}`
-                  const isExpanded = expandedFactors.has(factorKey)
-                  const factorStatus = getFactorStatus(factor)
-                  const statusStyle = getFactorStatusStyle(factorStatus)
+          <FactorList
+            title={`基本面 (${fundamentalFactors.length})`}
+            factors={fundamentalFactors}
+            symbol={report.symbol}
+            expandedFactors={expandedFactors}
+            onToggleFactor={toggleFactor}
+            onToggleAll={toggleAllFactors}
+            getFactorStatus={getFactorStatus}
+            getFactorStatusStyle={getFactorStatusStyle}
+          />
 
-                  return (
-                    <FactorItem
-                      key={factor.key}
-                      factor={factor}
-                      isExpanded={isExpanded}
-                      statusStyle={statusStyle}
-                      onToggle={() => toggleFactor(factorKey)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          )}
+          <FactorList
+            title={`技术面 (${technicalFactors.length})`}
+            factors={technicalFactors}
+            symbol={report.symbol}
+            expandedFactors={expandedFactors}
+            onToggleFactor={toggleFactor}
+            onToggleAll={toggleAllFactors}
+            getFactorStatus={getFactorStatus}
+            getFactorStatusStyle={getFactorStatusStyle}
+          />
 
-          {/* 技术面因子 */}
-          {technicalFactors.length > 0 && (
-            <div className="mb-6 last:mb-0">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-light text-gray-900 dark:text-gray-100">技术面</h3>
-                <button
-                  onClick={e => {
-                    e.stopPropagation()
-                    const categoryFactorKeys = technicalFactors.map(
-                      f => `${report.symbol}-${f.key}`
-                    )
-                    const allExpanded = categoryFactorKeys.every(key => expandedFactors.has(key))
-                    toggleAllFactors(technicalFactors, !allExpanded)
-                  }}
-                  className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  {technicalFactors.every(f => expandedFactors.has(`${report.symbol}-${f.key}`))
-                    ? '收起全部'
-                    : '展开全部'}
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {technicalFactors.map(factor => {
-                  const factorKey = `${report.symbol}-${factor.key}`
-                  const isExpanded = expandedFactors.has(factorKey)
-                  const factorStatus = getFactorStatus(factor)
-                  const statusStyle = getFactorStatusStyle(factorStatus)
-
-                  return (
-                    <FactorItem
-                      key={factor.key}
-                      factor={factor}
-                      isExpanded={isExpanded}
-                      statusStyle={statusStyle}
-                      onToggle={() => toggleFactor(factorKey)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Qlib 因子 */}
-          {qlibFactors.length > 0 && (
-            <div>
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-light text-gray-900 dark:text-gray-100">Qlib因子</h3>
-                <button
-                  onClick={e => {
-                    e.stopPropagation()
-                    const categoryFactorKeys = qlibFactors.map(f => `${report.symbol}-${f.key}`)
-                    const allExpanded = categoryFactorKeys.every(key => expandedFactors.has(key))
-                    toggleAllFactors(qlibFactors, !allExpanded)
-                  }}
-                  className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  {qlibFactors.every(f => expandedFactors.has(`${report.symbol}-${f.key}`))
-                    ? '收起全部'
-                    : '展开全部'}
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {qlibFactors.map(factor => {
-                  const factorKey = `${report.symbol}-${factor.key}`
-                  const isExpanded = expandedFactors.has(factorKey)
-                  const factorStatus = getFactorStatus(factor)
-                  const statusStyle = getFactorStatusStyle(factorStatus)
-
-                  return (
-                    <FactorItem
-                      key={factor.key}
-                      factor={factor}
-                      isExpanded={isExpanded}
-                      statusStyle={statusStyle}
-                      onToggle={() => toggleFactor(factorKey)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-interface FactorItemProps {
-  factor: FactorDetail
-  isExpanded: boolean
-  statusStyle: {
-    bg: string
-    text: string
-    border: string
-    dot: string
-    detailBg: string
-    detailText: string
-  }
-  onToggle: () => void
-}
-
-const FactorItem: React.FC<FactorItemProps> = ({ factor, isExpanded, statusStyle, onToggle }) => {
-  return (
-    <div
-      className={`overflow-hidden rounded-lg border transition-all ${
-        isExpanded
-          ? `${statusStyle.border} ${statusStyle.bg}`
-          : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
-      }`}
-    >
-      {/* 因子头部 */}
-      <button
-        onClick={onToggle}
-        className="w-full px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${statusStyle.dot}`} />
-              <h4 className="text-sm font-light text-gray-900 dark:text-gray-100">{factor.name}</h4>
-            </div>
-            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{factor.status || '-'}</p>
-          </div>
-          {isExpanded ? (
-            <ChevronUp className="h-4 w-4 text-gray-400" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-gray-400" />
-          )}
-        </div>
-      </button>
-
-      {/* 因子详情（展开时显示） */}
-      {isExpanded && (
-        <div className={`border-t px-4 py-3 ${statusStyle.border} ${statusStyle.detailBg}`}>
-          {/* 看涨信号 */}
-          {factor.bullish_signals.length > 0 && (
-            <div className="mb-3">
-              <div className="mb-2 flex items-center gap-2">
-                <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <h5 className={`text-xs font-light ${statusStyle.detailText}`}>看涨信号</h5>
-              </div>
-              <ul className="space-y-1.5">
-                {factor.bullish_signals.map((signal, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                    <span className={`text-xs leading-relaxed ${statusStyle.detailText}`}>
-                      {signal}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* 看跌信号 */}
-          {factor.bearish_signals.length > 0 && (
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <TrendingDown className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
-                <h5 className={`text-xs font-light ${statusStyle.detailText}`}>看跌信号</h5>
-              </div>
-              <ul className="space-y-1.5">
-                {factor.bearish_signals.map((signal, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
-                    <span className={`text-xs leading-relaxed ${statusStyle.detailText}`}>
-                      {signal}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* 无信号提示 */}
-          {factor.bullish_signals.length === 0 && factor.bearish_signals.length === 0 && (
-            <p className={`text-xs italic ${statusStyle.detailText} opacity-70`}>暂无信号</p>
-          )}
+          <FactorList
+            title={`Qlib因子 (${qlibFactors.length})`}
+            factors={qlibFactors}
+            symbol={report.symbol}
+            expandedFactors={expandedFactors}
+            onToggleFactor={toggleFactor}
+            onToggleAll={toggleAllFactors}
+            getFactorStatus={getFactorStatus}
+            getFactorStatusStyle={getFactorStatusStyle}
+          />
         </div>
       )}
     </div>
