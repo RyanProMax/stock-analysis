@@ -4,6 +4,8 @@
   --font-space-grotesk:
     'Space Grotesk', 'Space Grotesk Fallback', ui-sans-serif, system-ui, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --color-primary: oklch(0.718 0.202 349.761);
+  --text-s: 1rem;
 
   font-family: var(--font-space-grotesk);
   line-height: 1.6;

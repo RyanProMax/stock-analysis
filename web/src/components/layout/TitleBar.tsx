@@ -1,4 +1,4 @@
-import { ThemeToggle } from '../theme/ThemeToggle'
+import { Github } from 'lucide-react'
 
 type Tab = 'stock-analysis'
 
@@ -8,35 +8,55 @@ interface TitleBarProps {
 }
 
 export function TitleBar({ activeTab, onTabChange }: TitleBarProps) {
-  const tabs: Array<{ id: Tab; label: string }> = [{ id: 'stock-analysis', label: '股票分析' }]
+  const tabs: Array<{ id: Tab; label: string }> = [{ id: 'stock-analysis', label: '分析' }]
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-sm dark:border-gray-700 dark:bg-gray-900/80">
+    <header className="pt-8">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* 左侧：标题和标签 */}
-          <div className="flex items-center gap-6">
-            <h1 className="text-xl font-medium text-gray-900 dark:text-gray-100">股票分析</h1>
-            <nav className="hidden sm:flex items-center gap-1">
+          {/* 左侧：图标 + 标题 */}
+          <button
+            onClick={() => onTabChange('stock-analysis')}
+            className="cursor-pointer flex items-center gap-3 transition-colors"
+          >
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-gray-900 dark:bg-gray-100">
+              <span className="text-xs font-bold text-white dark:text-gray-900">S</span>
+            </div>
+            <h1 className="hidden sm:block text-xl font-medium text-gray-900 transition-colors hover:text-[var(--color-primary)] dark:text-gray-100 dark:hover:text-[var(--color-primary)]">
+              Stock Analysis
+            </h1>
+          </button>
+
+          {/* 右侧：文字 tab + icon tab */}
+          <div className="flex items-center gap-1">
+            {/* 文字 tab */}
+            <nav className="flex items-center gap-1">
               {tabs.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  style={{ fontSize: 'var(--text-s)' }}
+                  className={`cursor-pointer px-3 py-1.5 font-medium transition-colors ${
                     activeTab === tab.id
-                      ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
+                      ? 'text-[var(--color-primary)]'
+                      : 'text-gray-600 hover:text-[var(--color-primary)] dark:text-gray-400 dark:hover:text-[var(--color-primary)]'
                   }`}
                 >
                   {tab.label}
                 </button>
               ))}
             </nav>
-          </div>
 
-          {/* 右侧：主题切换 */}
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
+            {/* icon tab: GitHub 外链 */}
+            <a
+              href="https://github.com/RyanProMax/stock-analysis"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer flex items-center rounded-md px-2 py-1.5 text-gray-600 transition-colors hover:text-[var(--color-primary)] dark:text-gray-400 dark:hover:text-[var(--color-primary)]"
+              aria-label="GitHub 仓库"
+            >
+              <Github className="h-5 w-5" />
+            </a>
           </div>
         </div>
       </div>

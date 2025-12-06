@@ -58,7 +58,7 @@ export const Form: React.FC<FormProps> = ({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-6 flex gap-2">
+    <form onSubmit={handleSubmit} className="flex gap-2">
       <input
         type="text"
         value={inputValue}

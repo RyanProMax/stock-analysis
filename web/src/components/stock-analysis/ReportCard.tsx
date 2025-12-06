@@ -12,18 +12,38 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
 
   const getFearGreedTheme = (index: number) => {
     if (index >= 80) {
-      return { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: '#10b981' }
+      return {
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+        text: 'text-emerald-700 dark:text-emerald-300',
+        ring: '#10b981',
+      }
     }
     if (index >= 60) {
-      return { bg: 'bg-emerald-50', text: 'text-emerald-600', ring: '#34d399' }
+      return {
+        bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+        text: 'text-emerald-600 dark:text-emerald-400',
+        ring: '#34d399',
+      }
     }
     if (index >= 40) {
-      return { bg: 'bg-amber-50', text: 'text-amber-800', ring: '#f59e0b' }
+      return {
+        bg: 'bg-amber-50 dark:bg-amber-900/20',
+        text: 'text-amber-800 dark:text-amber-300',
+        ring: '#f59e0b',
+      }
     }
     if (index >= 20) {
-      return { bg: 'bg-rose-50', text: 'text-rose-700', ring: '#f43f5e' }
+      return {
+        bg: 'bg-rose-50 dark:bg-rose-900/20',
+        text: 'text-rose-700 dark:text-rose-300',
+        ring: '#f43f5e',
+      }
     }
-    return { bg: 'bg-rose-50', text: 'text-rose-800', ring: '#dc2626' }
+    return {
+      bg: 'bg-rose-50 dark:bg-rose-900/20',
+      text: 'text-rose-800 dark:text-rose-400',
+      ring: '#dc2626',
+    }
   }
 
   const getEmojiFromLabel = (label: string) => {
