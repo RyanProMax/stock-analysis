@@ -1,8 +1,16 @@
 from fastapi import APIRouter
-from typing import List
+from typing import List, Optional
 
 from src.service import index as service
-from .schemas import AnalysisReportResponse, StockAnalysisRequest, StandardResponse
+from src.service import stock_list as stock_list_service
+from .schemas import (
+    AnalysisReportResponse,
+    StockAnalysisRequest,
+    StandardResponse,
+    StockListResponse,
+    StockInfoResponse,
+    StockSearchRequest,
+)
 
 router = APIRouter()
 
@@ -44,4 +52,109 @@ def analyze_stocks(payload: StockAnalysisRequest):
             status_code=500,
             data=None,
             err_msg=f"服务器内部错误: {str(e)}",
+        )
+
+
+@router.get(
+    "/list",
+    response_model=StandardResponse[StockListResponse],
+    summary="获取股票列表",
+    tags=["Stock List"],
+)
+def get_stock_list(market: Optional[str] = None, refresh: bool = False):
+    """
+    获取股票列表（按tushare格式返回，按日缓存）
+
+    Args:
+        market: 市场类型，可选值：'A股'、'美股'，如果为 None 则返回所有市场
+        refresh: 是否强制刷新缓存
+
+    Returns:
+        StandardResponse[StockListResponse]: 股票列表（tushare格式）
+    """
+    try:
+        if market == "A股":
+            stocks = stock_list_service.StockListService.get_a_stock_list(refresh=refresh)
+        elif market == "美股":
+            stocks = stock_list_service.StockListService.get_us_stock_list()
+        else:
+            stocks = stock_list_service.StockListService.get_all_stock_list()
+
+        # 直接转换为响应格式（保持tushare格式）
+        stock_responses = [
+            StockInfoResponse(
+                ts_code=s.get("ts_code", ""),
+                symbol=s.get("symbol", ""),
+                name=s.get("name", ""),
+                area=s.get("area"),
+                industry=s.get("industry"),
+                market=s.get("market"),
+                list_date=s.get("list_date"),
+            )
+            for s in stocks
+        ]
+
+        return StandardResponse(
+            status_code=200,
+            data=StockListResponse(stocks=stock_responses, total=len(stock_responses)),
+            err_msg=None,
+        )
+    except Exception as e:
+        return StandardResponse(
+            status_code=500,
+            data=None,
+            err_msg=f"获取股票列表失败: {str(e)}",
+        )
+
+
+@router.post(
+    "/search",
+    response_model=StandardResponse[StockListResponse],
+    summary="搜索股票",
+    tags=["Stock List"],
+)
+def search_stocks(payload: StockSearchRequest):
+    """
+    搜索股票（从缓存列表中搜索，按tushare格式返回）
+
+    Args:
+        payload: 搜索请求，包含关键词和市场类型
+
+    Returns:
+        StandardResponse[StockListResponse]: 匹配的股票列表（tushare格式）
+    """
+    try:
+        if not payload.keyword or not payload.keyword.strip():
+            return StandardResponse(
+                status_code=400,
+                data=None,
+                err_msg="搜索关键词不能为空",
+            )
+
+        stocks = stock_list_service.StockListService.search_stocks(payload.keyword, payload.market)
+
+        # 直接转换为响应格式（保持tushare格式）
+        stock_responses = [
+            StockInfoResponse(
+                ts_code=s.get("ts_code", ""),
+                symbol=s.get("symbol", ""),
+                name=s.get("name", ""),
+                area=s.get("area"),
+                industry=s.get("industry"),
+                market=s.get("market"),
+                list_date=s.get("list_date"),
+            )
+            for s in stocks
+        ]
+
+        return StandardResponse(
+            status_code=200,
+            data=StockListResponse(stocks=stock_responses, total=len(stock_responses)),
+            err_msg=None,
+        )
+    except Exception as e:
+        return StandardResponse(
+            status_code=500,
+            data=None,
+            err_msg=f"搜索股票失败: {str(e)}",
         )

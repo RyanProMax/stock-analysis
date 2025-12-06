@@ -65,3 +65,37 @@ class AnalysisReportResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class StockInfoResponse(BaseModel):
+    """股票信息响应（tushare格式）"""
+
+    ts_code: str  # 股票代码（带后缀，如 000001.SZ）
+    symbol: str  # 股票代码（6位，如 000001）
+    name: str  # 股票名称
+    area: Optional[str] = None  # 地域
+    industry: Optional[str] = None  # 所属行业
+    market: Optional[str] = None  # 市场类型
+    list_date: Optional[str] = None  # 上市日期
+
+
+class StockListResponse(BaseModel):
+    """股票列表响应"""
+
+    stocks: List[StockInfoResponse]
+    total: int
+
+
+class StockSearchRequest(BaseModel):
+    """股票搜索请求"""
+
+    keyword: str
+    market: Optional[str] = None  # "A股" 或 "美股"，None 表示搜索所有市场
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "keyword": "NVDA",
+                "market": None,
+            }
+        }
