@@ -59,6 +59,15 @@ export function StockAnalysis() {
         <p>投资有风险，入市需谨慎。此报告仅供参考。</p>
       </div>
 
+      {/* 分析表单 - 移到报告上方 */}
+      <div className="mb-8">
+        <Form
+          loading={loading}
+          defaultSymbols={DEFAULT_SYMBOLS}
+          onSymbolsChange={handleSymbolsChange}
+        />
+      </div>
+
       {/* 错误提示 */}
       {error && (
         <div className="mb-6 rounded-lg border border-rose-200 bg-rose-50 p-4 dark:border-rose-800 dark:bg-rose-900/20">
@@ -80,27 +89,18 @@ export function StockAnalysis() {
       {/* 无数据提示 */}
       {!loading && reports.length === 0 && !error && (
         <div className="mb-6 text-center text-gray-500 dark:text-gray-400">
-          <p>暂无股票数据</p>
+          <p>暂无股票数据，请在上方输入股票代码进行分析</p>
         </div>
       )}
 
       {/* 股票列表 */}
       {!loading && reports.length > 0 && (
-        <div className="mb-6 space-y-3">
+        <div className="space-y-3">
           {reports.map(report => (
             <ReportCard key={report.symbol} report={report} />
           ))}
         </div>
       )}
-
-      {/* 分析表单 */}
-      <div className="max-w-2xl">
-        <Form
-          loading={loading}
-          defaultSymbols={DEFAULT_SYMBOLS}
-          onSymbolsChange={handleSymbolsChange}
-        />
-      </div>
     </div>
   )
 }
