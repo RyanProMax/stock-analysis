@@ -20,7 +20,7 @@ export function TitleBar({ activeTab, onTabChange }: TitleBarProps) {
             className="cursor-pointer flex items-center gap-3 transition-colors"
           >
             <img
-              src="/favicons/android-chrome-192x192.png"
+              src={`${import.meta.env.BASE_URL}favicons/android-chrome-192x192.png`}
               alt="Stock Analysis"
               className="h-[50px] w-[50px]"
             />
