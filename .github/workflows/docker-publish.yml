@@ -3,6 +3,9 @@ name: Build and Deploy to Cloud Run (GAR)
 on:
   push:
     branches: ["main"]
+    paths:
+      - 'server/**'
+      - '.github/workflows/docker-publish.yml'
   workflow_dispatch:
 
 env:
