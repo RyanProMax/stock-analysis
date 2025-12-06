@@ -25,3 +25,10 @@ export interface AnalysisReport {
 export interface StockAnalysisRequest {
   symbols: string[]
 }
+
+// 标准API响应格式
+export interface StandardResponse<T> {
+  status_code: number
+  data: T | null
+  err_msg: string | null
+}

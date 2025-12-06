@@ -26,7 +26,7 @@ export function StockAnalysis() {
       }
     } catch (err: any) {
       console.error('分析失败:', err)
-      setError(err.response?.data?.detail || '分析失败，请稍后重试')
+      setError(err.message || '分析失败，请稍后重试')
       setReports([])
     } finally {
       setLoading(false)
