@@ -24,7 +24,8 @@ RUN if [ "$USE_CHINA_MIRROR" = "true" ]; then \
         pip install --no-cache-dir poetry; \
     fi
 
-COPY pyproject.toml poetry.lock* ./
+# 复制依赖文件和 README.md（构建上下文是 server 目录）
+COPY pyproject.toml poetry.lock* README.md ./
 
 RUN poetry config virtualenvs.create false \
     && if [ "$USE_CHINA_MIRROR" = "true" ]; then \
@@ -32,6 +33,7 @@ RUN poetry config virtualenvs.create false \
     fi \
     && poetry install --no-root --only main --no-interaction --no-ansi
 
+# 复制 server 目录的其他内容（src、main.py 等）
 COPY . .
 
 RUN poetry install --only main --no-interaction --no-ansi

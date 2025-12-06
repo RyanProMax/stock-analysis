@@ -40,7 +40,6 @@ function App() {
 
   useEffect(() => {
     fetchStockData(symbols)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleAnalysisComplete = (newReports: AnalysisReport[]) => {
