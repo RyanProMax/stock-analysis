@@ -5,6 +5,8 @@ import type { SelectProps } from 'antd'
 import { stockApi } from '../../api/client'
 import type { StockInfo } from '../../types'
 
+import './index.css'
+
 interface FormProps {
   loading: boolean
   defaultSymbols?: string[]
@@ -189,26 +191,27 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
 
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-2 sm:flex-row sm:gap-0">
+      <div className="flex flex-col gap-2 sm:flex-row sm:gap-0 items-stretch">
         <Select
           mode="multiple"
-          showSearch
           value={selectedSymbols}
           placeholder={stockListLoading ? '正在加载股票列表...' : '输入或选择股票代码（支持多选）'}
           onChange={handleChange}
-          onSearch={handleSearch}
           onBlur={handleBlur}
+          showSearch={{
+            onSearch: handleSearch,
+            filterOption: (input, option) => {
+              const value = typeof option?.value === 'string' ? option.value : ''
+              const label =
+                typeof option?.label === 'string' ? option.label : String(option?.label || '')
+              return (
+                value.toUpperCase().includes(input.toUpperCase()) ||
+                label.toUpperCase().includes(input.toUpperCase())
+              )
+            },
+          }}
           onInputKeyDown={handleKeyDown}
           options={options}
-          filterOption={(input, option) => {
-            const value = typeof option?.value === 'string' ? option.value : ''
-            const label =
-              typeof option?.label === 'string' ? option.label : String(option?.label || '')
-            return (
-              value.toUpperCase().includes(input.toUpperCase()) ||
-              label.toUpperCase().includes(input.toUpperCase())
-            )
-          }}
           tagRender={props => {
             const { value, closable, onClose } = props
             const displayText = getTagDisplayText(value as string)
@@ -217,10 +220,11 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
                 closable={closable}
                 onClose={onClose}
                 style={{
+                  backgroundColor: 'var(--ant-color-primary-bg)',
                   margin: 0,
-                  fontSize: '12px',
-                  lineHeight: '20px',
-                  height: '20px',
+                  fontSize: 12,
+                  lineHeight: 32,
+                  height: 32,
                   display: 'inline-flex',
                   alignItems: 'center',
                   padding: '0 6px',
@@ -263,7 +267,7 @@ export const Form: React.FC<FormProps> = ({ loading, defaultSymbols = [], onSymb
           loading={loading || stockListLoading}
           disabled={loading || stockListLoading || selectedSymbols.length === 0}
           size="large"
-          className="w-full sm:w-auto sm:ml-2"
+          className="w-full sm:w-auto sm:ml-2 self-stretch sm:h-auto!"
         >
           <span className="sm:inline">分析</span>
         </Button>

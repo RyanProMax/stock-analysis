@@ -17,19 +17,10 @@ createRoot(document.getElementById('root')!).render(
         borderRadius: 8,
       },
       components: {
-        Select: {
-          // 修复 loading 时变透明的问题
-          colorBgContainer: 'rgba(255, 255, 255, 0.08)',
-          // 下拉菜单背景色
-          colorBgElevated: 'rgba(30, 30, 30, 0.95)',
-          // 禁用状态下的背景色
-          colorBgContainerDisabled: 'rgba(255, 255, 255, 0.06)',
-          // 选项悬停背景色
-          controlItemBgHover: 'rgba(255, 255, 255, 0.08)',
-          // 选项选中背景色
-          controlItemBgActive: 'rgba(185, 28, 140, 0.2)',
-          // 选项选中悬停背景色
-          controlItemBgActiveHover: 'rgba(185, 28, 140, 0.3)',
+        Tag: {
+          colorPrimary: '#b91c8c', // 主题主色（文案颜色）
+          colorPrimaryBorder: '#b91c8c', // 边框颜色
+          colorPrimaryBg: '#b91c8c', // 背景颜色
         },
       },
     }}

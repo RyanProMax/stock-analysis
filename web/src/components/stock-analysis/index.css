@@ -1,0 +1,8 @@
+.stock-select .ant-select-content {
+  padding: 6px 2px;
+  gap: 6px;
+
+  &::before {
+    display: none;
+  }
+}
