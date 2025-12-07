@@ -8,6 +8,10 @@ from src.controller import index as controller
 from src.controller.schemas import StandardResponse
 
 port = int(os.environ.get("PORT", 8080))
+env_value = os.environ.get("ENV", os.environ.get("ENVIRONMENT", "")).lower()
+is_development = (
+    env_value in ("development", "dev") or os.environ.get("DEBUG", "").lower() == "true"
+)
 
 # Create the FastAPI app
 app = FastAPI(
@@ -72,7 +76,7 @@ def read_root():
 
 
 def start():
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=is_development)
 
 
 if __name__ == "__main__":
