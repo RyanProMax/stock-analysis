@@ -35,10 +35,9 @@ app.add_middleware(
 )
 
 
-# 全局异常处理器
+# Validation error handler
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """处理请求验证错误"""
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content=StandardResponse(
@@ -49,9 +48,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
+# General error handler
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """处理所有未捕获的异常"""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=StandardResponse(
@@ -62,7 +61,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Include routers
+# Routers
 app.include_router(controller.router, prefix="/stock")
 
 
