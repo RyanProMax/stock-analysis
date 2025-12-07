@@ -1,9 +1,8 @@
 # -------------------------------------------------------------
 # Stage 1: Build dependencies with Poetry
 # -------------------------------------------------------------
-FROM python:3.12.12-slim AS builder
+FROM python:3.12 AS builder
 
-# Environment settings
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -14,27 +13,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only dependency files for efficient caching
+# Copy dependency files
 COPY pyproject.toml poetry.lock* README.md ./
 
-# Install poetry
+# Install Poetry
 RUN pip install --no-cache-dir poetry
 
-# Install dependencies (no venv)
-RUN poetry config virtualenvs.create false \
-    && poetry install --only main --no-interaction --no-ansi
+# Install dependencies (no app code yet → good caching)
+RUN poetry config virtualenvs.in-project true \
+    && poetry install --only main --no-root --no-interaction --no-ansi
 
-# Copy application source (including /server)
+# Copy application code
 COPY . .
 
-# Ensure dependencies installed after source copied
+# Install the project (local package)
 RUN poetry install --only main --no-interaction --no-ansi
 
+# OPTIONAL: remove build tools for smaller builder layer
+RUN apt-get purge -y gcc libc-dev && apt-get autoremove -y
+
 
 # -------------------------------------------------------------
-# Stage 2: Minimal production image
+# Stage 2: Minimal runtime image
 # -------------------------------------------------------------
-FROM python:3.12.12-slim
+FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -42,17 +44,17 @@ ENV TZ=Asia/Shanghai
 
 WORKDIR /app
 
-# Set timezone
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
-    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
-    && echo $TZ > /etc/timezone \
-    && rm -rf /var/lib/apt/lists/*
+# Minimal timezone (no tzdata)
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Copy built app from builder stage
-COPY --from=builder /app /app
+# Copy only the virtual environment and source
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/main.py /app/main.py
+COPY --from=builder /app/src /app/src
 
-# Expose Cloud Run port
+# Use venv
+ENV PATH="/app/.venv/bin:$PATH"
+
 EXPOSE 8080
 
-# Use uvicorn directly (production mode)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
