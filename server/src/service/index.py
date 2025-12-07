@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from ..env import is_development
 from .data_loader import DataLoader
 from .model import AnalysisReport
 from .factors import MultiFactorAnalyzer
@@ -28,7 +29,7 @@ def _analyze_symbol(symbol: str, refresh: bool = False) -> Optional[AnalysisRepo
         analyzer = MultiFactorAnalyzer(df, symbol, stock_name)
         report = analyzer.analyze()
         CACHE[cache_key] = report
-        if report is not None:
+        if report is not None and is_development():
             console_report(report)
 
         return report
