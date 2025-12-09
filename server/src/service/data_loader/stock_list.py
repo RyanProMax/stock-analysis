@@ -15,6 +15,7 @@ import akshare as ak
 import tushare as ts
 import requests
 from dotenv import load_dotenv
+from ..cache_util import CacheUtil
 
 load_dotenv()
 
@@ -91,13 +92,23 @@ class StockListService:
         Returns:
             List[Dict[str, Any]]: 股票列表，按tushare格式返回（ts_code, symbol, name, area, industry, market, list_date等）
         """
-        # 检查缓存（如果缓存为空，也会重新获取）
+        # 检查内存缓存（如果缓存为空，也会重新获取）
         market = "A股"
         if not refresh and cls._is_cache_valid(market):
             print(
-                f"✓ 使用缓存的A股列表（{cls._cache_date[market]}），共 {len(cls._cache[market])} 只股票"
+                f"✓ 使用内存缓存的A股列表（{cls._cache_date[market]}），共 {len(cls._cache[market])} 只股票"
             )
             return cls._cache[market]
+
+        # 检查文件缓存
+        if not refresh:
+            cached_data = CacheUtil.load_stock_list(market)
+            if cached_data is not None:
+                # 更新内存缓存
+                cls._cache[market] = cached_data
+                cls._cache_date[market] = cls._get_cache_key()
+                print(f"✓ 使用文件缓存的A股列表，共 {len(cached_data)} 只股票")
+                return cached_data
 
         # 优先使用 tushare（如果可用且配置了 token）
         tushare_pro = cls._get_tushare_pro()
@@ -117,10 +128,11 @@ class StockListService:
                                 str(value) if not isinstance(value, (int, float, bool)) else value
                             )
 
-                # 更新缓存
+                # 更新缓存（内存 + 文件）
                 market = "A股"
                 cls._cache[market] = stocks
                 cls._cache_date[market] = cls._get_cache_key()
+                CacheUtil.save_stock_list(market, stocks)
                 print(f"✓ 使用 Tushare 获取A股列表，共 {len(stocks)} 只股票（已缓存）")
                 return stocks
             except Exception as e:
@@ -157,10 +169,11 @@ class StockListService:
                     }
                 )
 
-            # 更新缓存
+            # 更新缓存（内存 + 文件）
             market = "A股"
             cls._cache[market] = stocks
             cls._cache_date[market] = cls._get_cache_key()
+            CacheUtil.save_stock_list(market, stocks)
             print(f"✓ 使用 AkShare 获取A股列表，共 {len(stocks)} 只股票（已缓存）")
             return stocks
         except Exception as e:
@@ -188,13 +201,23 @@ class StockListService:
         Returns:
             List[Dict[str, Any]]: 股票列表，按tushare格式返回（ts_code, symbol, name, area, industry, market, list_date等）
         """
-        # 检查缓存（如果缓存为空，也会重新获取）
+        # 检查内存缓存（如果缓存为空，也会重新获取）
         market = "美股"
         if not refresh and cls._is_cache_valid(market):
             print(
-                f"✓ 使用缓存的美股列表（{cls._cache_date[market]}），共 {len(cls._cache[market])} 只股票"
+                f"✓ 使用内存缓存的美股列表（{cls._cache_date[market]}），共 {len(cls._cache[market])} 只股票"
             )
             return cls._cache[market]
+
+        # 检查文件缓存
+        if not refresh:
+            cached_data = CacheUtil.load_stock_list(market)
+            if cached_data is not None:
+                # 更新内存缓存
+                cls._cache[market] = cached_data
+                cls._cache_date[market] = cls._get_cache_key()
+                print(f"✓ 使用文件缓存的美股列表，共 {len(cached_data)} 只股票")
+                return cached_data
 
         # 优先使用 NASDAQ API
         print("⚠️ 尝试使用 NASDAQ API 获取美股列表...")
@@ -261,6 +284,7 @@ class StockListService:
             if len(stocks) > 0:
                 cls._cache[market] = stocks
                 cls._cache_date[market] = cls._get_cache_key()
+                CacheUtil.save_stock_list(market, stocks)
                 print(f"✓ 使用 NASDAQ API 获取美股列表，共 {len(stocks)} 只股票（已缓存）")
                 return stocks
             else:
@@ -294,9 +318,10 @@ class StockListService:
                                     else value
                                 )
 
-                    # 更新缓存
+                    # 更新缓存（内存 + 文件）
                     cls._cache[market] = stocks
                     cls._cache_date[market] = cls._get_cache_key()
+                    CacheUtil.save_stock_list(market, stocks)
                     print(f"✓ 使用 Tushare 获取美股列表，共 {len(stocks)} 只股票（已缓存）")
                     return stocks
                 except Exception as e:
