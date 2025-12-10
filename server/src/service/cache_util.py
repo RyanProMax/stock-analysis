@@ -12,6 +12,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Dict, List
+from google.cloud import storage
+
 from ..env import is_production
 
 
@@ -46,13 +48,6 @@ class CacheUtil:
             return None
 
         try:
-            # 动态导入，避免在没有安装时出错
-            try:
-                from google.cloud import storage  # type: ignore
-            except ImportError:
-                print("⚠️ google-cloud-storage 未安装，将使用本地文件系统缓存")
-                return None
-
             cls._gcs_client = storage.Client()
             print("✓ Google Cloud Storage 客户端初始化成功")
             return cls._gcs_client
@@ -84,7 +79,7 @@ class CacheUtil:
         return local_dir / filename
 
     @classmethod
-    def _save_to_gcs(cls, path: str, data: Any) -> bool:
+    def _save_to_gcs(cls, path: str, data: Any, force: bool = False) -> bool:
         """保存数据到 GCS"""
         try:
             client = cls._get_gcs_client()
@@ -94,12 +89,17 @@ class CacheUtil:
             bucket = client.bucket(cls.GCS_BUCKET_NAME)
             blob = bucket.blob(path)
 
+            # 如果已存在且不强制覆盖，则跳过保存
+            if not force and blob.exists():
+                return True
+
             if isinstance(data, (dict, list)):
                 content = json.dumps(data, ensure_ascii=False, indent=2)
                 blob.upload_from_string(content, content_type="application/json")
             else:
                 blob.upload_from_string(str(data))
 
+            print(f"✓ 文件保存成功 GCS: gs://{cls.GCS_BUCKET_NAME}/{path}")
             return True
         except Exception as e:
             print(f"⚠️ 保存到 GCS 失败: {e}")
@@ -127,7 +127,11 @@ class CacheUtil:
 
     @classmethod
     def save_stock_list(
-        cls, market: str, data: List[Dict[str, Any]], date: Optional[str] = None
+        cls,
+        market: str,
+        data: List[Dict[str, Any]],
+        date: Optional[str] = None,
+        force: bool = False,
     ) -> bool:
         """
         保存股票列表到缓存（GCS 或本地文件系统）
@@ -136,6 +140,7 @@ class CacheUtil:
             market: 市场类型（"A股" 或 "美股"）
             data: 股票列表数据
             date: 日期（YYYY-MM-DD），如果为 None 则使用今天
+            force: 是否强制覆盖已存在的缓存，默认 False
 
         Returns:
             bool: 是否保存成功
@@ -148,28 +153,20 @@ class CacheUtil:
             market_prefix = "a_stocks" if market == "A股" else "us_stocks"
             filename = f"{market_prefix}_{date}.json"
 
-            success = False
-
             # 优先保存到 GCS（如果配置了）
             if cls.USE_GCS:
                 gcs_path = cls._get_gcs_path(cls.STOCK_LIST_CACHE_DIR, filename)
-                if cls._save_to_gcs(gcs_path, data):
-                    print(f"✓ 股票列表已保存到 GCS: gs://{cls.GCS_BUCKET_NAME}/{gcs_path}")
-                    success = True
+                if cls._save_to_gcs(gcs_path, data, force=force):
+                    return True
 
-            # 同时保存到本地文件系统（作为备份或开发环境使用）
-            try:
-                cache_file = cls._get_local_cache_file_path(cls.STOCK_LIST_CACHE_DIR, filename)
+            # 兜底保存到本地
+            cache_file = cls._get_local_cache_file_path(cls.STOCK_LIST_CACHE_DIR, filename)
+            if not force and cache_file.exists():
+                return True
+            else:
                 with open(cache_file, "w", encoding="utf-8") as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
-                if not cls.USE_GCS:
-                    print(f"✓ 股票列表已保存到本地缓存: {cache_file}")
-                success = True
-            except Exception as e:
-                if not cls.USE_GCS:
-                    print(f"⚠️ 保存到本地缓存失败: {e}")
-
-            return success
+                return True
         except Exception as e:
             print(f"⚠️ 保存股票列表缓存失败: {e}")
             return False
@@ -223,7 +220,13 @@ class CacheUtil:
             return None
 
     @classmethod
-    def save_report(cls, symbol: str, report: Dict[str, Any], date: Optional[str] = None) -> bool:
+    def save_report(
+        cls,
+        symbol: str,
+        report: Dict[str, Any],
+        date: Optional[str] = None,
+        force: bool = False,
+    ) -> bool:
         """
         保存分析报告到缓存（GCS 或本地文件系统）
 
@@ -231,6 +234,7 @@ class CacheUtil:
             symbol: 股票代码
             report: 分析报告数据（字典格式）
             date: 日期（YYYY-MM-DD），如果为 None 则使用今天
+            force: 是否强制覆盖已存在的缓存，默认 False
 
         Returns:
             bool: 是否保存成功
@@ -240,32 +244,26 @@ class CacheUtil:
                 date = cls._get_date_key()
 
             filename = f"{symbol.upper()}.json"
-            success = False
 
             # 优先保存到 GCS（如果配置了）
             if cls.USE_GCS:
                 # GCS 路径：reports/YYYY-MM-DD/SYMBOL.json
                 gcs_path = cls._get_gcs_path(f"{cls.REPORTS_CACHE_DIR}/{date}", filename)
-                if cls._save_to_gcs(gcs_path, report):
-                    print(f"✓ 分析报告已保存到 GCS: gs://{cls.GCS_BUCKET_NAME}/{gcs_path}")
-                    success = True
+                if cls._save_to_gcs(gcs_path, report, force=force):
+                    return True
 
-            # 同时保存到本地文件系统
-            try:
-                date_dir = cls.CACHE_ROOT / cls.REPORTS_CACHE_DIR / date
-                cls._ensure_cache_dir(date_dir)
-                cache_file = date_dir / filename
+            # 兜底到本地文件系统
+            date_dir = cls.CACHE_ROOT / cls.REPORTS_CACHE_DIR / date
+            cls._ensure_cache_dir(date_dir)
+            cache_file = date_dir / filename
 
+            # 如果本地文件已存在且不强制覆盖，则跳过保存
+            if not force and cache_file.exists():
+                return True
+            else:
                 with open(cache_file, "w", encoding="utf-8") as f:
                     json.dump(report, f, ensure_ascii=False, indent=2)
-                if not cls.USE_GCS:
-                    print(f"✓ 分析报告已保存到本地缓存: {cache_file}")
-                success = True
-            except Exception as e:
-                if not cls.USE_GCS:
-                    print(f"⚠️ 保存到本地缓存失败: {e}")
-
-            return success
+                return True
         except Exception as e:
             print(f"⚠️ 保存分析报告缓存失败: {e}")
             return False

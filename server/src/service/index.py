@@ -22,6 +22,7 @@ def _analyze_symbol(symbol: str, refresh: bool = False) -> Optional[AnalysisRepo
 
         # 检查内存缓存
         if not refresh and cache_key in CACHE and CACHE[cache_key] is not None:
+            print(f"✓ 从内存加载分析报告: {symbol}")
             return CACHE[cache_key]
 
         # 检查文件缓存
@@ -70,7 +71,6 @@ def _analyze_symbol(symbol: str, refresh: bool = False) -> Optional[AnalysisRepo
 
                     # 更新内存缓存
                     CACHE[cache_key] = report
-                    print(f"✓ 从文件缓存加载分析报告: {symbol}")
                     return report
                 except Exception as e:
                     print(f"⚠️ 从文件缓存重建分析报告失败: {e}")
@@ -85,10 +85,10 @@ def _analyze_symbol(symbol: str, refresh: bool = False) -> Optional[AnalysisRepo
         report = analyzer.analyze()
         CACHE[cache_key] = report
 
-        # 保存到文件缓存
+        # 保存到文件缓存（如果 refresh=True 则强制覆盖）
         if report is not None:
             report_dict = asdict(report)
-            CacheUtil.save_report(symbol, report_dict)
+            CacheUtil.save_report(symbol, report_dict, force=refresh)
 
         if report is not None and is_development():
             console_report(report)

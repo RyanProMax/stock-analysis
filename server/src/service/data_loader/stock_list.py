@@ -107,7 +107,6 @@ class StockListService:
                 # 更新内存缓存
                 cls._cache[market] = cached_data
                 cls._cache_date[market] = cls._get_cache_key()
-                print(f"✓ 使用文件缓存的A股列表，共 {len(cached_data)} 只股票")
                 return cached_data
 
         # 优先使用 tushare（如果可用且配置了 token）
@@ -216,7 +215,6 @@ class StockListService:
                 # 更新内存缓存
                 cls._cache[market] = cached_data
                 cls._cache_date[market] = cls._get_cache_key()
-                print(f"✓ 使用文件缓存的美股列表，共 {len(cached_data)} 只股票")
                 return cached_data
 
         # 优先使用 NASDAQ API
