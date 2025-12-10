@@ -1,15 +1,54 @@
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { X, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 import type { AnalysisReport, FactorDetail } from '../../types'
 import { FactorList } from './FactorList'
 
 interface ReportCardProps {
-  report: AnalysisReport
+  report?: AnalysisReport
+  symbol?: string
+  loading?: boolean
+  onRemove?: () => void
 }
 
-export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
+export const ReportCard: React.FC<ReportCardProps> = ({
+  report,
+  symbol,
+  loading = false,
+  onRemove,
+}) => {
   const [expandedFactors, setExpandedFactors] = useState<Set<string>>(new Set())
   const [isStockExpanded, setIsStockExpanded] = useState(false)
+
+  // Loading 状态
+  if (loading && symbol) {
+    return (
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6 dark:border-gray-700 dark:bg-gray-900/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-300"></div>
+              <h2 className="text-xl font-light text-gray-900 dark:text-gray-100">{symbol}</h2>
+              <span className="text-sm text-gray-500 dark:text-gray-400">分析中...</span>
+            </div>
+            {onRemove && (
+              <button
+                onClick={onRemove}
+                className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                aria-label="删除"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // 如果没有 report，不渲染
+  if (!report) {
+    return null
+  }
 
   const getFearGreedTheme = (index: number) => {
     if (index >= 80) {
@@ -184,25 +223,39 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
           </div>
 
           {/* PC端：显示完整样式（进度条上方显示emoji+分数+标签） */}
-          <div className="hidden min-w-[120px] sm:block">
-            <div className="mb-1 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">{emoji}</span>
-                <span className={`text-sm font-light ${fearGreedTheme.text}`}>
-                  {report.fear_greed.index.toFixed(1)}
-                </span>
+          <div className="flex items-center gap-4">
+            <div className="hidden min-w-[120px] sm:block">
+              <div className="mb-1 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{emoji}</span>
+                  <span className={`text-sm font-light ${fearGreedTheme.text}`}>
+                    {report.fear_greed.index.toFixed(1)}
+                  </span>
+                </div>
+                <span className={`text-xs font-light ${fearGreedTheme.text}`}>{labelText}</span>
               </div>
-              <span className={`text-xs font-light ${fearGreedTheme.text}`}>{labelText}</span>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                <div
+                  className="h-full rounded-full transition-all duration-1000 ease-out"
+                  style={{
+                    width: `${report.fear_greed.index}%`,
+                    backgroundColor: fearGreedTheme.ring,
+                  }}
+                />
+              </div>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
-              <div
-                className="h-full rounded-full transition-all duration-1000 ease-out"
-                style={{
-                  width: `${report.fear_greed.index}%`,
-                  backgroundColor: fearGreedTheme.ring,
+            {onRemove && (
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  onRemove()
                 }}
-              />
-            </div>
+                className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                aria-label="删除"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
           </div>
         </div>
       </button>
