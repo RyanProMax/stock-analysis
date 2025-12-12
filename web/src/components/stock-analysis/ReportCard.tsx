@@ -4,25 +4,23 @@ import type { AnalysisReport, FactorDetail } from '../../types'
 import { FactorList } from './FactorList'
 
 interface ReportCardProps {
+  symbol: string
   report?: AnalysisReport
-  symbol?: string
-  loading?: boolean
   onRemove?: () => void
 }
 
-export const ReportCard: React.FC<ReportCardProps> = ({
-  report,
-  symbol,
-  loading = false,
-  onRemove,
-}) => {
+export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove }) => {
   const [expandedFactors, setExpandedFactors] = useState<Set<string>>(new Set())
   const [isStockExpanded, setIsStockExpanded] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
 
-  // Loading 状态
-  if (loading && symbol) {
+  if (!report) {
     return (
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div
+        className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <div className="border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6 dark:border-gray-700 dark:bg-gray-900/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -33,7 +31,9 @@ export const ReportCard: React.FC<ReportCardProps> = ({
             {onRemove && (
               <button
                 onClick={onRemove}
-                className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                className={`rounded-md p-1 text-gray-400 transition-all duration-200 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 ${
+                  isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+                }`}
                 aria-label="删除"
               >
                 <X className="h-5 w-5" />
@@ -43,11 +43,6 @@ export const ReportCard: React.FC<ReportCardProps> = ({
         </div>
       </div>
     )
-  }
-
-  // 如果没有 report，不渲染
-  if (!report) {
-    return null
   }
 
   const getFearGreedTheme = (index: number) => {
@@ -179,11 +174,15 @@ export const ReportCard: React.FC<ReportCardProps> = ({
   const displayName = isUSStock ? report.symbol : report.stock_name || report.symbol
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+    <div
+      className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       {/* 股票头部信息 - 可点击展开/收起 */}
-      <button
+      <div
         onClick={() => setIsStockExpanded(!isStockExpanded)}
-        className="w-full border-b border-gray-200 bg-gray-50 px-4 py-4 text-left transition-colors hover:bg-gray-100 sm:px-6 dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800"
+        className="w-full border-b border-gray-200 bg-gray-50 px-4 py-4 text-left transition-colors hover:bg-gray-100 sm:px-6 dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800 cursor-pointer"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* 移动端：股票名、当前价格、贪恐指数并排一行 */}
@@ -250,7 +249,9 @@ export const ReportCard: React.FC<ReportCardProps> = ({
                   e.stopPropagation()
                   onRemove()
                 }}
-                className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                className={`rounded-md p-1 text-gray-400 transition-all duration-200 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 ${
+                  isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+                }`}
                 aria-label="删除"
               >
                 <X className="h-5 w-5" />
@@ -258,7 +259,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({
             )}
           </div>
         </div>
-      </button>
+      </div>
 
       {/* 因子列表 - 可折叠 */}
       {isStockExpanded && (
