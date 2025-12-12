@@ -10,7 +10,6 @@ interface ReportCardProps {
 }
 
 export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove }) => {
-  const [expandedFactors, setExpandedFactors] = useState<Set<string>>(new Set())
   const [isStockExpanded, setIsStockExpanded] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
 
@@ -22,10 +21,8 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6 dark:border-gray-700 dark:bg-gray-900/50">
-          <div className="flex items-center">
-            <div
-              className={`flex items-center gap-3 transition-all duration-200 ${isHovered ? '-mr-8' : ''}`}
-            >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-300"></div>
               <h2 className="text-xl font-light text-gray-900 dark:text-gray-100">{symbol}</h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">分析中...</span>
@@ -34,9 +31,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
               <button
                 onClick={onRemove}
                 className={`rounded-md p-1 text-gray-400 transition-all duration-200 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 ${
-                  isHovered
-                    ? 'opacity-100 translate-x-0 w-auto ml-2'
-                    : 'opacity-0 translate-x-2 w-0 overflow-hidden'
+                  isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
                 }`}
                 aria-label="删除"
               >
@@ -130,33 +125,6 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
           detailText: 'text-amber-900 dark:text-amber-100',
         }
     }
-  }
-
-  const toggleFactor = (factorKey: string) => {
-    setExpandedFactors(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(factorKey)) {
-        newSet.delete(factorKey)
-      } else {
-        newSet.add(factorKey)
-      }
-      return newSet
-    })
-  }
-
-  const toggleAllFactors = (factors: FactorDetail[], expand: boolean) => {
-    setExpandedFactors(prev => {
-      const newSet = new Set(prev)
-      factors.forEach(factor => {
-        const key = `${report.symbol}-${factor.key}`
-        if (expand) {
-          newSet.add(key)
-        } else {
-          newSet.delete(key)
-        }
-      })
-      return newSet
-    })
   }
 
   const technicalFactors = report.technical_factors
@@ -277,10 +245,6 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
           <FactorList
             title={`基本面 (${fundamentalFactors.length})`}
             factors={fundamentalFactors}
-            symbol={report.symbol}
-            expandedFactors={expandedFactors}
-            onToggleFactor={toggleFactor}
-            onToggleAll={toggleAllFactors}
             getFactorStatus={getFactorStatus}
             getFactorStatusStyle={getFactorStatusStyle}
           />
@@ -288,10 +252,6 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
           <FactorList
             title={`技术面 (${technicalFactors.length})`}
             factors={technicalFactors}
-            symbol={report.symbol}
-            expandedFactors={expandedFactors}
-            onToggleFactor={toggleFactor}
-            onToggleAll={toggleAllFactors}
             getFactorStatus={getFactorStatus}
             getFactorStatusStyle={getFactorStatusStyle}
           />
@@ -299,10 +259,6 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
           <FactorList
             title={`Qlib因子 (${qlibFactors.length})`}
             factors={qlibFactors}
-            symbol={report.symbol}
-            expandedFactors={expandedFactors}
-            onToggleFactor={toggleFactor}
-            onToggleAll={toggleAllFactors}
             getFactorStatus={getFactorStatus}
             getFactorStatusStyle={getFactorStatusStyle}
           />
