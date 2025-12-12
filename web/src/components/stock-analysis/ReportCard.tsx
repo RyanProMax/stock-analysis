@@ -22,8 +22,10 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="border-b border-gray-200 bg-gray-50 px-4 py-4 sm:px-6 dark:border-gray-700 dark:bg-gray-900/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center">
+            <div
+              className={`flex items-center gap-3 transition-all duration-200 ${isHovered ? '-mr-8' : ''}`}
+            >
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-300"></div>
               <h2 className="text-xl font-light text-gray-900 dark:text-gray-100">{symbol}</h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">分析中...</span>
@@ -32,7 +34,9 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
               <button
                 onClick={onRemove}
                 className={`rounded-md p-1 text-gray-400 transition-all duration-200 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 ${
-                  isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+                  isHovered
+                    ? 'opacity-100 translate-x-0 w-auto ml-2'
+                    : 'opacity-0 translate-x-2 w-0 overflow-hidden'
                 }`}
                 aria-label="删除"
               >
@@ -184,9 +188,11 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
         onClick={() => setIsStockExpanded(!isStockExpanded)}
         className="w-full border-b border-gray-200 bg-gray-50 px-4 py-4 text-left transition-colors hover:bg-gray-100 sm:px-6 dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800 cursor-pointer"
       >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           {/* 移动端：股票名、当前价格、贪恐指数并排一行 */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div
+            className={`flex items-center gap-3 sm:gap-4 transition-all duration-200 ${isHovered ? 'sm:-mr-8' : ''}`}
+          >
             {isStockExpanded ? (
               <ChevronUp className="h-5 w-5 shrink-0 text-gray-400" />
             ) : (
@@ -222,8 +228,10 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
           </div>
 
           {/* PC端：显示完整样式（进度条上方显示emoji+分数+标签） */}
-          <div className="flex items-center gap-4">
-            <div className="hidden min-w-[120px] sm:block">
+          <div className="ml-auto flex items-center gap-4">
+            <div
+              className={`hidden min-w-[120px] sm:block transition-all duration-200 ${isHovered ? '-translate-x-2' : ''}`}
+            >
               <div className="mb-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-base">{emoji}</span>
@@ -250,7 +258,9 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
                   onRemove()
                 }}
                 className={`rounded-md p-1 text-gray-400 transition-all duration-200 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 ${
-                  isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+                  isHovered
+                    ? 'opacity-100 translate-x-0 w-auto'
+                    : 'opacity-0 translate-x-2 w-0 overflow-hidden'
                 }`}
                 aria-label="删除"
               >
