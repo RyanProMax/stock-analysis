@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { TrendingUp, TrendingDown, CircleSlash2 } from 'lucide-react'
 import { Empty } from 'antd'
-import type { FactorDetail } from '../../types'
+import type { FactorDetail } from '../../../types'
 
 interface FactorListProps {
   title: string

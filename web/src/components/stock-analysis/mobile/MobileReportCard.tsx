@@ -1,7 +1,7 @@
 import { DeleteOutlined, DownOutlined, UpOutlined } from '@ant-design/icons'
 import { SwipeAction, ProgressBar } from 'antd-mobile'
 import { useState } from 'react'
-import type { AnalysisReport, FactorDetail } from '../../types'
+import type { AnalysisReport, FactorDetail } from '../../../types'
 import { MobileFactorList } from './MobileFactorList'
 
 interface MobileReportCardProps {

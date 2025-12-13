@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react'
-import { Form } from '../Form'
-import { ReportCard } from '../ReportCard'
+import { Form } from './DesktopForm'
+import { ReportCard } from './DesktopReportCard'
 import type { AnalysisReport } from '../../../types'
 
 interface DesktopLayoutProps {

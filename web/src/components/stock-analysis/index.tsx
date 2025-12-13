@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { DesktopLayout } from './layouts/DesktopLayout'
-import { MobileLayout } from './layouts/MobileLayout'
+import { DesktopLayout } from './desktop/DesktopLayout'
+import { MobileLayout } from './mobile/MobileLayout'
 import { stockApi } from '../../api/client'
 
 import type { ComponentProps } from '../layout/constant'

@@ -1,7 +1,7 @@
 import { X, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
-import type { AnalysisReport, FactorDetail } from '../../types'
-import { FactorList } from './FactorList'
+import type { AnalysisReport, FactorDetail } from '../../../types'
+import { FactorList } from './DesktopFactorList'
 
 interface ReportCardProps {
   symbol: string

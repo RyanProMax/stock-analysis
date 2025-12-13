@@ -1,6 +1,6 @@
 import React from 'react'
 import { TrendingUp, TrendingDown, CircleSlash2 } from 'lucide-react'
-import type { FactorDetail } from '../../types'
+import type { FactorDetail } from '../../../types'
 
 interface MobileFactorListProps {
   title: string

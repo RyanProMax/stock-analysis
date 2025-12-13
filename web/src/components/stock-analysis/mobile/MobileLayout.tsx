@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react'
-import { MobileForm } from '../MobileForm'
-import { MobileReportCard } from '../MobileReportCard'
+import { MobileForm } from './MobileForm'
+import { MobileReportCard } from './MobileReportCard'
 import type { AnalysisReport } from '../../../types'
 
 interface MobileLayoutProps {
