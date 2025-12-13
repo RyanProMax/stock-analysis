@@ -14,11 +14,14 @@
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
     "antd": "^6.0.1",
+    "antd-mobile": "^5.42.1",
+    "antd-mobile-icons": "^0.3.0",
     "axios": "^1.13.2",
     "lodash-es": "^4.17.21",
     "lucide-react": "^0.556.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-responsive": "^10.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

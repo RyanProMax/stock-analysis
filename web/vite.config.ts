@@ -5,6 +5,7 @@ const base = process.env.GITHUB_ACTIONS ? '/stock-analysis/' : '/'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   plugins: [
     react(),
     {
@@ -14,7 +15,6 @@ export default defineConfig({
       },
     },
   ],
-  base,
   server: {
     port: 3000,
     proxy: {

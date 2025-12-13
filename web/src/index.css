@@ -34,3 +34,7 @@ body {
   padding: 0;
   min-height: 100vh;
 }
+
+:root:root {
+  --adm-color-primary: var(--ant-color-primary);
+}
