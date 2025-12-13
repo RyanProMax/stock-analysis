@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { Input, Button } from 'antd-mobile'
+import { PlusOutlined } from '@ant-design/icons'
 
 interface MobileFormProps {
   onAddSymbol: (symbol: string) => unknown
@@ -34,22 +35,20 @@ export const MobileForm: React.FC<MobileFormProps> = ({ onAddSymbol }) => {
           value={inputValue}
           onChange={value => setInputValue(value.toUpperCase())}
           onKeyDown={handleKeyDown}
-          placeholder="输入股票代码（如：000001、NVDA、AAPL）"
+          placeholder="输入股票代码（如：000001、NVDA）"
           className="flex-1"
           style={{
-            background: 'rgb(31, 41, 55)',
-            borderColor: 'rgb(55, 65, 81)',
-            color: 'rgb(243, 244, 246)',
-            '--placeholder-color': 'rgb(156, 163, 175)',
+            paddingLeft: 8,
+            filter: 'invert(0.8)',
           }}
         />
         <Button
           color="primary"
           fill="solid"
-          shape="rounded"
+          shape="default"
+          size="small"
           onClick={handleAdd}
           disabled={!inputValue.trim()}
-          size="middle"
           className="px-6"
           style={{
             background: 'var(--color-primary)',
@@ -57,7 +56,7 @@ export const MobileForm: React.FC<MobileFormProps> = ({ onAddSymbol }) => {
             color: '#ffffff',
           }}
         >
-          添加
+          <PlusOutlined />
         </Button>
       </div>
     </div>

@@ -17,11 +17,11 @@ export function MobileLayout({
   onRemoveReport,
 }: MobileLayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen">
       {/* 顶部固定区域 */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 shadow-sm">
+      <div className="sticky top-0 z-10 shadow-sm">
         {/* 标题 */}
-        <div className="px-4 pt-8 pb-2">
+        <div className="px-4 pt-6 pb-2">
           <h1
             className="font-light tracking-tight text-gray-900 dark:text-gray-100"
             style={{ fontSize: '1.5rem' }}
@@ -31,7 +31,7 @@ export function MobileLayout({
         </div>
 
         {/* 风险提示 */}
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-6">
           <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
             <AlertTriangle className="h-3.5 w-3.5" />
             <span>投资有风险，入市需谨慎。此报告仅供参考。</span>
@@ -39,7 +39,7 @@ export function MobileLayout({
         </div>
 
         {/* 分析表单 */}
-        <div className="border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-4">
+        <div className="px-4 py-4">
           <MobileForm onAddSymbol={onAddSymbol} />
         </div>
       </div>
