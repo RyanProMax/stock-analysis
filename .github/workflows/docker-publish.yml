@@ -67,7 +67,7 @@ jobs:
             --allow-unauthenticated
             --max-instances=3
             --concurrency=80
-            --timeout=30s
+            --timeout=60s
           env_vars: |
             ENV=production
             TUSHARE_TOKEN=${{ secrets.TUSHARE_TOKEN }}

@@ -71,6 +71,16 @@ def read_root():
     )
 
 
+@app.get("/ping", tags=["Health"])
+async def ping():
+    """Health check endpoint to verify server availability"""
+    return StandardResponse(
+        status_code=200,
+        data={"message": "pong", "status": "healthy"},
+        err_msg=None,
+    )
+
+
 def start():
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=is_development())
 
