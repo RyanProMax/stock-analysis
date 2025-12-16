@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Dict, List, Optional
 from dataclasses import asdict
 
@@ -13,7 +12,7 @@ CACHE: Dict[str, AnalysisReport | None] = {}
 
 
 def _build_cache_key(symbol: str) -> str:
-    return f"{datetime.now().strftime('%Y-%m-%d')}_{symbol.upper()}"
+    return f"{CacheUtil.get_cst_date_key()}_{symbol.upper()}"
 
 
 def _analyze_symbol(symbol: str, refresh: bool = False) -> Optional[AnalysisReport]:

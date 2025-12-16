@@ -8,7 +8,6 @@
 """
 
 import os
-from datetime import datetime
 from typing import List, Dict, Optional, Any
 import pandas as pd
 import akshare as ak
@@ -56,8 +55,7 @@ class StockListService:
 
     @classmethod
     def _get_cache_key(cls) -> str:
-        """获取缓存键（按日期）"""
-        return datetime.now().strftime("%Y-%m-%d")
+        return CacheUtil.get_cst_date_key()
 
     @classmethod
     def _is_cache_valid(cls, market: str) -> bool:

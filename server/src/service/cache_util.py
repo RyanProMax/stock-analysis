@@ -9,7 +9,7 @@
 
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Optional, Dict, List
 from google.cloud import storage
@@ -23,6 +23,29 @@ class CacheUtil:
     # Google Cloud Storage 配置
     GCS_BUCKET_NAME = os.environ.get("GCS_CACHE_BUCKET", "")
     USE_GCS = bool(GCS_BUCKET_NAME) and is_production()
+
+    @staticmethod
+    def get_cst_date_key() -> str:
+        """
+        获取中国标准时间的日期键（YYYY-MM-DD）
+
+        缓存刷新规则：
+        - 中国标准时间（UTC+8）早上6点后刷新缓存
+        - 早上6点前仍使用前一天的日期
+
+        Returns:
+            str: 日期字符串，格式为 YYYY-MM-DD
+        """
+        # 获取中国标准时间 (UTC+8)
+        cst_tz = timezone(timedelta(hours=8))
+        now_cst = datetime.now(cst_tz)
+
+        # 如果当前时间早于早上6点，使用前一天的日期
+        # 这样确保缓存只在早上6点后更新
+        if now_cst.hour < 6:
+            now_cst -= timedelta(days=1)
+
+        return now_cst.strftime("%Y-%m-%d")
 
     # 本地文件系统缓存根目录
     _cache_root = os.environ.get("CACHE_DIR")
@@ -60,11 +83,6 @@ class CacheUtil:
         """确保本地缓存目录存在"""
         if not cls.USE_GCS:
             cache_dir.mkdir(parents=True, exist_ok=True)
-
-    @classmethod
-    def _get_date_key(cls) -> str:
-        """获取日期键（YYYY-MM-DD）"""
-        return datetime.now().strftime("%Y-%m-%d")
 
     @classmethod
     def _get_gcs_path(cls, cache_dir: str, filename: str) -> str:
@@ -147,7 +165,7 @@ class CacheUtil:
         """
         try:
             if date is None:
-                date = cls._get_date_key()
+                date = cls.get_cst_date_key()
 
             # 文件名：a_stocks_YYYY-MM-DD.json 或 us_stocks_YYYY-MM-DD.json
             market_prefix = "a_stocks" if market == "A股" else "us_stocks"
@@ -187,7 +205,7 @@ class CacheUtil:
         """
         try:
             if date is None:
-                date = cls._get_date_key()
+                date = cls.get_cst_date_key()
 
             market_prefix = "a_stocks" if market == "A股" else "us_stocks"
             filename = f"{market_prefix}_{date}.json"
@@ -241,7 +259,7 @@ class CacheUtil:
         """
         try:
             if date is None:
-                date = cls._get_date_key()
+                date = cls.get_cst_date_key()
 
             filename = f"{symbol.upper()}.json"
 
@@ -282,7 +300,7 @@ class CacheUtil:
         """
         try:
             if date is None:
-                date = cls._get_date_key()
+                date = cls.get_cst_date_key()
 
             filename = f"{symbol.upper()}.json"
 
