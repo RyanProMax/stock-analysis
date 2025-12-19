@@ -20,6 +20,8 @@ export interface AnalysisReport {
   fundamental_factors: FactorDetail[]
   qlib_factors: FactorDetail[]
   fear_greed: FearGreed
+  status?: 'success' | 'error'
+  error?: string
 }
 
 export interface StockAnalysisRequest {

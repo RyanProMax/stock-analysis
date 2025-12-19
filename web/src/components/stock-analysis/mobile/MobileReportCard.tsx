@@ -1,4 +1,9 @@
-import { DeleteOutlined, DownOutlined, UpOutlined } from '@ant-design/icons'
+import {
+  DeleteOutlined,
+  DownOutlined,
+  UpOutlined,
+  ExclamationCircleOutlined,
+} from '@ant-design/icons'
 import { SwipeAction, ProgressBar } from 'antd-mobile'
 import { useState } from 'react'
 import type { AnalysisReport, FactorDetail } from '../../../types'
@@ -13,6 +18,16 @@ interface MobileReportCardProps {
 export const MobileReportCard: React.FC<MobileReportCardProps> = ({ symbol, report, onRemove }) => {
   const [isStockExpanded, setIsStockExpanded] = useState(false)
 
+  const rightActions = [
+    {
+      key: 'delete',
+      text: '删除',
+      color: 'danger',
+      icon: <DeleteOutlined />,
+      onClick: () => onRemove?.(),
+    },
+  ]
+
   if (!report) {
     return (
       <div className="mx-4 mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -25,6 +40,24 @@ export const MobileReportCard: React.FC<MobileReportCardProps> = ({ symbol, repo
             </div>
           </div>
         </div>
+      </div>
+    )
+  } else if (report.status === 'error') {
+    return (
+      <div className="mb-4">
+        <SwipeAction rightActions={rightActions} style={{ background: 'transparent' }}>
+          <div className="mx-4 overflow-hidden rounded-xl border border-rose-200 bg-white shadow-sm dark:border-rose-800 dark:bg-gray-800">
+            <div className="border-b border-rose-200 bg-rose-50 px-4 py-4 dark:border-rose-800 dark:bg-rose-950/20">
+              <div className="flex items-center gap-3">
+                <ExclamationCircleOutlined className="text-rose-500 text-lg" />
+                <h2 className="text-xl font-light text-gray-900 dark:text-gray-100">{symbol}</h2>
+                <span className="text-sm text-rose-600 dark:text-rose-400">
+                  {report.error || '分析失败，请稍后重试'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </SwipeAction>
       </div>
     )
   }
@@ -129,16 +162,6 @@ export const MobileReportCard: React.FC<MobileReportCardProps> = ({ symbol, repo
 
   // 获取显示名称（美股显示 symbol，A股显示 stock_name）
   const displayName = isUSStock ? report.symbol : report.stock_name || report.symbol
-
-  const rightActions = [
-    {
-      key: 'delete',
-      text: '删除',
-      color: 'danger',
-      icon: <DeleteOutlined />,
-      onClick: () => onRemove?.(),
-    },
-  ]
 
   return (
     <div className="mb-4">

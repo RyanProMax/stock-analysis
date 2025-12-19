@@ -1,4 +1,4 @@
-import { X, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import type { AnalysisReport, FactorDetail } from '../../../types'
 import { FactorList } from './DesktopFactorList'
@@ -27,6 +27,40 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
               <h2 className="text-xl font-light text-gray-900 dark:text-gray-100">{symbol}</h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">分析中...</span>
             </div>
+            {onRemove && (
+              <button
+                onClick={onRemove}
+                className={`rounded-md p-1 text-gray-400 transition-all duration-200 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 ${
+                  isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+                }`}
+                aria-label="删除"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  } else if (report.status === 'error') {
+    return (
+      <div
+        className="overflow-hidden rounded-xl border border-rose-200 bg-white shadow-sm dark:border-rose-800 dark:bg-gray-800"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div className="border-b border-rose-200 bg-rose-50 px-4 py-4 sm:px-6 dark:border-rose-800 dark:bg-rose-950/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-rose-500" />
+              <h2 className="w-[100px] truncate text-xl font-light text-gray-900 dark:text-gray-100">
+                {symbol}
+              </h2>
+              <span className="text-sm text-rose-600 dark:text-rose-400">
+                {report.error || '分析失败，请稍后重试'}
+              </span>
+            </div>
+
             {onRemove && (
               <button
                 onClick={onRemove}

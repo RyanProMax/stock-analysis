@@ -9,6 +9,18 @@ import type { AnalysisReport } from '../../types'
 
 const SAVED_SYMBOLS_KEY = 'stock-analysis-saved-symbols'
 
+const genErrorReport = ({ symbol, error }: { symbol: string; error: Error }): AnalysisReport => ({
+  symbol,
+  stock_name: null,
+  price: 0,
+  technical_factors: [],
+  fundamental_factors: [],
+  qlib_factors: [],
+  fear_greed: { index: 0, label: '' },
+  status: 'error',
+  error: error.message || '未知错误',
+})
+
 export function StockAnalysis({ isMobile }: ComponentProps) {
   const [startupProgress, setStartupProgress] = useState(0)
   const [symbolList, setSymbolList] = useState<string[]>([])
@@ -23,10 +35,15 @@ export function StockAnalysis({ isMobile }: ComponentProps) {
         setSymbolList(_symbols)
 
         _symbols.forEach(async (symbol: string) => {
-          const reports = await stockApi.analyzeStocks([symbol])
-          if (reports.length > 0) {
-            const report = reports[0]
-            setReports(prev => new Map(prev).set(symbol, report))
+          try {
+            const reports = await stockApi.analyzeStocks([symbol])
+            if (reports.length > 0) {
+              const report = reports[0]
+              setReports(prev => new Map(prev).set(symbol, { ...report, status: 'success' }))
+            }
+          } catch (error: any) {
+            console.error(`分析 ${symbol} 失败:`, error)
+            setReports(prev => new Map(prev).set(symbol, genErrorReport({ symbol, error })))
           }
         })
       } catch (error) {
@@ -55,10 +72,11 @@ export function StockAnalysis({ isMobile }: ComponentProps) {
     try {
       const [report] = await stockApi.analyzeStocks([symbol])
       if (report) {
-        setReports(prev => new Map(prev).set(symbol, report))
+        setReports(prev => new Map(prev).set(symbol, { ...report, status: 'success' }))
       }
-    } catch (err: any) {
-      console.error('分析失败:', err)
+    } catch (error: any) {
+      console.error('分析失败:', error)
+      setReports(prev => new Map(prev).set(symbol, genErrorReport({ symbol, error })))
     }
   }
 
