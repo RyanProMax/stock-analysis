@@ -35,7 +35,9 @@ export const MobileReportCard: React.FC<MobileReportCardProps> = ({ symbol, repo
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600 dark:border-gray-600 dark:border-t-gray-300"></div>
-              <h2 className="text-xl font-light text-gray-900 dark:text-gray-100">{symbol}</h2>
+              <h2 className="w-[100px] truncate text-xl font-light text-gray-900 dark:text-gray-100">
+                {symbol}
+              </h2>
               <span className="text-sm text-gray-500 dark:text-gray-400">分析中...</span>
             </div>
           </div>

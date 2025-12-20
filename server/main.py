@@ -59,7 +59,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 # Routers
-app.include_router(controller.router, prefix="/stock")
+app.include_router(controller.router)
 
 
 @app.get("/", tags=["Root"])

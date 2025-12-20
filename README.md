@@ -30,8 +30,8 @@
 
 ## 技术栈
 
-**前端**: React 18, TypeScript, Vite, Ant Design  
-**后端**: FastAPI, Python 3.12+, tushare, akshare, yfinance, pandas
+**前端**: React 18, TypeScript, Vite, Ant Design
+**后端**: FastAPI, Python 3.12+, LangGraph, tushare, akshare, yfinance, pandas
 
 ## 快速开始
 
@@ -110,6 +110,7 @@ stock-analysis/
 │
 ├── server/                 # Python 后端
 │   ├── src/
+│   │   ├── agent/         # LangGraph Agent 实现
 │   │   ├── controller/    # API 控制器层
 │   │   └── service/       # 业务逻辑层
 │   ├── main.py            # FastAPI 应用入口
@@ -119,6 +120,26 @@ stock-analysis/
 ```
 
 ## API 接口
+
+### Agent 分析接口
+
+基于 LangGraph 的流式股票分析，支持实时进度反馈：
+
+```bash
+# 流式分析 (SSE)
+GET /agent/analyze/stream?symbol=NVDA&refresh=false
+
+# 普通分析
+GET /agent/analyze?symbol=NVDA&refresh=false
+
+# WebSocket (可选)
+WS /agent/analyze/ws
+# 发送消息：{"symbol": "NVDA"}
+
+# 参数说明：
+# symbol: 股票代码（必需）
+# refresh: 是否强制刷新缓存（可选，默认false）
+```
 
 ### POST /stock/analyze
 
