@@ -10,8 +10,8 @@ import {
   Activity,
   Brain,
 } from 'lucide-react'
-import { stockApi } from '../api/client'
-import type { AgentReportMessage } from '../types'
+import { stockApi } from '../../api/client'
+import type { AgentReportMessage } from '../../types'
 
 const { Title, Text, Paragraph } = Typography
 

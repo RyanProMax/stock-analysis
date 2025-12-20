@@ -1,29 +1,12 @@
-import { useState } from 'react'
-import { useMediaQuery } from 'react-responsive'
-
+import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider as AntdConfigProvider, theme } from 'antd'
 import { ConfigProvider as MobileConfigProvider } from 'antd-mobile'
+
 import zhCN from 'antd/locale/zh_CN'
 
-import { TitleBar } from './TitleBar'
-import { StockAnalysis } from '../stock-analysis'
-import { TabKey } from './constant'
+import { PageRouter } from './PageRouter'
 
-export function Main() {
-  // 使用 react-responsive 检测屏幕尺寸
-  const isMobile = useMediaQuery({ maxWidth: 768 })
-
-  const [activeTab, setActiveTab] = useState<TabKey>(TabKey.StockAnalysis)
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case TabKey.StockAnalysis:
-        return <StockAnalysis isMobile={isMobile} />
-      default:
-        return <StockAnalysis isMobile={isMobile} />
-    }
-  }
-
+export const Main = () => {
   return (
     <AntdConfigProvider
       locale={zhCN}
@@ -43,10 +26,9 @@ export function Main() {
       }}
     >
       <MobileConfigProvider>
-        <div className="min-h-screen bg-white dark:bg-gray-950 transition-colors">
-          <TitleBar activeTab={activeTab} onTabChange={setActiveTab} />
-          {renderContent()}
-        </div>
+        <BrowserRouter>
+          <PageRouter />
+        </BrowserRouter>
       </MobileConfigProvider>
     </AntdConfigProvider>
   )
