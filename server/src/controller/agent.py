@@ -3,10 +3,8 @@ Agent控制器 - 提供流式股票分析接口
 """
 
 import json
-import asyncio
-from typing import Dict, Any, AsyncGenerator
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Query
 from sse_starlette.sse import EventSourceResponse
 
 from ..agent.stock_analysis_agent import StockAnalysisAgent
@@ -16,13 +14,17 @@ router = APIRouter()
 agent = StockAnalysisAgent()
 
 
-@router.get("/{symbol}/analyze/stream")
-async def analyze_stock_stream(symbol: str):
+@router.get("/analyze/stream")
+async def analyze_stock_stream(
+    symbol: str = Query(..., description="股票代码", example="NVDA"),
+    refresh: Optional[bool] = Query(False, description="是否强制刷新缓存"),
+):
     """
     流式股票分析接口
 
     使用Server-Sent Events (SSE)实时返回分析进度
     """
+    symbol = symbol.upper()
 
     async def generate():
         try:
@@ -30,15 +32,19 @@ async def analyze_stock_stream(symbol: str):
             yield {
                 "event": "start",
                 "data": json.dumps(
-                    {"type": "start", "message": f"开始分析股票: {symbol}", "symbol": symbol},
+                    {
+                        "type": "start",
+                        "message": f"开始分析股票: {symbol}",
+                        "symbol": symbol,
+                    },
                     ensure_ascii=False,
                 ),
             }
 
             # 运行分析工作流
-            async for output in agent.run_analysis(symbol):
+            for output in agent.run_analysis(symbol):
                 # 提取当前节点的进度信息
-                for node_name, node_state in output.items():
+                for _, node_state in output.items():
                     if "progress" in node_state:
                         for progress in node_state["progress"]:
                             # 发送进度事件
@@ -99,20 +105,24 @@ async def analyze_stock_stream(symbol: str):
     return EventSourceResponse(generate())
 
 
-@router.get("/{symbol}/analyze")
-async def analyze_stock(symbol: str):
+@router.get("/analyze")
+async def analyze_stock(
+    symbol: str = Query(..., description="股票代码", example="NVDA"),
+    refresh: Optional[bool] = Query(False, description="是否强制刷新缓存"),
+):
     """
-    非流式股票分析接口（兼容原有接口）
+    股票分析接口
 
     返回完整的分析结果
     """
+    symbol = symbol.upper()
     try:
         # 收集所有分析结果
         final_result = None
         error_message = None
 
-        async for output in agent.run_analysis(symbol):
-            for node_name, node_state in output.items():
+        for output in agent.run_analysis(symbol):
+            for _, node_state in output.items():
                 if "error" in node_state and node_state["error"]:
                     error_message = node_state["error"]
                     break
@@ -139,22 +149,31 @@ async def analyze_stock(symbol: str):
 
 
 # 添加一个WebSocket接口作为备选方案（可选）
-@router.websocket("/{symbol}/analyze/ws")
-async def analyze_stock_websocket(websocket, symbol: str):
+@router.websocket("/analyze/ws")
+async def analyze_stock_websocket(websocket):
     """
     WebSocket股票分析接口（可选实现）
     """
     await websocket.accept()
 
     try:
+        # 接收客户端发送的消息
+        data = await websocket.receive_json()
+        symbol = data.get("symbol", "").upper()
+
+        if not symbol:
+            await websocket.send_json({"type": "error", "message": "请提供股票代码"})
+            await websocket.close()
+            return
+
         # 发送开始消息
         await websocket.send_json(
             {"type": "start", "message": f"开始分析股票: {symbol}", "symbol": symbol}
         )
 
         # 运行分析
-        async for output in agent.run_analysis(symbol):
-            for node_name, node_state in output.items():
+        for output in agent.run_analysis(symbol):
+            for _, node_state in output.items():
                 if "progress" in node_state:
                     for progress in node_state["progress"]:
                         await websocket.send_json(
