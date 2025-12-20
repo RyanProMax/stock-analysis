@@ -124,25 +124,25 @@ export const stockApi = {
    * 获取股票解读报告（流式响应）
    */
   getAgentReport: (symbol: string, onMessage: (data: any) => void) => {
-    const eventSource = new EventSource(
-      `${API_BASE_URL}/agent/analyze?symbol=${encodeURIComponent(symbol)}`
-    )
+    const es = new EventSource(`${API_BASE_URL}/agent/analyze?symbol=${encodeURIComponent(symbol)}`)
 
-    eventSource.onmessage = event => {
-      try {
-        const data = JSON.parse(event.data)
-        onMessage(data)
-      } catch (error) {
-        console.error('解析消息失败:', error)
+    es.addEventListener('progress', e => {
+      onMessage(JSON.parse(e.data))
+    })
+
+    es.addEventListener('complete', e => {
+      onMessage(JSON.parse(e.data))
+      es.close()
+    })
+
+    es.onerror = error => {
+      if (es.readyState !== EventSource.CLOSED) {
+        console.error('SSE连接错误', es.readyState, error)
       }
+      es.close()
     }
 
-    eventSource.onerror = error => {
-      console.error('SSE连接错误:', error)
-      eventSource.close()
-    }
-
-    return eventSource
+    return es
   },
 }
 

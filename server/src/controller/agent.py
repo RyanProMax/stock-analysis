@@ -40,27 +40,39 @@ async def analyze_stock_stream(
                 ),
             }
 
+            # 用于去重的集合，记录已发送的进度事件
+            sent_progress = set()
+
             # 运行分析工作流
             for output in agent.run_analysis(symbol):
                 # 提取当前节点的进度信息
                 for _, node_state in output.items():
                     if "progress" in node_state:
                         for progress in node_state["progress"]:
-                            # 发送进度事件
-                            yield {
-                                "event": "progress",
-                                "data": json.dumps(
-                                    {
-                                        "type": "progress",
-                                        "step": progress["step"],
-                                        "status": progress["status"],
-                                        "message": progress["message"],
-                                        "data": progress.get("data"),
-                                        "timestamp": progress["timestamp"],
-                                    },
-                                    ensure_ascii=False,
-                                ),
-                            }
+                            # 创建唯一的进度标识
+                            progress_id = (
+                                progress["step"],
+                                progress["status"],
+                                progress["timestamp"],
+                            )
+
+                            # 只发送未重复的进度事件
+                            if progress_id not in sent_progress:
+                                sent_progress.add(progress_id)
+                                yield {
+                                    "event": "progress",
+                                    "data": json.dumps(
+                                        {
+                                            "type": "progress",
+                                            "step": progress["step"],
+                                            "status": progress["status"],
+                                            "message": progress["message"],
+                                            "data": progress.get("data"),
+                                            "timestamp": progress["timestamp"],
+                                        },
+                                        ensure_ascii=False,
+                                    ),
+                                }
 
                     # 检查是否有错误
                     if "error" in node_state and node_state["error"]:

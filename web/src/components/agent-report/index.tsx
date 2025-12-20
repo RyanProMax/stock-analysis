@@ -43,7 +43,6 @@ export function AgentReport() {
       }
     })
 
-    // Cleanup on unmount
     return () => {
       eventSource.close()
     }

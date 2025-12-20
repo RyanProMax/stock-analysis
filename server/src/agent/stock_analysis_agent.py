@@ -66,10 +66,17 @@ class StockAnalysisAgent:
         workflow.set_entry_point("data_fetcher")
 
         # 定义执行流程
+        # data_fetcher 完成后，并行执行三个分析节点
         workflow.add_edge("data_fetcher", "fundamental_analyzer")
-        workflow.add_edge("fundamental_analyzer", "technical_analyzer")
-        workflow.add_edge("technical_analyzer", "qlib_analyzer")
+        workflow.add_edge("data_fetcher", "technical_analyzer")
+        workflow.add_edge("data_fetcher", "qlib_analyzer")
+
+        # 三个分析节点都完成后，进入 decision_maker
+        # LangGraph 会自动等待所有入边完成才执行下一个节点
+        workflow.add_edge("fundamental_analyzer", "decision_maker")
+        workflow.add_edge("technical_analyzer", "decision_maker")
         workflow.add_edge("qlib_analyzer", "decision_maker")
+
         workflow.add_edge("decision_maker", END)
 
         return workflow.compile()
@@ -79,14 +86,14 @@ class StockAnalysisAgent:
         try:
             symbol = state["symbol"]
 
-            # 更新进度
-            progress_entry = {
+            # 初始化进度
+            running_progress = {
                 "step": "data_fetcher",
                 "status": "running",
                 "message": f"正在获取股票 {symbol} 的基础数据...",
                 "timestamp": datetime.now().isoformat(),
             }
-            state["progress"].append(progress_entry)
+            state["progress"].append(running_progress)
             state["current_step"] = "data_fetcher"
 
             # 获取股票数据
@@ -94,8 +101,9 @@ class StockAnalysisAgent:
 
             if not result["success"]:
                 state["error"] = result.get("error", "数据获取失败")
-                progress_entry["status"] = "error"
-                progress_entry["message"] = f"数据获取失败: {state['error']}"
+                # 更新运行状态为错误
+                state["progress"][-1]["status"] = "error"
+                state["progress"][-1]["message"] = f"数据获取失败: {state['error']}"
                 return state
 
             # 存储数据供后续节点使用
@@ -110,9 +118,14 @@ class StockAnalysisAgent:
             }
 
             # 更新进度
-            progress_entry["status"] = "success"
-            progress_entry["message"] = f"成功获取股票 {symbol} 的基础数据"
-            state["progress"].append(progress_entry)
+            state["progress"].append(
+                {
+                    "step": "data_fetcher",
+                    "status": "success",
+                    "message": f"成功获取股票 {symbol} 的基础数据",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
 
             return state
 
@@ -165,8 +178,8 @@ class StockAnalysisAgent:
                         "name": factor.name,
                         "key": factor.key,
                         "status": factor.status,
-                        "bullish_signals": [s.model_dump() for s in factor.bullish_signals],
-                        "bearish_signals": [s.model_dump() for s in factor.bearish_signals],
+                        "bullish_signals": list(factor.bullish_signals),
+                        "bearish_signals": list(factor.bearish_signals),
                     }
                     fundamental_analysis["factors"].append(factor_dict)
 
@@ -250,8 +263,8 @@ class StockAnalysisAgent:
                         "name": factor.name,
                         "key": factor.key,
                         "status": factor.status,
-                        "bullish_signals": [s.model_dump() for s in factor.bullish_signals],
-                        "bearish_signals": [s.model_dump() for s in factor.bearish_signals],
+                        "bullish_signals": list(factor.bullish_signals),
+                        "bearish_signals": list(factor.bearish_signals),
                     }
                     technical_analysis["factors"].append(factor_dict)
 
