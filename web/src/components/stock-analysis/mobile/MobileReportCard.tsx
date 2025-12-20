@@ -3,9 +3,11 @@ import {
   DownOutlined,
   UpOutlined,
   ExclamationCircleOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
-import { SwipeAction, ProgressBar } from 'antd-mobile'
+import { SwipeAction, ProgressBar, Button } from 'antd-mobile'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { AnalysisReport, FactorDetail } from '../../../types'
 import { MobileFactorList } from './MobileFactorList'
 
@@ -17,6 +19,7 @@ interface MobileReportCardProps {
 
 export const MobileReportCard: React.FC<MobileReportCardProps> = ({ symbol, report, onRemove }) => {
   const [isStockExpanded, setIsStockExpanded] = useState(false)
+  const navigate = useNavigate()
 
   const rightActions = [
     {
@@ -236,6 +239,27 @@ export const MobileReportCard: React.FC<MobileReportCardProps> = ({ symbol, repo
                 getFactorStatus={getFactorStatus}
                 getFactorStatusStyle={getFactorStatusStyle}
               />
+
+              {/* Agent解读按钮 */}
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  block
+                  color="primary"
+                  size="large"
+                  onClick={e => {
+                    e.stopPropagation()
+                    navigate(`/agent/${symbol}`)
+                  }}
+                  className="bg-linear-to-r from-purple-500 to-pink-500"
+                  style={{
+                    '--background-color': '#8b5cf6',
+                    '--border-color': '#8b5cf6',
+                  }}
+                >
+                  <FileTextOutlined className="mr-2" />
+                  查看AI解读报告
+                </Button>
+              </div>
             </div>
           )}
         </div>

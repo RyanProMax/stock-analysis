@@ -53,8 +53,8 @@ The system uses a **layered architecture** with clear separation of concerns:
 ```
 controller/    # API endpoints and request/response handling
     - index.py        # Route registration center
-    - stock.py  # Traditional batch analysis endpoints
-    - agent.py        # LangGraph agent streaming endpoints
+    - stock.py        # Traditional batch analysis endpoints
+    - agent.py        # LangGraph agent streaming endpoint (/analyze)
 
 service/       # Business logic layer
     - index.py        # Orchestration of stock analysis
@@ -95,10 +95,22 @@ agent/         # LangGraph workflow implementation
 ### Agent Integration
 
 The LangGraph agent provides:
-- **Streaming analysis** via Server-Sent Events (SSE)
+- **Streaming analysis** via Server-Sent Events (SSE) at `/agent/analyze`
 - **Node-based architecture** for easy extension
 - **Real-time progress updates** for each analysis step
 - **Comprehensive scoring** combining all factors
+
+### Agent Endpoints
+
+#### Streaming Analysis
+```
+GET /agent/analyze?symbol={symbol}&refresh={bool}
+```
+Returns Server-Sent Events (SSE) with real-time analysis progress:
+- `start` - Analysis initiated
+- `progress` - Step-by-step progress updates
+- `error` - Any errors during analysis
+- `complete` - Final analysis result
 
 ### Agent Architecture
 
@@ -138,5 +150,5 @@ async def _custom_node(self, state: AgentState) -> AgentState:
 - Technical indicators are pre-calculated via StockDataFrame
 - Caching keys include date to ensure fresh data daily
 - The system supports both A-shares (via Tushare) and US stocks (via yfinance)
-- Agent endpoints are separate from legacy endpoints for backward compatibility
+- Agent endpoint is at `/agent/analyze` (streaming only)
 - Each node has independent error handling

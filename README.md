@@ -127,19 +127,18 @@ stock-analysis/
 
 ```bash
 # 流式分析 (SSE)
-GET /agent/analyze/stream?symbol=NVDA&refresh=false
-
-# 普通分析
 GET /agent/analyze?symbol=NVDA&refresh=false
-
-# WebSocket (可选)
-WS /agent/analyze/ws
-# 发送消息：{"symbol": "NVDA"}
 
 # 参数说明：
 # symbol: 股票代码（必需）
 # refresh: 是否强制刷新缓存（可选，默认false）
 ```
+
+该接口返回 Server-Sent Events (SSE) 流，包含以下事件类型：
+- `start`: 分析开始
+- `progress`: 分析进度更新
+- `error`: 错误信息
+- `complete`: 分析完成结果
 
 ### POST /stock/analyze
 

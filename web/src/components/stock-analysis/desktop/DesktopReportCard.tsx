@@ -1,5 +1,7 @@
-import { X, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, AlertCircle, FileText } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from 'antd'
 import type { AnalysisReport, FactorDetail } from '../../../types'
 import { FactorList } from './DesktopFactorList'
 
@@ -12,6 +14,7 @@ interface ReportCardProps {
 export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove }) => {
   const [isStockExpanded, setIsStockExpanded] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
+  const navigate = useNavigate()
 
   if (!report) {
     return (
@@ -232,7 +235,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
           </div>
 
           {/* PC端：显示完整样式（进度条上方显示emoji+分数+标签） */}
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto flex items-center">
             <div
               className={`hidden min-w-[120px] sm:block transition-all duration-200 ${isHovered ? '-translate-x-2' : ''}`}
             >
@@ -255,22 +258,49 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
                 />
               </div>
             </div>
-            {onRemove && (
-              <button
+            {/* Agent解读按钮 */}
+            <div
+              className={`flex items-center gap-2 transition-all duration-200 ${
+                isHovered ? 'ml-2' : 'ml-0'
+              }`}
+            >
+              <Button
+                icon={<FileText className="h-4 w-4 text-white!" />}
                 onClick={e => {
                   e.stopPropagation()
-                  onRemove()
+                  navigate(`/agent/${symbol}`)
                 }}
-                className={`rounded-md p-1 text-gray-400 transition-all duration-200 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 ${
-                  isHovered
-                    ? 'opacity-100 translate-x-0 w-auto'
-                    : 'opacity-0 translate-x-2 w-0 overflow-hidden'
-                }`}
-                aria-label="删除"
+                className={`
+                  text-white overflow-hidden
+                  transition-all duration-300!
+                  bg-linear-to-r! from-purple-500 via-pink-500 to-purple-500
+                  bg-size-[200%_100%] bg-left
+                  hover:bg-right
+                  ${
+                    isHovered
+                      ? 'opacity-100 translate-x-0 w-auto'
+                      : 'opacity-0 translate-x-2 w-0 p-0!'
+                  }`}
+                title="查看AI解读报告"
               >
-                <X className="h-5 w-5" />
-              </button>
-            )}
+                <span className="font-medium whitespace-nowrap text-white">AI解读</span>
+              </Button>
+              {onRemove && (
+                <Button
+                  icon={<X className="h-5 w-5" />}
+                  onClick={e => {
+                    e.stopPropagation()
+                    onRemove()
+                  }}
+                  className={`
+                    overflow-hidden
+                    rounded-md transition-all duration-300!
+                    ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 w-0'}`}
+                  type="text"
+                  aria-label="删除"
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

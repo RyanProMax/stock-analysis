@@ -51,3 +51,14 @@ export interface StockListResponse {
   stocks: StockInfo[]
   total: number
 }
+
+// Agent报告消息类型
+export interface AgentReportMessage {
+  node: string
+  status: 'running' | 'completed' | 'error'
+  progress?: number
+  message?: string
+  data?: any
+  content?: string
+  error?: string
+}

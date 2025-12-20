@@ -4,17 +4,16 @@ Agent控制器 - 提供流式股票分析接口
 
 import json
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
 
 from ..agent.stock_analysis_agent import StockAnalysisAgent
-from ..controller.schemas import StandardResponse
 
 router = APIRouter()
 agent = StockAnalysisAgent()
 
 
-@router.get("/analyze/stream")
+@router.get("/analyze")
 async def analyze_stock_stream(
     symbol: str = Query(..., description="股票代码", example="NVDA"),
     refresh: Optional[bool] = Query(False, description="是否强制刷新缓存"),
@@ -103,112 +102,3 @@ async def analyze_stock_stream(
             }
 
     return EventSourceResponse(generate())
-
-
-@router.get("/analyze")
-async def analyze_stock(
-    symbol: str = Query(..., description="股票代码", example="NVDA"),
-    refresh: Optional[bool] = Query(False, description="是否强制刷新缓存"),
-):
-    """
-    股票分析接口
-
-    返回完整的分析结果
-    """
-    symbol = symbol.upper()
-    try:
-        # 收集所有分析结果
-        final_result = None
-        error_message = None
-
-        for output in agent.run_analysis(symbol):
-            for _, node_state in output.items():
-                if "error" in node_state and node_state["error"]:
-                    error_message = node_state["error"]
-                    break
-
-                if "analysis_result" in node_state and node_state["analysis_result"]:
-                    final_result = node_state["analysis_result"]
-                    break
-
-            if error_message:
-                break
-
-        if error_message:
-            raise HTTPException(status_code=500, detail=error_message)
-
-        if not final_result:
-            raise HTTPException(status_code=500, detail="分析未返回结果")
-
-        return StandardResponse(status_code=200, data=final_result, err_msg=None)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"分析失败: {str(e)}")
-
-
-# 添加一个WebSocket接口作为备选方案（可选）
-@router.websocket("/analyze/ws")
-async def analyze_stock_websocket(websocket):
-    """
-    WebSocket股票分析接口（可选实现）
-    """
-    await websocket.accept()
-
-    try:
-        # 接收客户端发送的消息
-        data = await websocket.receive_json()
-        symbol = data.get("symbol", "").upper()
-
-        if not symbol:
-            await websocket.send_json({"type": "error", "message": "请提供股票代码"})
-            await websocket.close()
-            return
-
-        # 发送开始消息
-        await websocket.send_json(
-            {"type": "start", "message": f"开始分析股票: {symbol}", "symbol": symbol}
-        )
-
-        # 运行分析
-        for output in agent.run_analysis(symbol):
-            for _, node_state in output.items():
-                if "progress" in node_state:
-                    for progress in node_state["progress"]:
-                        await websocket.send_json(
-                            {
-                                "type": "progress",
-                                "step": progress["step"],
-                                "status": progress["status"],
-                                "message": progress["message"],
-                                "data": progress.get("data"),
-                                "timestamp": progress["timestamp"],
-                            }
-                        )
-
-                if "error" in node_state and node_state["error"]:
-                    await websocket.send_json(
-                        {
-                            "type": "error",
-                            "message": node_state["error"],
-                            "step": node_state.get("current_step", "unknown"),
-                        }
-                    )
-                    await websocket.close()
-                    return
-
-                if "analysis_result" in node_state and node_state["analysis_result"]:
-                    await websocket.send_json(
-                        {
-                            "type": "complete",
-                            "result": node_state["analysis_result"],
-                            "message": "股票分析完成",
-                        }
-                    )
-                    await websocket.close()
-                    return
-
-    except Exception as e:
-        await websocket.send_json({"type": "error", "message": f"WebSocket连接错误: {str(e)}"})
-        await websocket.close()
