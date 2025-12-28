@@ -92,9 +92,15 @@ export interface AnalysisFactor {
 
 export interface AnalysisResult {
   symbol: string
-  recommendation: string
-  score: number
-  summary: string
+  timestamp?: string
+  decision?: {
+    action: string
+    analysis: string
+  }
+  // Legacy fields (if available)
+  recommendation?: string
+  score?: number
+  summary?: string
   technical_analysis?: Record<string, AnalysisFactor>
   fundamental_analysis?: Record<string, AnalysisFactor>
   qlib_analysis?: Record<string, AnalysisFactor>
@@ -107,7 +113,6 @@ export interface AnalysisResult {
     current: number
     upside_potential: number
   }
-  timestamp?: string
 }
 
 export interface CompleteEvent extends BaseSSEEvent {

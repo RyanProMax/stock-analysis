@@ -2,7 +2,6 @@ import { useParams } from 'react-router-dom'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Spin, Card, Typography, Space, Tag, Progress, Alert } from 'antd'
 import {
-  Minus,
   CheckCircle,
   AlertCircle,
   Clock,
@@ -10,7 +9,6 @@ import {
   Activity,
   Brain,
   FileText,
-  Target,
   ThumbsUp,
   ThumbsDown,
   Zap,
@@ -309,48 +307,28 @@ export function AgentReport() {
         {/* 分析完成后的最终报告 */}
         {isComplete && analysisResult && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* 综合评分卡片 */}
-            <Card className="border-2">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  {analysisResult.score > 0 ? (
-                    <ThumbsUp className="h-12 w-12 text-green-500" />
-                  ) : analysisResult.score < 0 ? (
-                    <ThumbsDown className="h-12 w-12 text-red-500" />
-                  ) : (
-                    <Minus className="h-12 w-12 text-gray-500" />
-                  )}
-                  <div>
-                    <Title level={4} className="mb-1">
-                      {analysisResult.recommendation}
-                    </Title>
-                    <Text type="secondary">综合评分: {analysisResult.score.toFixed(2)}</Text>
-                  </div>
+            {/* 分析摘要 / 决策分析 */}
+            {analysisResult.decision ? (
+              <Card title={<Title level={5}>分析报告</Title>}>
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <Paragraph className="text-base leading-relaxed whitespace-pre-wrap">
+                    {analysisResult.decision.analysis}
+                  </Paragraph>
                 </div>
-                {analysisResult.price_target && (
-                  <div className="text-right">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-5 w-5 text-blue-500" />
-                      <Text>目标价: ${analysisResult.price_target.target.toFixed(2)}</Text>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      潜在涨幅: {analysisResult.price_target.upside_potential.toFixed(1)}%
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            {/* 分析摘要 */}
-            <Card title={<Title level={5}>分析摘要</Title>}>
-              <Paragraph className="text-base leading-relaxed">{analysisResult.summary}</Paragraph>
-            </Card>
+              </Card>
+            ) : analysisResult.summary ? (
+              <Card title={<Title level={5}>分析摘要</Title>}>
+                <Paragraph className="text-base leading-relaxed">
+                  {analysisResult.summary}
+                </Paragraph>
+              </Card>
+            ) : null}
 
             {/* 关键因素 */}
             {analysisResult.key_factors && (
               <Card title={<Title level={5}>关键因素</Title>}>
                 <div className="grid md:grid-cols-2 gap-4">
-                  {analysisResult.key_factors.positive.length > 0 && (
+                  {analysisResult.key_factors.positive?.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <ThumbsUp className="h-4 w-4 text-green-500" />
@@ -368,7 +346,7 @@ export function AgentReport() {
                       </ul>
                     </div>
                   )}
-                  {analysisResult.key_factors.negative.length > 0 && (
+                  {analysisResult.key_factors.negative?.length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <ThumbsDown className="h-4 w-4 text-red-500" />
@@ -452,14 +430,6 @@ export function AgentReport() {
                   </div>
                 </Card>
               )}
-
-            {/* 完成提示 */}
-            <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20 text-center">
-              <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
-              <Title level={5} className="text-green-700 dark:text-green-300 mb-0">
-                分析完成
-              </Title>
-            </Card>
           </div>
         )}
 
