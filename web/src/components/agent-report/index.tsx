@@ -1,81 +1,160 @@
 import { useParams } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import { Spin, Card, Typography, Space, Tag } from 'antd'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Spin, Card, Typography, Space, Tag, Progress, Alert } from 'antd'
 import {
-  TrendingUp,
+  Minus,
   CheckCircle,
   AlertCircle,
   Clock,
   BarChart3,
   Activity,
   Brain,
+  FileText,
+  Target,
+  ThumbsUp,
+  ThumbsDown,
+  Zap,
 } from 'lucide-react'
 import { stockApi } from '../../api/client'
-import type { AgentReportMessage } from '../../types'
+import type { AgentReportEvent, ProgressNode, AnalysisResult, AnalysisFactor } from '../../types'
 
 const { Title, Text, Paragraph } = Typography
 
 export function AgentReport() {
   const { symbol } = useParams<{ symbol: string }>()
-  const [messages, setMessages] = useState<AgentReportMessage[]>([])
+  // 状态管理
+  const [events, setEvents] = useState<AgentReportEvent[]>([])
+  const [progressNodes, setProgressNodes] = useState<Record<string, ProgressNode>>({})
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentSymbol, setCurrentSymbol] = useState<string | null>(null)
 
-  const startAnalysis = () => {
-    if (!symbol) return
+  // 处理 SSE 消息
+  const handleMessage = useCallback((event: AgentReportEvent) => {
+    setEvents(prev => [...prev, event])
 
-    // Reset state
-    setMessages([])
-    setIsConnected(true)
-    setIsComplete(false)
-    setError(null)
+    switch (event.type) {
+      case 'start':
+        setCurrentSymbol(event.symbol)
+        setIsConnected(true)
+        break
 
-    const eventSource = stockApi.getAgentReport(symbol, data => {
-      setMessages(prev => [...prev, data])
+      case 'progress':
+        setProgressNodes(prev => ({
+          ...prev,
+          [event.step]: {
+            step: event.step,
+            status: event.status as 'running' | 'completed' | 'error',
+            message: event.message,
+            data: event.data,
+          },
+        }))
+        break
 
-      if (data.status === 'completed') {
+      case 'error':
+        setError(event.message)
+        setIsConnected(false)
+        break
+
+      case 'complete':
+        setAnalysisResult(event.result)
         setIsComplete(true)
         setIsConnected(false)
-      } else if (data.status === 'error') {
-        setError(data.error || '分析出错')
+        // 将所有节点标记为完成
+        setProgressNodes(prev => {
+          const updated = { ...prev }
+          Object.keys(updated).forEach(key => {
+            if (updated[key].status === 'running') {
+              updated[key] = { ...updated[key], status: 'completed' }
+            }
+          })
+          return updated
+        })
+        break
+    }
+  }, [])
+
+  const handleError = useCallback((err: string) => {
+    setError(err)
+    setIsConnected(false)
+  }, [])
+
+  // 使用 ref 追踪当前 symbol，避免重复连接
+  const prevSymbolRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!symbol) return
+    if (symbol === prevSymbolRef.current) return
+
+    // 清理之前的连接
+    prevSymbolRef.current = symbol
+
+    // 重置状态 - 批量更新以减少重渲染
+    const resetState = () => {
+      setEvents([])
+      setProgressNodes({})
+      setAnalysisResult(null)
+      setIsConnected(true)
+      setIsComplete(false)
+      setError(null)
+      setCurrentSymbol(null)
+    }
+
+    // 在下一个微任务中重置状态，避免在 effect 中同步调用 setState
+    queueMicrotask(resetState)
+
+    // 创建 SSE 连接
+    const eventSource = stockApi.getAgentReport(symbol, handleMessage, {
+      onError: handleError,
+      onComplete: () => {
+        setIsComplete(true)
         setIsConnected(false)
-      }
+      },
     })
 
     return () => {
-      eventSource.close()
+      eventSource?.close()
     }
-  }
+  }, [symbol, handleMessage, handleError])
 
-  useEffect(() => {
-    if (symbol) {
-      const timer = setTimeout(() => {
-        const cleanup = startAnalysis()
-        return cleanup
-      }, 0)
-      return () => clearTimeout(timer)
-    }
-  }, [symbol])
-
-  const getNodeIcon = (node: string) => {
-    switch (node) {
+  // 获取节点图标
+  const getNodeIcon = (step: string) => {
+    const iconClass = 'h-5 w-5'
+    switch (step) {
       case 'data_fetcher':
-        return <Clock className="h-5 w-5 text-blue-500" />
+        return <Clock className={`${iconClass} text-blue-500`} />
       case 'fundamental':
-        return <TrendingUp className="h-5 w-5 text-green-500" />
+        return <FileText className={`${iconClass} text-green-500`} />
+      case 'financial_report':
+        return <FileText className={`${iconClass} text-emerald-500`} />
       case 'technical':
-        return <BarChart3 className="h-5 w-5 text-purple-500" />
+        return <BarChart3 className={`${iconClass} text-purple-500`} />
       case 'qlib':
-        return <Activity className="h-5 w-5 text-orange-500" />
+        return <Activity className={`${iconClass} text-orange-500`} />
       case 'decision':
-        return <Brain className="h-5 w-5 text-pink-500" />
+        return <Brain className={`${iconClass} text-pink-500`} />
       default:
-        return <CheckCircle className="h-5 w-5 text-gray-500" />
+        return <CheckCircle className={`${iconClass} text-gray-500`} />
     }
   }
 
-  const getNodeStatusColor = (status: string) => {
+  // 获取节点显示名称
+  const getNodeDisplayName = (step: string) => {
+    const names: Record<string, string> = {
+      data_fetcher: '数据获取',
+      fundamental: '基本面分析',
+      financial_report: '财务报告',
+      technical: '技术面分析',
+      qlib: 'Qlib因子',
+      decision: '综合决策',
+    }
+    return names[step] || step
+  }
+
+  // 获取状态颜色
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'running':
         return 'processing'
@@ -88,189 +167,309 @@ export function AgentReport() {
     }
   }
 
-  const formatContent = (content: string) => {
-    // 格式化内容，处理换行和特殊标记
-    return content
-      .replace(/\n/g, '<br />')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(
-        /```(.*?)```/gs,
-        '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-md mt-2 mb-2"><code>$1</code></pre>'
-      )
+  // 获取状态文本
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'running':
+        return '分析中'
+      case 'completed':
+        return '已完成'
+      case 'error':
+        return '出错'
+      default:
+        return '等待中'
+    }
+  }
+
+  // 渲染因子卡片
+  const renderFactorCard = (name: string, factor: AnalysisFactor) => {
+    const isPositive = factor.status === 'bullish'
+    const isNegative = factor.status === 'bearish'
+
+    return (
+      <Card
+        key={name}
+        size="small"
+        className={`border-l-4 ${
+          isPositive
+            ? 'border-l-green-500 bg-green-50 dark:bg-green-950/20'
+            : isNegative
+              ? 'border-l-red-500 bg-red-50 dark:bg-red-950/20'
+              : 'border-l-gray-400 bg-gray-50 dark:bg-gray-800/50'
+        }`}
+      >
+        <Space className="flex flex-col w-full" size="small">
+          <div className="flex items-center justify-between">
+            <Text strong>{name}</Text>
+            <Tag color={isPositive ? 'green' : isNegative ? 'red' : 'default'}>{factor.status}</Tag>
+          </div>
+          {factor.signals && factor.signals.length > 0 && (
+            <div className="space-y-1">
+              {factor.signals.map((signal, idx) => (
+                <div key={idx} className="text-sm text-gray-600 dark:text-gray-400">
+                  • {signal}
+                </div>
+              ))}
+            </div>
+          )}
+          {factor.score !== undefined && (
+            <div className="text-sm">
+              <Text type="secondary">评分：</Text>
+              <Text strong>{factor.score.toFixed(2)}</Text>
+            </div>
+          )}
+        </Space>
+      </Card>
+    )
+  }
+
+  // 计算整体进度
+  const calculateProgress = () => {
+    const nodes = Object.values(progressNodes)
+    if (nodes.length === 0) return 0
+    const completed = nodes.filter(n => n.status === 'completed').length
+    return Math.floor((completed / 5) * 100)
   }
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-950 transition-colors">
-      <div className="container mx-auto px-4 py-6 max-w-6xl flex flex-col items-center">
+    <div className="bg-gray-50 dark:bg-gray-950 transition-colors min-h-screen">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
         {/* Header */}
-        <Title level={2} className="mt-6 font-light!">
-          {symbol}
-        </Title>
+        <div className="text-center mb-6">
+          <Title level={2} className="font-light!">
+            {currentSymbol || symbol}
+          </Title>
+          {isConnected && (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <Spin size="small" />
+              <Text type="secondary">正在分析中...</Text>
+            </div>
+          )}
+        </div>
+
+        {/* 进度条 */}
+        {isConnected && Object.keys(progressNodes).length > 0 && (
+          <div className="mb-6">
+            <Progress percent={calculateProgress()} status="active" />
+          </div>
+        )}
 
         {/* Error State */}
         {error && (
-          <Card className="mb-6 border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/20">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-6 w-6 text-rose-500" />
-              <div>
-                <Text strong className="text-rose-700 dark:text-rose-300">
-                  分析失败
-                </Text>
-                <div className="text-rose-600 dark:text-rose-400 mt-1">{error}</div>
-              </div>
-            </div>
-          </Card>
+          <Alert
+            title={<span className="font-medium">分析失败</span>}
+            description={error}
+            type="error"
+            showIcon
+            className="mb-6!"
+            closable={{
+              onClose: () => setError(null),
+            }}
+          />
         )}
 
-        {/* Progress Indicators */}
-        <div className="w-full mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-          {['data_fetcher', 'fundamental', 'technical', 'qlib', 'decision'].map(node => {
-            const nodeMessage = messages.find(m => m.node === node)
-            const isActive = nodeMessage?.status === 'running'
-            const isCompleted = nodeMessage?.status === 'completed'
+        {/* 节点进度卡片 */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+          {['data_fetcher', 'fundamental', 'technical', 'qlib', 'decision'].map(step => {
+            const node = progressNodes[step]
+            const isActive = node?.status === 'running'
+            const isCompleted = node?.status === 'completed'
 
             return (
               <Card
-                key={node}
+                key={step}
                 size="small"
                 className={`text-center transition-all duration-300 ${
                   isActive
-                    ? 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/20'
+                    ? 'border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30 shadow-md'
                     : isCompleted
-                      ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-950/20'
+                      ? 'border-green-400 bg-green-50 dark:border-green-600 dark:bg-green-950/20'
                       : 'border-gray-200 dark:border-gray-700'
                 }`}
               >
                 <Space className="flex flex-col gap-2" size="small">
-                  {getNodeIcon(node)}
-                  <Text strong className="capitalize">
-                    {node.replace('_', ' ')}
+                  {getNodeIcon(step)}
+                  <Text strong className="text-sm">
+                    {getNodeDisplayName(step)}
                   </Text>
-                  <Tag color={getNodeStatusColor(nodeMessage?.status || 'pending')}>
-                    {nodeMessage?.status === 'running'
-                      ? '分析中'
-                      : nodeMessage?.status === 'completed'
-                        ? '已完成'
-                        : '等待中'}
+                  <Tag color={getStatusColor(node?.status || 'pending')} className="text-xs">
+                    {getStatusText(node?.status || 'pending')}
                   </Tag>
+                  {node?.message && (
+                    <Text className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                      {node.message}
+                    </Text>
+                  )}
                 </Space>
               </Card>
             )
           })}
         </div>
 
-        {/* Message Stream */}
-        <div className="space-y-4">
-          {messages.length === 0 && !isConnected && (
-            <Card className="text-center py-12">
-              <Spin size="large" />
-              <div className="mt-4">
-                <Text type="secondary">准备开始分析...</Text>
+        {/* 分析完成后的最终报告 */}
+        {isComplete && analysisResult && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* 综合评分卡片 */}
+            <Card className="border-2">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  {analysisResult.score > 0 ? (
+                    <ThumbsUp className="h-12 w-12 text-green-500" />
+                  ) : analysisResult.score < 0 ? (
+                    <ThumbsDown className="h-12 w-12 text-red-500" />
+                  ) : (
+                    <Minus className="h-12 w-12 text-gray-500" />
+                  )}
+                  <div>
+                    <Title level={4} className="mb-1">
+                      {analysisResult.recommendation}
+                    </Title>
+                    <Text type="secondary">综合评分: {analysisResult.score.toFixed(2)}</Text>
+                  </div>
+                </div>
+                {analysisResult.price_target && (
+                  <div className="text-right">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-500" />
+                      <Text>目标价: ${analysisResult.price_target.target.toFixed(2)}</Text>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      潜在涨幅: {analysisResult.price_target.upside_potential.toFixed(1)}%
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
-          )}
 
-          {messages.map((message, index) => (
-            <Card
-              key={`${message.node}-${index}`}
-              className="overflow-hidden"
-              title={
-                <div className="flex items-center gap-2">
-                  {getNodeIcon(message.node)}
-                  <span className="capitalize font-medium">
-                    {message.node === 'data_fetcher'
-                      ? '数据获取'
-                      : message.node === 'fundamental'
-                        ? '基本面分析'
-                        : message.node === 'technical'
-                          ? '技术面分析'
-                          : message.node === 'qlib'
-                            ? 'Qlib因子分析'
-                            : message.node === 'decision'
-                              ? '综合决策'
-                              : message.node}
-                  </span>
-                  <Tag color={getNodeStatusColor(message.status)} className="text-xs">
-                    {message.status === 'running'
-                      ? '分析中'
-                      : message.status === 'completed'
-                        ? '已完成'
-                        : '出错'}
-                  </Tag>
-                </div>
-              }
-            >
-              {message.content && (
-                <div
-                  className="prose prose-sm dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: formatContent(message.content) }}
-                />
-              )}
-
-              {message.data && (
-                <div className="mt-4">
-                  {message.data.summary && (
-                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                      <Title level={5}>分析摘要</Title>
-                      <Paragraph>{message.data.summary}</Paragraph>
-                    </div>
-                  )}
-
-                  {message.data.recommendation && (
-                    <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg mt-3">
-                      <Title level={5} className="text-blue-700! dark:text-blue-300!">
-                        投资建议
-                      </Title>
-                      <Paragraph className="text-blue-600! dark:text-blue-400!">
-                        {message.data.recommendation}
-                      </Paragraph>
-                    </div>
-                  )}
-
-                  {message.data.score !== undefined && (
-                    <div className="mt-3">
-                      <Text strong>综合评分：</Text>
-                      <Tag
-                        color={
-                          message.data.score > 0
-                            ? 'green'
-                            : message.data.score < 0
-                              ? 'red'
-                              : 'default'
-                        }
-                      >
-                        {message.data.score > 0 ? '看涨' : message.data.score < 0 ? '看跌' : '中性'}
-                        ({Math.abs(message.data.score).toFixed(2)})
-                      </Tag>
-                    </div>
-                  )}
-                </div>
-              )}
+            {/* 分析摘要 */}
+            <Card title={<Title level={5}>分析摘要</Title>}>
+              <Paragraph className="text-base leading-relaxed">{analysisResult.summary}</Paragraph>
             </Card>
-          ))}
-        </div>
 
-        {/* Loading State */}
-        {isConnected && (
-          <div className="text-center mt-8">
-            <Spin size="large" />
-            <Text type="secondary" className="block mt-2">
-              正在分析中，请稍候...
-            </Text>
+            {/* 关键因素 */}
+            {analysisResult.key_factors && (
+              <Card title={<Title level={5}>关键因素</Title>}>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {analysisResult.key_factors.positive.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <ThumbsUp className="h-4 w-4 text-green-500" />
+                        <Text strong className="text-green-600 dark:text-green-400">
+                          看涨因素
+                        </Text>
+                      </div>
+                      <ul className="space-y-1">
+                        {analysisResult.key_factors.positive.map((factor, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                            <Text>{factor}</Text>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {analysisResult.key_factors.negative.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <ThumbsDown className="h-4 w-4 text-red-500" />
+                        <Text strong className="text-red-600 dark:text-red-400">
+                          看跌因素
+                        </Text>
+                      </div>
+                      <ul className="space-y-1">
+                        {analysisResult.key_factors.negative.map((factor, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                            <Text>{factor}</Text>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* 技术分析详情 */}
+            {analysisResult.technical_analysis &&
+              Object.keys(analysisResult.technical_analysis).length > 0 && (
+                <Card
+                  title={
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-purple-500" />
+                      <Title level={5} className="mb-0">
+                        技术分析
+                      </Title>
+                    </div>
+                  }
+                >
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Object.entries(analysisResult.technical_analysis).map(([name, factor]) =>
+                      renderFactorCard(name, factor)
+                    )}
+                  </div>
+                </Card>
+              )}
+
+            {/* 基本面分析详情 */}
+            {analysisResult.fundamental_analysis &&
+              Object.keys(analysisResult.fundamental_analysis).length > 0 && (
+                <Card
+                  title={
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-green-500" />
+                      <Title level={5} className="mb-0">
+                        基本面分析
+                      </Title>
+                    </div>
+                  }
+                >
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Object.entries(analysisResult.fundamental_analysis).map(([name, factor]) =>
+                      renderFactorCard(name, factor)
+                    )}
+                  </div>
+                </Card>
+              )}
+
+            {/* Qlib 因子分析详情 */}
+            {analysisResult.qlib_analysis &&
+              Object.keys(analysisResult.qlib_analysis).length > 0 && (
+                <Card
+                  title={
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-orange-500" />
+                      <Title level={5} className="mb-0">
+                        量化因子分析
+                      </Title>
+                    </div>
+                  }
+                >
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Object.entries(analysisResult.qlib_analysis).map(([name, factor]) =>
+                      renderFactorCard(name, factor)
+                    )}
+                  </div>
+                </Card>
+              )}
+
+            {/* 完成提示 */}
+            <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20 text-center">
+              <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
+              <Title level={5} className="text-green-700 dark:text-green-300 mb-0">
+                分析完成
+              </Title>
+            </Card>
           </div>
         )}
 
-        {/* Completion State */}
-        {isComplete && (
-          <Card className="mt-6 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20 text-center">
-            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-            <Title level={4} className="text-green-700! dark:text-green-300!">
-              分析完成
-            </Title>
-            <Text type="secondary" className="text-green-600 dark:text-green-400">
-              已为您生成完整的股票分析报告
-            </Text>
+        {/* 初始加载状态 */}
+        {!isComplete && !error && events.length === 0 && (
+          <Card className="text-center py-16">
+            <Spin size="large" />
+            <div className="mt-4">
+              <Text type="secondary">正在连接分析服务...</Text>
+            </div>
           </Card>
         )}
       </div>

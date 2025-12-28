@@ -1,5 +1,10 @@
 import axios, { AxiosError } from 'axios'
-import type { AnalysisReport, StandardResponse, StockListResponse } from '../types'
+import type {
+  AnalysisReport,
+  StandardResponse,
+  StockListResponse,
+  AgentReportEvent,
+} from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const PING_TIMEOUT = 60000
@@ -123,21 +128,62 @@ export const stockApi = {
   /**
    * 获取股票解读报告（流式响应）
    */
-  getAgentReport: (symbol: string, onMessage: (data: any) => void) => {
+  getAgentReport: (
+    symbol: string,
+    onMessage: (data: AgentReportEvent) => void,
+    options?: { onError?: (error: string) => void; onComplete?: () => void }
+  ) => {
     const es = new EventSource(`${API_BASE_URL}/agent/analyze?symbol=${encodeURIComponent(symbol)}`)
 
-    es.addEventListener('progress', e => {
-      onMessage(JSON.parse(e.data))
+    // 监听 start 事件
+    es.addEventListener('start', (e: Event) => {
+      try {
+        const data = JSON.parse((e as MessageEvent).data)
+        onMessage(data)
+      } catch (err) {
+        console.error('解析 start 事件失败:', err)
+      }
     })
 
-    es.addEventListener('complete', e => {
-      onMessage(JSON.parse(e.data))
+    // 监听 progress 事件
+    es.addEventListener('progress', (e: Event) => {
+      try {
+        const data = JSON.parse((e as MessageEvent).data)
+        onMessage(data)
+      } catch (err) {
+        console.error('解析 progress 事件失败:', err)
+      }
+    })
+
+    // 监听 error 事件
+    es.addEventListener('error', (e: Event) => {
+      try {
+        const data = JSON.parse((e as MessageEvent).data)
+        onMessage(data)
+        options?.onError?.(data.message)
+      } catch (err) {
+        console.error('解析 error 事件失败:', err)
+        options?.onError?.('分析过程发生错误')
+      }
+      es.close()
+    })
+
+    // 监听 complete 事件
+    es.addEventListener('complete', (e: Event) => {
+      try {
+        const data = JSON.parse((e as MessageEvent).data)
+        onMessage(data)
+        options?.onComplete?.()
+      } catch (err) {
+        console.error('解析 complete 事件失败:', err)
+      }
       es.close()
     })
 
     es.onerror = error => {
       if (es.readyState !== EventSource.CLOSED) {
         console.error('SSE连接错误', es.readyState, error)
+        options?.onError?.('连接服务器失败')
       }
       es.close()
     }
