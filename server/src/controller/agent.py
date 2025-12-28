@@ -44,7 +44,7 @@ async def analyze_stock_stream(
             sent_progress = set()
 
             # 运行分析工作流
-            for output in agent.run_analysis(symbol):
+            async for output in agent.run_analysis(symbol):
                 # 提取当前节点的进度信息
                 for _, node_state in output.items():
                     if "progress" in node_state:

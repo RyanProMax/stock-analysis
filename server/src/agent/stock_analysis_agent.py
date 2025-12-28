@@ -16,24 +16,31 @@ from . import prompts
 from .llm import LLMManager
 
 
+# 定义 reducer 函数 - 用于并发状态合并时"右侧值优先"
+def _right_reducer(left, right):
+    """右侧值优先的 reducer（last write wins）"""
+    return right
+
+
 class AgentState(TypedDict):
     """Agent状态定义"""
 
-    symbol: str
-    messages: Annotated[Sequence[dict], "消息历史"]
-    current_step: str
-    error: Optional[str]
+    # 使用 Annotated 标记字段，防止并发冲突
+    symbol: Annotated[str, _right_reducer]
+    messages: Annotated[Sequence[dict], _right_reducer]
+    current_step: Annotated[str, _right_reducer]
+    error: Annotated[Optional[str], _right_reducer]
 
     # 存储各类分析结果
-    fundamental_data: Optional[Any]
-    technical_data: Optional[Any]
-    qlib_data: Optional[Any]
-    fear_greed: Optional[Any]
+    fundamental_data: Annotated[Optional[Any], _right_reducer]
+    technical_data: Annotated[Optional[Any], _right_reducer]
+    qlib_data: Annotated[Optional[Any], _right_reducer]
+    fear_greed: Annotated[Optional[Any], _right_reducer]
 
     # 最终结果
-    analysis_result: Optional[Dict[str, Any]]
+    analysis_result: Annotated[Optional[Dict[str, Any]], _right_reducer]
 
-    # 进度追踪
+    # 进度追踪 - 多个节点都会追加，使用 add
     progress: Annotated[List[Dict[str, Any]], operator.add]
 
 
@@ -143,7 +150,7 @@ class StockAnalysisAgent:
             self._add_progress(state, "qlib_analyzer", "error", f"Qlib分析异常: {str(e)}")
             return state
 
-    def _decision_maker_node(self, state: AgentState) -> AgentState:
+    async def _decision_maker_node(self, state: AgentState) -> AgentState:
         """决策节点"""
         try:
             self._add_progress(state, "decision_maker", "running", "生成投资建议...")
@@ -178,10 +185,8 @@ class StockAnalysisAgent:
                     },
                 ]
 
-                llm_output = asyncio.run(
-                    self.llm_manager.chat_completion(
-                        messages=messages, temperature=0.3, max_tokens=1000
-                    )
+                llm_output = await self.llm_manager.chat_completion(
+                    messages=messages, temperature=0.3, max_tokens=1000
                 )
 
                 # 简单解析LLM输出
@@ -239,7 +244,7 @@ class StockAnalysisAgent:
                 )
         return result
 
-    def run_analysis(self, symbol: str):
+    async def run_analysis(self, symbol: str):
         """运行分析"""
         initial_state = AgentState(
             symbol=symbol,
@@ -254,5 +259,5 @@ class StockAnalysisAgent:
             progress=[],
         )
 
-        for output in self.graph.stream(initial_state):
+        async for output in self.graph.astream(initial_state):
             yield output
