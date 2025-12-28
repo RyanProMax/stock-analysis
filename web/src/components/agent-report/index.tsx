@@ -18,25 +18,63 @@ import type { AgentReportEvent, ProgressNode, AnalysisResult, AnalysisFactor } f
 
 const { Title, Text, Paragraph } = Typography
 
+// 步骤名称映射：SSE返回的step -> 显示名称
+const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; color: string }> = {
+  data_fetcher: { name: '数据获取', icon: <Clock className="h-5 w-5" />, color: 'blue' },
+  fundamental_analyzer: {
+    name: '基本面分析',
+    icon: <FileText className="h-5 w-5" />,
+    color: 'green',
+  },
+  financial_report_analyzer: {
+    name: '财务报告',
+    icon: <FileText className="h-5 w-5" />,
+    color: 'emerald',
+  },
+  technical_analyzer: {
+    name: '技术面分析',
+    icon: <BarChart3 className="h-5 w-5" />,
+    color: 'purple',
+  },
+  qlib_analyzer: { name: 'Qlib因子', icon: <Activity className="h-5 w-5" />, color: 'orange' },
+  decision_maker: { name: '综合决策', icon: <Brain className="h-5 w-5" />, color: 'pink' },
+} as const
+
+// 步骤显示顺序
+const STEP_ORDER = [
+  'data_fetcher',
+  'fundamental_analyzer',
+  'technical_analyzer',
+  'qlib_analyzer',
+  'decision_maker',
+] as const
+
+// 状态映射：SSE返回的status -> 内部status
+const mapStatus = (sseStatus: string): 'running' | 'completed' | 'error' => {
+  if (sseStatus === 'success') return 'completed'
+  if (sseStatus === 'running') return 'running'
+  if (sseStatus === 'error') return 'error'
+  return 'running'
+}
+
 export function AgentReport() {
   const { symbol } = useParams<{ symbol: string }>()
   // 状态管理
-  const [events, setEvents] = useState<AgentReportEvent[]>([])
   const [progressNodes, setProgressNodes] = useState<Record<string, ProgressNode>>({})
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null)
+  const [hasStarted, setHasStarted] = useState(false)
 
   // 处理 SSE 消息
   const handleMessage = useCallback((event: AgentReportEvent) => {
-    setEvents(prev => [...prev, event])
-
     switch (event.type) {
       case 'start':
         setCurrentSymbol(event.symbol)
         setIsConnected(true)
+        setHasStarted(true)
         break
 
       case 'progress':
@@ -44,7 +82,7 @@ export function AgentReport() {
           ...prev,
           [event.step]: {
             step: event.step,
-            status: event.status as 'running' | 'completed' | 'error',
+            status: mapStatus(event.status),
             message: event.message,
             data: event.data,
           },
@@ -91,13 +129,13 @@ export function AgentReport() {
 
     // 重置状态 - 批量更新以减少重渲染
     const resetState = () => {
-      setEvents([])
       setProgressNodes({})
       setAnalysisResult(null)
       setIsConnected(true)
       setIsComplete(false)
       setError(null)
       setCurrentSymbol(null)
+      setHasStarted(false)
     }
 
     // 在下一个微任务中重置状态，避免在 effect 中同步调用 setState
@@ -117,66 +155,17 @@ export function AgentReport() {
     }
   }, [symbol, handleMessage, handleError])
 
-  // 获取节点图标
-  const getNodeIcon = (step: string) => {
-    const iconClass = 'h-5 w-5'
-    switch (step) {
-      case 'data_fetcher':
-        return <Clock className={`${iconClass} text-blue-500`} />
-      case 'fundamental':
-        return <FileText className={`${iconClass} text-green-500`} />
-      case 'financial_report':
-        return <FileText className={`${iconClass} text-emerald-500`} />
-      case 'technical':
-        return <BarChart3 className={`${iconClass} text-purple-500`} />
-      case 'qlib':
-        return <Activity className={`${iconClass} text-orange-500`} />
-      case 'decision':
-        return <Brain className={`${iconClass} text-pink-500`} />
-      default:
-        return <CheckCircle className={`${iconClass} text-gray-500`} />
+  // 获取图标颜色类名
+  const getIconColorClass = (color: string) => {
+    const colorMap: Record<string, string> = {
+      blue: 'text-blue-500',
+      green: 'text-green-500',
+      emerald: 'text-emerald-500',
+      purple: 'text-purple-500',
+      orange: 'text-orange-500',
+      pink: 'text-pink-500',
     }
-  }
-
-  // 获取节点显示名称
-  const getNodeDisplayName = (step: string) => {
-    const names: Record<string, string> = {
-      data_fetcher: '数据获取',
-      fundamental: '基本面分析',
-      financial_report: '财务报告',
-      technical: '技术面分析',
-      qlib: 'Qlib因子',
-      decision: '综合决策',
-    }
-    return names[step] || step
-  }
-
-  // 获取状态颜色
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'running':
-        return 'processing'
-      case 'completed':
-        return 'success'
-      case 'error':
-        return 'error'
-      default:
-        return 'default'
-    }
-  }
-
-  // 获取状态文本
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'running':
-        return '分析中'
-      case 'completed':
-        return '已完成'
-      case 'error':
-        return '出错'
-      default:
-        return '等待中'
-    }
+    return colorMap[color] || 'text-gray-500'
   }
 
   // 渲染因子卡片
@@ -266,43 +255,52 @@ export function AgentReport() {
           />
         )}
 
-        {/* 节点进度卡片 */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-          {['data_fetcher', 'fundamental', 'technical', 'qlib', 'decision'].map(step => {
-            const node = progressNodes[step]
-            const isActive = node?.status === 'running'
-            const isCompleted = node?.status === 'completed'
+        {/* 节点进度卡片 - 仅在SSE开始加载后显示 */}
+        {hasStarted && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+            {STEP_ORDER.map(step => {
+              const node = progressNodes[step]
+              const config = STEP_CONFIG[step]
+              const isActive = node?.status === 'running'
+              const isCompleted = node?.status === 'completed'
+              const hasNode = !!node
 
-            return (
-              <Card
-                key={step}
-                size="small"
-                className={`text-center transition-all duration-300 ${
-                  isActive
-                    ? 'border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30 shadow-md'
-                    : isCompleted
-                      ? 'border-green-400 bg-green-50 dark:border-green-600 dark:bg-green-950/20'
-                      : 'border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                <Space className="flex flex-col gap-2" size="small">
-                  {getNodeIcon(step)}
-                  <Text strong className="text-sm">
-                    {getNodeDisplayName(step)}
-                  </Text>
-                  <Tag color={getStatusColor(node?.status || 'pending')} className="text-xs">
-                    {getStatusText(node?.status || 'pending')}
-                  </Tag>
-                  {node?.message && (
-                    <Text className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                      {node.message}
+              return (
+                <Card
+                  key={step}
+                  size="small"
+                  className={`text-center transition-all duration-300 ${
+                    isActive
+                      ? 'border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30 shadow-md'
+                      : isCompleted
+                        ? 'border-green-400 bg-green-50 dark:border-green-600 dark:bg-green-950/20'
+                        : hasNode
+                          ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50'
+                          : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/30 opacity-60'
+                  }`}
+                >
+                  <Space className="flex flex-col gap-2" size="small">
+                    <div className={getIconColorClass(config.color)}>{config.icon}</div>
+                    <Text strong className="text-sm">
+                      {config.name}
                     </Text>
-                  )}
-                </Space>
-              </Card>
-            )
-          })}
-        </div>
+                    {/* 状态图标 */}
+                    {node?.status === 'running' && <Spin size="small" />}
+                    {node?.status === 'completed' && (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    )}
+                    {node?.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
+                    {node?.message && (
+                      <Text className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                        {node.message}
+                      </Text>
+                    )}
+                  </Space>
+                </Card>
+              )
+            })}
+          </div>
+        )}
 
         {/* 分析完成后的最终报告 */}
         {isComplete && analysisResult && (
@@ -433,8 +431,8 @@ export function AgentReport() {
           </div>
         )}
 
-        {/* 初始加载状态 */}
-        {!isComplete && !error && events.length === 0 && (
+        {/* 初始加载状态 - 仅在SSE未开始且未完成时显示 */}
+        {!hasStarted && !isComplete && !error && (
           <Card className="text-center py-16">
             <Spin size="large" />
             <div className="mt-4">
