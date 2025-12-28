@@ -11,6 +11,8 @@ from enum import Enum
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
+DEFAULT_TEMPERATURE = 1.0
+
 
 class LLMProvider(Enum):
     """支持的 LLM 提供商"""
@@ -28,7 +30,7 @@ class BaseLLM(ABC):
     async def chat_completion(
         self,
         messages: List[ChatCompletionMessageParam],
-        temperature: float = 0.7,
+        temperature: float = DEFAULT_TEMPERATURE,
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> str:
@@ -57,7 +59,7 @@ class OpenAILLM(BaseLLM):
     async def chat_completion(
         self,
         messages: List[ChatCompletionMessageParam],
-        temperature: float = 0.7,
+        temperature: float = DEFAULT_TEMPERATURE,
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> str:
@@ -103,8 +105,8 @@ class LLMFactory:
         # 根据环境变量或默认值获取配置
         if provider == LLMProvider.DEEPSEEK:
             api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
-            base_url = base_url or "https://api.deepseek.com/v1"
-            model = model or "deepseek-chat"
+            base_url = base_url or "https://api.deepseek.com"
+            model = model or "deepseek-reasoner"
         elif provider == LLMProvider.OPENAI:
             api_key = api_key or os.getenv("OPENAI_API_KEY")
             model = model or "gpt-3.5-turbo"
@@ -174,7 +176,7 @@ class LLMManager:
     async def chat_completion(
         self,
         messages: List[ChatCompletionMessageParam],
-        temperature: float = 0.7,
+        temperature: float = DEFAULT_TEMPERATURE,
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> str:

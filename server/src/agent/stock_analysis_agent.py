@@ -13,7 +13,7 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from ..service.stock_service import stock_service
 from . import prompts
-from .llm import LLMManager
+from .llm import DEFAULT_TEMPERATURE, LLMManager
 
 
 # 定义 reducer 函数 - 用于并发状态合并时"右侧值优先"
@@ -186,7 +186,10 @@ class StockAnalysisAgent:
                 ]
 
                 llm_output = await self.llm_manager.chat_completion(
-                    messages=messages, temperature=0.3, max_tokens=1000
+                    messages=messages,
+                    temperature=DEFAULT_TEMPERATURE,
+                    max_tokens=1000,
+                    extra_body={"thinking": {"type": "enabled"}},
                 )
 
                 # 简单解析LLM输出
