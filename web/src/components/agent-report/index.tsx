@@ -6,86 +6,216 @@ import {
   AlertCircle,
   Clock,
   BarChart3,
-  // Activity,
   Brain,
   FileText,
   ThumbsUp,
   ThumbsDown,
-  // Zap,
 } from 'lucide-react'
 import { stockApi } from '../../api/client'
 import type { AgentReportEvent, ProgressNode, AnalysisResult, AnalysisFactor } from '../../types'
 
 const { Title, Text, Paragraph } = Typography
 
-// 步骤名称映射：SSE返回的step -> 显示名称
-const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; color: string }> = {
-  data_fetcher: { name: '数据获取', icon: <Clock className="h-5 w-5" />, color: 'blue' },
-  fundamental_analyzer: {
-    name: '基本面分析',
-    icon: <FileText className="h-5 w-5" />,
-    color: 'green',
-  },
-  financial_report_analyzer: {
-    name: '财务报告',
-    icon: <FileText className="h-5 w-5" />,
-    color: 'emerald',
-  },
-  technical_analyzer: {
-    name: '技术面分析',
-    icon: <BarChart3 className="h-5 w-5" />,
-    color: 'purple',
-  },
-  // qlib_analyzer: { name: 'Qlib因子', icon: <Activity className="h-5 w-5" />, color: 'orange' },
-  decision_maker: { name: '综合决策', icon: <Brain className="h-5 w-5" />, color: 'pink' },
-} as const
+// 步骤配置
+const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; defaultMessage: string }> =
+  {
+    data_fetcher: {
+      name: '数据获取',
+      icon: <Clock className="h-5 w-5" />,
+      defaultMessage: '等待获取数据...',
+    },
+    fundamental_analyzer: {
+      name: '基本面分析',
+      icon: <FileText className="h-5 w-5" />,
+      defaultMessage: '等待基本面分析...',
+    },
+    technical_analyzer: {
+      name: '技术面分析',
+      icon: <BarChart3 className="h-5 w-5" />,
+      defaultMessage: '等待技术面分析...',
+    },
+    decision_maker: {
+      name: '综合决策',
+      icon: <Brain className="h-5 w-5" />,
+      defaultMessage: '等待综合决策...',
+    },
+  } as const
 
-// 步骤显示顺序
 const STEP_ORDER = [
   'data_fetcher',
   'fundamental_analyzer',
   'technical_analyzer',
-  // 'qlib_analyzer',
   'decision_maker',
 ] as const
 
-// 状态映射：SSE返回的status -> 内部status
-const mapStatus = (sseStatus: string): 'running' | 'completed' | 'error' => {
-  if (sseStatus === 'success') return 'completed'
-  if (sseStatus === 'running') return 'running'
-  if (sseStatus === 'error') return 'error'
-  return 'running'
+// 节点状态类型
+type NodeStatus = 'pending' | 'running' | 'completed' | 'error'
+
+// 节点样式配置
+const NODE_STYLES: Record<NodeStatus, string> = {
+  running:
+    'border border-cyan-400/60 bg-gradient-to-br from-cyan-50/80 to-blue-50/80 dark:from-cyan-950/40 dark:to-blue-950/40 shadow-lg shadow-cyan-500/10',
+  completed:
+    'border border-emerald-400/60 bg-gradient-to-br from-emerald-50/80 to-green-50/80 dark:from-emerald-950/30 dark:to-green-950/30',
+  error:
+    'border border-red-400/60 bg-gradient-to-br from-red-50/80 to-orange-50/80 dark:from-red-950/30 dark:to-orange-950/30',
+  pending:
+    'border border-gray-200/60 bg-gray-50/50 dark:border-gray-700/50 dark:bg-gray-800/30 opacity-70',
 }
+
+const NODE_ICON_COLORS: Record<NodeStatus, string> = {
+  running: 'text-cyan-500 dark:text-cyan-400',
+  completed: 'text-emerald-500 dark:text-emerald-400',
+  error: 'text-red-500 dark:text-red-400',
+  pending: 'text-gray-400 dark:text-gray-500',
+}
+
+// AI 彩虹标题样式
+const aiRainbowTitleClassName =
+  'mb-0 bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent font-medium dark:from-cyan-400 dark:via-purple-400 dark:to-pink-400'
+
+// AI 彩虹边框卡片组件
+const AIRainbowCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="ai-rainbow-border">
+    <Card
+      variant={'borderless'}
+      className="bg-white dark:bg-gray-900"
+      title={
+        <Title level={5} className={aiRainbowTitleClassName}>
+          {title}
+        </Title>
+      }
+    >
+      {children}
+    </Card>
+  </div>
+)
+
+// 因子卡片样式
+const getFactorCardClass = (status: string) => {
+  if (status === 'bullish') return 'border-l-green-500 bg-green-50 dark:bg-green-950/20'
+  if (status === 'bearish') return 'border-l-red-500 bg-red-50 dark:bg-red-950/20'
+  return 'border-l-gray-400 bg-gray-50 dark:bg-gray-800/50'
+}
+
+// 渲染因子卡片
+const renderFactorCard = (name: string, factor: AnalysisFactor) => {
+  const isPositive = factor.status === 'bullish'
+  const isNegative = factor.status === 'bearish'
+
+  return (
+    <Card key={name} size="small" className={`border-l-4 ${getFactorCardClass(factor.status)}`}>
+      <Space className="flex flex-col w-full" size="small">
+        <div className="flex items-center justify-between">
+          <Text strong>{name}</Text>
+          <Tag color={isPositive ? 'green' : isNegative ? 'red' : 'default'}>{factor.status}</Tag>
+        </div>
+        {factor.signals && factor.signals.length > 0 && (
+          <div className="space-y-1">
+            {factor.signals.map((signal, idx) => (
+              <div key={idx} className="text-sm text-gray-600 dark:text-gray-400">
+                • {signal}
+              </div>
+            ))}
+          </div>
+        )}
+        {factor.score !== undefined && (
+          <div className="text-sm">
+            <Text type="secondary">评分：</Text>
+            <Text strong>{factor.score.toFixed(2)}</Text>
+          </div>
+        )}
+      </Space>
+    </Card>
+  )
+}
+
+// 因素列表组件
+const FactorList = ({
+  icon: Icon,
+  title,
+  iconColor,
+  items,
+}: {
+  icon: typeof CheckCircle
+  title: string
+  iconColor: string
+  items: string[]
+}) => (
+  <div>
+    <div className="flex items-center gap-2 mb-2">
+      <Icon className={`h-4 w-4 ${iconColor}`} />
+      <Text strong className={iconColor}>
+        {title}
+      </Text>
+    </div>
+    <ul className="space-y-1">
+      {items.map((factor, idx) => (
+        <li key={idx} className="flex items-start gap-2">
+          <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${iconColor}`} />
+          <Text>{factor}</Text>
+        </li>
+      ))}
+    </ul>
+  </div>
+)
+
+// 分析卡片标题组件
+const AnalysisCardTitle = ({
+  icon: Icon,
+  color,
+  title,
+}: {
+  icon: typeof BarChart3
+  color: string
+  title: string
+}) => (
+  <div className="flex items-center gap-2">
+    <Icon className={`h-5 w-5 text-${color}-500`} />
+    <Title level={5} className="mb-0">
+      {title}
+    </Title>
+  </div>
+)
 
 export function AgentReport() {
   const { symbol } = useParams<{ symbol: string }>()
-  // 状态管理
   const [progressNodes, setProgressNodes] = useState<Record<string, ProgressNode>>({})
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [streamingContent, setStreamingContent] = useState('')
   const [isConnected, setIsConnected] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null)
   const [hasStarted, setHasStarted] = useState(false)
 
-  // 处理 SSE 消息
   const handleMessage = useCallback((event: AgentReportEvent) => {
-    console.log('handleMessage', event)
     switch (event.type) {
       case 'start':
         setCurrentSymbol(event.symbol)
         setIsConnected(true)
         setHasStarted(true)
+        setStreamingContent('')
         break
 
-      case 'progress':
+      case 'progress': {
+        const status =
+          event.status === 'success' ? 'completed' : event.status === 'error' ? 'error' : 'running'
+        setProgressNodes(prev => ({
+          ...prev,
+          [event.step]: { step: event.step, status, message: event.message, data: event.data },
+        }))
+        break
+      }
+
+      case 'streaming':
+        setStreamingContent(prev => prev + event.content)
         setProgressNodes(prev => ({
           ...prev,
           [event.step]: {
             step: event.step,
-            status: mapStatus(event.status),
-            message: event.message,
-            data: event.data,
+            status: 'running' as const,
+            message: '正在生成分析报告...',
           },
         }))
         break
@@ -99,16 +229,16 @@ export function AgentReport() {
         setAnalysisResult(event.result)
         setIsComplete(true)
         setIsConnected(false)
-        // 将所有节点标记为完成
-        setProgressNodes(prev => {
-          const updated = { ...prev }
-          Object.keys(updated).forEach(key => {
-            if (updated[key].status === 'running') {
-              updated[key] = { ...updated[key], status: 'completed' }
-            }
-          })
-          return updated
-        })
+        setStreamingContent('')
+        // 将所有运行中的节点标记为完成
+        setProgressNodes(prev =>
+          Object.fromEntries(
+            Object.entries(prev).map(([k, v]) => [
+              k,
+              v.status === 'running' ? { ...v, status: 'completed' as const } : v,
+            ])
+          )
+        )
         break
     }
   }, [])
@@ -118,31 +248,25 @@ export function AgentReport() {
     setIsConnected(false)
   }, [])
 
-  // 使用 ref 追踪当前 symbol，避免重复连接
   const prevSymbolRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!symbol) return
-    if (symbol === prevSymbolRef.current) return
+    if (!symbol || symbol === prevSymbolRef.current) return
 
-    // 清理之前的连接
     prevSymbolRef.current = symbol
 
-    // 重置状态 - 批量更新以减少重渲染
-    const resetState = () => {
+    // 重置状态
+    queueMicrotask(() => {
       setProgressNodes({})
       setAnalysisResult(null)
+      setStreamingContent('')
       setIsConnected(true)
       setIsComplete(false)
       setError(null)
       setCurrentSymbol(null)
       setHasStarted(false)
-    }
+    })
 
-    // 在下一个微任务中重置状态，避免在 effect 中同步调用 setState
-    queueMicrotask(resetState)
-
-    // 创建 SSE 连接
     const eventSource = stockApi.getAgentReport(symbol, handleMessage, {
       onError: handleError,
       onComplete: () => {
@@ -156,67 +280,11 @@ export function AgentReport() {
     }
   }, [symbol, handleMessage, handleError])
 
-  // 获取图标颜色类名
-  const getIconColorClass = (color: string) => {
-    const colorMap: Record<string, string> = {
-      blue: 'text-blue-500',
-      green: 'text-green-500',
-      emerald: 'text-emerald-500',
-      purple: 'text-purple-500',
-      orange: 'text-orange-500',
-      pink: 'text-pink-500',
-    }
-    return colorMap[color] || 'text-gray-500'
-  }
-
-  // 渲染因子卡片
-  const renderFactorCard = (name: string, factor: AnalysisFactor) => {
-    const isPositive = factor.status === 'bullish'
-    const isNegative = factor.status === 'bearish'
-
-    return (
-      <Card
-        key={name}
-        size="small"
-        className={`border-l-4 ${
-          isPositive
-            ? 'border-l-green-500 bg-green-50 dark:bg-green-950/20'
-            : isNegative
-              ? 'border-l-red-500 bg-red-50 dark:bg-red-950/20'
-              : 'border-l-gray-400 bg-gray-50 dark:bg-gray-800/50'
-        }`}
-      >
-        <Space className="flex flex-col w-full" size="small">
-          <div className="flex items-center justify-between">
-            <Text strong>{name}</Text>
-            <Tag color={isPositive ? 'green' : isNegative ? 'red' : 'default'}>{factor.status}</Tag>
-          </div>
-          {factor.signals && factor.signals.length > 0 && (
-            <div className="space-y-1">
-              {factor.signals.map((signal, idx) => (
-                <div key={idx} className="text-sm text-gray-600 dark:text-gray-400">
-                  • {signal}
-                </div>
-              ))}
-            </div>
-          )}
-          {factor.score !== undefined && (
-            <div className="text-sm">
-              <Text type="secondary">评分：</Text>
-              <Text strong>{factor.score.toFixed(2)}</Text>
-            </div>
-          )}
-        </Space>
-      </Card>
-    )
-  }
-
-  // 计算整体进度
+  // 计算进度
   const calculateProgress = () => {
     const nodes = Object.values(progressNodes)
     if (nodes.length === 0) return 0
-    const completed = nodes.filter(n => n.status === 'completed').length
-    return Math.floor((completed / 5) * 100) // qlib_analyzer 已注释，4个步骤
+    return Math.floor((nodes.filter(n => n.status === 'completed').length / 4) * 100)
   }
 
   return (
@@ -242,7 +310,7 @@ export function AgentReport() {
           </div>
         )}
 
-        {/* Error State */}
+        {/* 错误提示 */}
         {error && (
           <Alert
             title={<span className="font-medium">分析失败</span>}
@@ -250,52 +318,34 @@ export function AgentReport() {
             type="error"
             showIcon
             className="mb-6!"
-            closable={{
-              onClose: () => setError(null),
-            }}
+            closable={{ onClose: () => setError(null) }}
           />
         )}
 
-        {/* 节点进度卡片 - 仅在SSE开始加载后显示 */}
+        {/* 节点进度卡片 */}
         {hasStarted && (
           <div className="grid grid-cols-4 gap-3 mb-6">
             {STEP_ORDER.map(step => {
               const node = progressNodes[step]
               const config = STEP_CONFIG[step]
-              const isActive = node?.status === 'running'
-              const isCompleted = node?.status === 'completed'
-              const hasNode = !!node
+              const status: NodeStatus = node?.status || 'pending'
+              const displayMessage = node?.message || config.defaultMessage
 
               return (
                 <Card
                   key={step}
                   size="small"
-                  className={`text-center transition-all duration-300 ${
-                    isActive
-                      ? 'border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/30 shadow-md'
-                      : isCompleted
-                        ? 'border-green-400 bg-green-50 dark:border-green-600 dark:bg-green-950/20'
-                        : hasNode
-                          ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50'
-                          : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/30 opacity-60'
-                  }`}
+                  className={`text-center transition-all duration-500 ${NODE_STYLES[status]}`}
                 >
                   <div className="flex flex-col items-center gap-2">
-                    <div className={getIconColorClass(config.color)}>{config.icon}</div>
-
+                    <div className={NODE_ICON_COLORS[status]}>{config.icon}</div>
                     <div className="flex items-center gap-1.5">
-                      {node?.status === 'running' && <Spin size="small" />}
-                      {node?.status === 'completed' && (
-                        <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                      )}
-                      {node?.status === 'error' && (
-                        <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-                      )}
-                      {node?.message && (
-                        <Text className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {node.message}
-                        </Text>
-                      )}
+                      {status === 'running' && <Spin size="small" />}
+                      {status === 'completed' && <CheckCircle className="h-4 w-4 shrink-0" />}
+                      {status === 'error' && <AlertCircle className="h-4 w-4 shrink-0" />}
+                      <Text className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                        {displayMessage}
+                      </Text>
                     </div>
                   </div>
                 </Card>
@@ -304,24 +354,46 @@ export function AgentReport() {
           </div>
         )}
 
-        {/* 分析完成后的最终报告 */}
+        {/* LLM 流式输出 */}
+        {streamingContent && (
+          <div className="ai-rainbow-border mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Card
+              variant={'borderless'}
+              className="bg-white dark:bg-gray-900"
+              title={
+                <Title level={5} className={aiRainbowTitleClassName}>
+                  AI 分析中
+                </Title>
+              }
+            >
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                <Paragraph className="text-base leading-relaxed whitespace-pre-wrap">
+                  {streamingContent}
+                  <span className="inline-block w-2 h-4 bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 ml-1 animate-pulse rounded-full" />
+                </Paragraph>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* 分析完成报告 */}
         {isComplete && analysisResult && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* 分析摘要 / 决策分析 */}
+            {/* 决策分析 */}
             {analysisResult.decision ? (
-              <Card title={<Title level={5}>分析报告</Title>}>
+              <AIRainbowCard title="AI 分析报告">
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                   <Paragraph className="text-base leading-relaxed whitespace-pre-wrap">
                     {analysisResult.decision.analysis}
                   </Paragraph>
                 </div>
-              </Card>
+              </AIRainbowCard>
             ) : analysisResult.summary ? (
-              <Card title={<Title level={5}>分析摘要</Title>}>
+              <AIRainbowCard title="分析摘要">
                 <Paragraph className="text-base leading-relaxed">
                   {analysisResult.summary}
                 </Paragraph>
-              </Card>
+              </AIRainbowCard>
             ) : null}
 
             {/* 关键因素 */}
@@ -329,57 +401,30 @@ export function AgentReport() {
               <Card title={<Title level={5}>关键因素</Title>}>
                 <div className="grid md:grid-cols-2 gap-4">
                   {analysisResult.key_factors.positive?.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <ThumbsUp className="h-4 w-4 text-green-500" />
-                        <Text strong className="text-green-600 dark:text-green-400">
-                          看涨因素
-                        </Text>
-                      </div>
-                      <ul className="space-y-1">
-                        {analysisResult.key_factors.positive.map((factor, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                            <Text>{factor}</Text>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    <FactorList
+                      icon={ThumbsUp}
+                      title="看涨因素"
+                      iconColor="text-green-600 dark:text-green-400"
+                      items={analysisResult.key_factors.positive}
+                    />
                   )}
                   {analysisResult.key_factors.negative?.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <ThumbsDown className="h-4 w-4 text-red-500" />
-                        <Text strong className="text-red-600 dark:text-red-400">
-                          看跌因素
-                        </Text>
-                      </div>
-                      <ul className="space-y-1">
-                        {analysisResult.key_factors.negative.map((factor, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
-                            <Text>{factor}</Text>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    <FactorList
+                      icon={ThumbsDown}
+                      title="看跌因素"
+                      iconColor="text-red-600 dark:text-red-400"
+                      items={analysisResult.key_factors.negative}
+                    />
                   )}
                 </div>
               </Card>
             )}
 
-            {/* 技术分析详情 */}
+            {/* 技术分析 */}
             {analysisResult.technical_analysis &&
               Object.keys(analysisResult.technical_analysis).length > 0 && (
                 <Card
-                  title={
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-purple-500" />
-                      <Title level={5} className="mb-0">
-                        技术分析
-                      </Title>
-                    </div>
-                  }
+                  title={<AnalysisCardTitle icon={BarChart3} color="purple" title="技术分析" />}
                 >
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {Object.entries(analysisResult.technical_analysis).map(([name, factor]) =>
@@ -389,18 +434,11 @@ export function AgentReport() {
                 </Card>
               )}
 
-            {/* 基本面分析详情 */}
+            {/* 基本面分析 */}
             {analysisResult.fundamental_analysis &&
               Object.keys(analysisResult.fundamental_analysis).length > 0 && (
                 <Card
-                  title={
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-green-500" />
-                      <Title level={5} className="mb-0">
-                        基本面分析
-                      </Title>
-                    </div>
-                  }
+                  title={<AnalysisCardTitle icon={FileText} color="green" title="基本面分析" />}
                 >
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {Object.entries(analysisResult.fundamental_analysis).map(([name, factor]) =>
@@ -409,31 +447,10 @@ export function AgentReport() {
                   </div>
                 </Card>
               )}
-
-            {/* Qlib 因子分析详情 */}
-            {/* {analysisResult.qlib_analysis &&
-              Object.keys(analysisResult.qlib_analysis).length > 0 && (
-                <Card
-                  title={
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-orange-500" />
-                      <Title level={5} className="mb-0">
-                        量化因子分析
-                      </Title>
-                    </div>
-                  }
-                >
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {Object.entries(analysisResult.qlib_analysis).map(([name, factor]) =>
-                      renderFactorCard(name, factor)
-                    )}
-                  </div>
-                </Card>
-              )} */}
           </div>
         )}
 
-        {/* 初始加载状态 - 仅在SSE未开始且未完成时显示 */}
+        {/* 初始加载状态 */}
         {!hasStarted && !isComplete && !error && (
           <Card className="text-center py-16">
             <Spin size="large" />

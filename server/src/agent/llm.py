@@ -1,11 +1,9 @@
 """
-LLM 封装模块
-提供统一的 LLM 接口，支持多种 LLM 提供商
+LLM 封装模块 - 仅保留流式接口
 """
 
 import os
-from abc import ABC, abstractmethod
-from typing import List, Optional, Union
+from typing import List, Optional, Union, AsyncGenerator
 from enum import Enum
 
 from openai import AsyncOpenAI
@@ -23,57 +21,33 @@ class LLMProvider(Enum):
     ZHIPU = "zhipu"
 
 
-class BaseLLM(ABC):
-    """LLM 基类"""
+class OpenAILLM:
+    """OpenAI 兼容的 LLM 实现"""
 
-    @abstractmethod
-    async def chat_completion(
-        self,
-        messages: List[ChatCompletionMessageParam],
-        temperature: float = DEFAULT_TEMPERATURE,
-        max_tokens: Optional[int] = None,
-        **kwargs,
-    ) -> str:
-        pass
-
-
-class OpenAILLM(BaseLLM):
-    """OpenAI 兼容的 LLM 实现（支持 OpenAI、DeepSeek 等）"""
-
-    def __init__(
-        self,
-        api_key: str,
-        base_url: Optional[str] = None,
-        model: str = "gpt-3.5-turbo",
-    ):
-        """初始化 OpenAI LLM
-
-        Args:
-            api_key: API 密钥
-            base_url: API 基础 URL
-            model: 模型名称
-        """
+    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = "gpt-3.5-turbo"):
         self.model = model
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
-    async def chat_completion(
+    async def chat_completion_stream(
         self,
         messages: List[ChatCompletionMessageParam],
         temperature: float = DEFAULT_TEMPERATURE,
         max_tokens: Optional[int] = None,
         **kwargs,
-    ) -> str:
-        if not self.client:
-            raise ValueError("LLM 客户端未初始化")
-
-        response = await self.client.chat.completions.create(
+    ) -> AsyncGenerator[str, None]:
+        """流式聊天完成"""
+        stream = await self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
+            stream=True,
             **kwargs,
         )
-        return response.choices[0].message.content
+
+        async for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
 
 
 class LLMFactory:
@@ -86,23 +60,11 @@ class LLMFactory:
         base_url: Optional[str] = None,
         model: Optional[str] = None,
         **kwargs,
-    ) -> BaseLLM:
-        """创建 LLM 实例
-
-        Args:
-            provider: LLM 提供商
-            api_key: API 密钥
-            base_url: API 基础 URL
-            model: 模型名称
-            **kwargs: 其他参数
-
-        Returns:
-            LLM 实例
-        """
+    ) -> OpenAILLM:
+        """创建 LLM 实例"""
         if isinstance(provider, str):
             provider = LLMProvider(provider.lower())
 
-        # 根据环境变量或默认值获取配置
         if provider == LLMProvider.DEEPSEEK:
             api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
             base_url = base_url or "https://api.deepseek.com"
@@ -122,14 +84,10 @@ class LLMFactory:
 class LLMManager:
     """LLM 管理器"""
 
-    def __init__(self, default_provider: Optional[Union[str, LLMProvider]] = None):
-        """初始化 LLM 管理器
-
-        Args:
-            default_provider: 默认 LLM 提供商
-        """
-        self.default_provider = default_provider or LLMProvider.DEEPSEEK
-        self.llm = None
+    def __init__(self, default_provider: Union[str, LLMProvider] = LLMProvider.DEEPSEEK):
+        self.default_provider = default_provider
+        self.llm: Optional[OpenAILLM] = None
+        self.is_available = False
         self._initialize_llm()
 
     def _initialize_llm(self):
@@ -147,43 +105,18 @@ class LLMManager:
             self.is_available = False
             print(f"[LLM] 初始化失败: {str(e)}")
 
-    def switch_provider(
-        self,
-        provider: Union[str, LLMProvider],
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-        model: Optional[str] = None,
-    ):
-        """切换 LLM 提供商
-
-        Args:
-            provider: 新的 LLM 提供商
-            api_key: API 密钥
-            base_url: API 基础 URL
-            model: 模型名称
-        """
-        self.default_provider = provider
-        try:
-            self.llm = LLMFactory.create_llm(
-                provider=provider, api_key=api_key, base_url=base_url, model=model
-            )
-            self.is_available = True
-            print(f"[LLM] 成功切换到 {provider}")
-        except Exception as e:
-            self.is_available = False
-            print(f"[LLM] 切换失败: {str(e)}")
-
-    async def chat_completion(
+    async def chat_completion_stream(
         self,
         messages: List[ChatCompletionMessageParam],
         temperature: float = DEFAULT_TEMPERATURE,
         max_tokens: Optional[int] = None,
         **kwargs,
-    ) -> str:
-        """执行聊天完成"""
+    ) -> AsyncGenerator[str, None]:
+        """执行流式聊天完成"""
         if not self.is_available or not self.llm:
             raise RuntimeError("LLM 未初始化或不可用")
 
-        return await self.llm.chat_completion(
+        async for chunk in self.llm.chat_completion_stream(
             messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
-        )
+        ):
+            yield chunk

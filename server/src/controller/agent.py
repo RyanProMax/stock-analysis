@@ -1,116 +1,166 @@
 """
-Agent控制器 - 提供流式股票分析接口
+Agent控制器 - 流式股票分析接口
 """
 
 import json
-from typing import Optional
+import asyncio
+from typing import Optional, List
 from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
 
-from ..agent.stock_analysis_agent import StockAnalysisAgent
+from ..service.stock_service import stock_service
+from ..agent import prompts
+from ..agent.llm import DEFAULT_TEMPERATURE, LLMManager
+from openai.types.chat import ChatCompletionMessageParam
 
 router = APIRouter()
-agent = StockAnalysisAgent()
+llm_manager = LLMManager()
+
+
+def convert_factors_to_dict(factors) -> List[dict]:
+    """将因子对象转换为字典"""
+    result = []
+    for factor in factors or []:
+        if hasattr(factor, "name"):
+            result.append(
+                {
+                    "name": getattr(factor, "name", ""),
+                    "key": getattr(factor, "key", ""),
+                    "status": getattr(factor, "status", ""),
+                    "bullish": list(getattr(factor, "bullish_signals", [])),
+                    "bearish": list(getattr(factor, "bearish_signals", [])),
+                }
+            )
+    return result
+
+
+def convert_qlib_factors_to_dict(factors) -> List[dict]:
+    """将Qlib因子转换为字典"""
+    result = []
+    for factor in factors or []:
+        if hasattr(factor, "name"):
+            result.append(
+                {
+                    "name": getattr(factor, "name", ""),
+                    "key": getattr(factor, "key", ""),
+                    "value": getattr(factor, "status", ""),
+                }
+            )
+    return result
+
+
+def send_event(event_type: str, data: dict) -> dict:
+    """创建 SSE 事件"""
+    return {"event": event_type, "data": json.dumps(data, ensure_ascii=False)}
+
+
+def send_progress(step: str, status: str, message: str) -> dict:
+    """创建进度事件"""
+    return send_event(
+        "progress",
+        {
+            "type": "progress",
+            "step": step,
+            "status": status,
+            "message": message,
+        },
+    )
 
 
 @router.get("/analyze")
 async def analyze_stock_stream(
     symbol: str = Query(..., description="股票代码", example="NVDA"),
     refresh: Optional[bool] = Query(False, description="是否强制刷新缓存"),
+    max_tokens: Optional[int] = Query(None, description="LLM 最大生成token数，默认不限制"),
 ):
-    """
-    流式股票分析接口
-
-    使用Server-Sent Events (SSE)实时返回分析进度
-    """
+    """流式股票分析接口"""
     symbol = symbol.upper()
+    use_llm = llm_manager.is_available
 
     async def generate():
         try:
-            # 发送开始事件
-            yield {
-                "event": "start",
-                "data": json.dumps(
-                    {
-                        "type": "start",
-                        "message": f"开始分析股票: {symbol}",
-                        "symbol": symbol,
-                    },
-                    ensure_ascii=False,
-                ),
+            yield send_event("start", {"type": "start", "symbol": symbol})
+
+            # 1. 数据获取
+            yield send_progress("data_fetcher", "running", f"正在获取 {symbol} 数据...")
+            report = stock_service.analyze_symbol(symbol)
+            if not report:
+                yield send_event("error", {"type": "error", "message": "无法获取数据"})
+                return
+            yield send_progress("data_fetcher", "success", f"成功获取 {symbol} 数据")
+
+            # 2. 基本面分析
+            yield send_progress("fundamental_analyzer", "running", "基本面分析中...")
+            await asyncio.sleep(0.05)
+            yield send_progress("fundamental_analyzer", "success", "基本面分析完成")
+
+            # 3. 技术面分析
+            yield send_progress("technical_analyzer", "running", "技术面分析中...")
+            await asyncio.sleep(0.05)
+            yield send_progress("technical_analyzer", "success", "技术面分析完成")
+
+            # 4. 决策分析（流式 LLM）
+            yield send_progress("decision_maker", "running", "正在生成分析报告...")
+
+            llm_data = {
+                "symbol": symbol,
+                "fundamental_factors": convert_factors_to_dict(report.fundamental_factors),
+                "technical_factors": convert_factors_to_dict(report.technical_factors),
+                "qlib_factors": convert_qlib_factors_to_dict(report.qlib_factors),
+                "fear_greed": {
+                    "index": report.fear_greed.index if report.fear_greed else 50,
+                    "label": report.fear_greed.label if report.fear_greed else "中性",
+                },
             }
 
-            # 用于去重的集合，记录已发送的进度事件
-            sent_progress = set()
+            prompt = json.dumps(llm_data, indent=2, ensure_ascii=False)
 
-            # 运行分析工作流
-            async for output in agent.run_analysis(symbol):
-                # 提取当前节点的进度信息
-                for _, node_state in output.items():
-                    if "progress" in node_state:
-                        for progress in node_state["progress"]:
-                            # 创建唯一的进度标识
-                            progress_id = (
-                                progress["step"],
-                                progress["status"],
-                                progress["timestamp"],
-                            )
+            full_response = ""
+            if use_llm:
+                messages: List[ChatCompletionMessageParam] = [
+                    {"role": "system", "content": prompts.DECISION_SYSTEM_MESSAGE},
+                    {
+                        "role": "user",
+                        "content": f"请分析股票数据并给出建议：\n\n{prompt}",
+                    },
+                ]
 
-                            # 只发送未重复的进度事件
-                            if progress_id not in sent_progress:
-                                sent_progress.add(progress_id)
-                                yield {
-                                    "event": "progress",
-                                    "data": json.dumps(
-                                        {
-                                            "type": "progress",
-                                            "step": progress["step"],
-                                            "status": progress["status"],
-                                            "message": progress["message"],
-                                            "data": progress.get("data"),
-                                            "timestamp": progress["timestamp"],
-                                        },
-                                        ensure_ascii=False,
-                                    ),
-                                }
+                async for chunk in llm_manager.chat_completion_stream(
+                    messages=messages,
+                    temperature=DEFAULT_TEMPERATURE,
+                    max_tokens=max_tokens,
+                ):
+                    full_response += chunk
+                    yield send_event(
+                        "streaming",
+                        {
+                            "type": "streaming",
+                            "step": "decision_maker",
+                            "content": chunk,
+                        },
+                    )
+                    await asyncio.sleep(0)
 
-                    # 检查是否有错误
-                    if "error" in node_state and node_state["error"]:
-                        yield {
-                            "event": "error",
-                            "data": json.dumps(
-                                {
-                                    "type": "error",
-                                    "message": node_state["error"],
-                                    "step": node_state.get("current_step", "unknown"),
-                                },
-                                ensure_ascii=False,
-                            ),
-                        }
-                        return
+                decision = {"action": "分析完成", "analysis": full_response}
+            else:
+                decision = {"action": "无LLM", "analysis": "LLM未配置"}
 
-                    # 如果是最终结果
-                    if "analysis_result" in node_state and node_state["analysis_result"]:
-                        yield {
-                            "event": "complete",
-                            "data": json.dumps(
-                                {
-                                    "type": "complete",
-                                    "result": node_state["analysis_result"],
-                                    "message": "股票分析完成",
-                                },
-                                ensure_ascii=False,
-                            ),
-                        }
-                        return
+            # 更新最后一个节点状态为完成
+            yield send_progress("decision_maker", "success", "分析完成")
+
+            # 5. 完成
+            yield send_event(
+                "complete",
+                {
+                    "type": "complete",
+                    "result": {"symbol": symbol, "decision": decision},
+                },
+            )
 
         except Exception as e:
-            yield {
-                "event": "error",
-                "data": json.dumps(
-                    {"type": "error", "message": f"分析过程中发生错误: {str(e)}"},
-                    ensure_ascii=False,
-                ),
-            }
+            import traceback
 
-    return EventSourceResponse(generate())
+            traceback.print_exc()
+            yield send_event("error", {"type": "error", "message": f"分析错误: {str(e)}"})
+
+    return EventSourceResponse(generate(), media_type="text/event-stream")

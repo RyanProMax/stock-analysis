@@ -54,7 +54,7 @@ export interface StockListResponse {
 
 // SSE事件类型基础接口
 export interface BaseSSEEvent {
-  type: 'start' | 'progress' | 'error' | 'complete'
+  type: 'start' | 'progress' | 'streaming' | 'error' | 'complete'
   timestamp?: string
 }
 
@@ -73,6 +73,13 @@ export interface ProgressEvent extends BaseSSEEvent {
   message: string
   data?: any
   timestamp: string
+}
+
+// 流式事件 - LLM 流式输出
+export interface StreamingEvent extends BaseSSEEvent {
+  type: 'streaming'
+  step: string
+  content: string
 }
 
 // 错误事件
@@ -122,7 +129,12 @@ export interface CompleteEvent extends BaseSSEEvent {
 }
 
 // Agent报告联合类型
-export type AgentReportEvent = StartEvent | ProgressEvent | ErrorEvent | CompleteEvent
+export type AgentReportEvent =
+  | StartEvent
+  | ProgressEvent
+  | StreamingEvent
+  | ErrorEvent
+  | CompleteEvent
 
 // 向后兼容的消息类型（用于内部状态管理）
 export interface ProgressNode {
