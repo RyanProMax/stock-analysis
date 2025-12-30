@@ -152,7 +152,7 @@ export const MobileReportCard: React.FC<MobileReportCardProps> = ({ symbol, repo
 
   const technicalFactors = report.technical_factors
   const fundamentalFactors = report.fundamental_factors
-  const qlibFactors = report.qlib_factors
+  // const qlibFactors = report.qlib_factors
   const fearGreedTheme = getFearGreedTheme(report.fear_greed.index)
   const emoji = getEmojiFromLabel(report.fear_greed.label)
   // const labelText = report.fear_greed.label
@@ -233,12 +233,13 @@ export const MobileReportCard: React.FC<MobileReportCardProps> = ({ symbol, repo
                 getFactorStatusStyle={getFactorStatusStyle}
               />
 
-              <MobileFactorList
+              {/* Qlib 因子暂时注释 */}
+              {/* <MobileFactorList
                 title={`Qlib因子 (${qlibFactors.length})`}
                 factors={qlibFactors}
                 getFactorStatus={getFactorStatus}
                 getFactorStatusStyle={getFactorStatusStyle}
-              />
+              /> */}
 
               {/* Agent解读按钮 */}
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">

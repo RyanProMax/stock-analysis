@@ -6,12 +6,12 @@ import {
   AlertCircle,
   Clock,
   BarChart3,
-  Activity,
+  // Activity,
   Brain,
   FileText,
   ThumbsUp,
   ThumbsDown,
-  Zap,
+  // Zap,
 } from 'lucide-react'
 import { stockApi } from '../../api/client'
 import type { AgentReportEvent, ProgressNode, AnalysisResult, AnalysisFactor } from '../../types'
@@ -36,7 +36,7 @@ const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; color: 
     icon: <BarChart3 className="h-5 w-5" />,
     color: 'purple',
   },
-  qlib_analyzer: { name: 'Qlib因子', icon: <Activity className="h-5 w-5" />, color: 'orange' },
+  // qlib_analyzer: { name: 'Qlib因子', icon: <Activity className="h-5 w-5" />, color: 'orange' },
   decision_maker: { name: '综合决策', icon: <Brain className="h-5 w-5" />, color: 'pink' },
 } as const
 
@@ -45,7 +45,7 @@ const STEP_ORDER = [
   'data_fetcher',
   'fundamental_analyzer',
   'technical_analyzer',
-  'qlib_analyzer',
+  // 'qlib_analyzer',
   'decision_maker',
 ] as const
 
@@ -215,7 +215,7 @@ export function AgentReport() {
     const nodes = Object.values(progressNodes)
     if (nodes.length === 0) return 0
     const completed = nodes.filter(n => n.status === 'completed').length
-    return Math.floor((completed / 5) * 100)
+    return Math.floor((completed / 4) * 100) // qlib_analyzer 已注释，4个步骤
   }
 
   return (
@@ -409,7 +409,7 @@ export function AgentReport() {
               )}
 
             {/* Qlib 因子分析详情 */}
-            {analysisResult.qlib_analysis &&
+            {/* {analysisResult.qlib_analysis &&
               Object.keys(analysisResult.qlib_analysis).length > 0 && (
                 <Card
                   title={
@@ -427,7 +427,7 @@ export function AgentReport() {
                     )}
                   </div>
                 </Card>
-              )}
+              )} */}
           </div>
         )}
 
