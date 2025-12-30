@@ -28,11 +28,13 @@ class StandardResponse(BaseModel, Generic[T]):
 
 class StockAnalysisRequest(BaseModel):
     symbols: List[str]
+    include_qlib_factors: bool = False  # 是否包含 Qlib 158 因子，默认 False
 
     class Config:
         json_schema_extra = {
             "example": {
                 "symbols": ["NVDA", "AAPL", "600519"],
+                "include_qlib_factors": False,
             }
         }
 

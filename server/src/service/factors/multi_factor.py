@@ -52,7 +52,9 @@ class MultiFactorAnalyzer:
         "volume",  # 成交量
     ]
 
-    def __init__(self, df: pd.DataFrame, symbol: str, stock_name: str):
+    def __init__(
+        self, df: pd.DataFrame, symbol: str, stock_name: str, include_qlib_factors: bool = False
+    ):
         """
         初始化多因子分析器
 
@@ -60,6 +62,7 @@ class MultiFactorAnalyzer:
             df: 股票行情数据 DataFrame
             symbol: 股票代码
             stock_name: 股票名称
+            include_qlib_factors: 是否包含 Qlib 158 因子，默认 False
         """
         if df is None or df.empty:
             raise ValueError("DataFrame cannot be None or empty")
@@ -69,6 +72,7 @@ class MultiFactorAnalyzer:
         self.raw_df = df.copy()
         self.symbol = symbol.strip().upper()
         self.stock_name = stock_name or symbol
+        self.include_qlib_factors = include_qlib_factors
 
         # 初始化技术指标计算引擎
         self.stock = StockDataFrame.retype(self.raw_df.copy())
@@ -204,18 +208,22 @@ class MultiFactorAnalyzer:
             print(f"⚠️ 计算基本面因子失败: {e}")
             traceback.print_exc()
 
-        # 3. Qlib 158 因子库
+        # 3. Qlib 158 因子库（根据参数决定是否计算）
         try:
-            qlib_factors = self.qlib158_library.get_factors(
-                self.stock,
-                self.raw_df,
-                symbol=self.symbol,
-            )
+            if self.include_qlib_factors:
+                qlib_factors = self.qlib158_library.get_factors(
+                    self.stock,
+                    self.raw_df,
+                    symbol=self.symbol,
+                )
+            else:
+                qlib_factors = []
         except Exception as e:
             import traceback
 
             print(f"⚠️ 计算 Qlib 158 因子失败: {e}")
             traceback.print_exc()
+            qlib_factors = []
 
         # 创建贪恐指数对象
         fear_greed = FearGreed(index=fg_index, label=fg_label)

@@ -11,9 +11,11 @@ import yfinance as yf
 from typing import Optional, Tuple
 
 from .stock_list import StockListService
+from .ts import TushareDataSource
 
 
 class DataLoader:
+
     CN_EASTMONEY_MAP = {
         "日期": "date",
         "开盘": "open",
@@ -99,18 +101,25 @@ class DataLoader:
 
     @staticmethod
     def _get_cn_stock_data(symbol: str) -> Optional[pd.DataFrame]:
-        # 策略 1: 东方财富
+        # 策略 1: Tushare（最高优先级）
+        print(f"🇨🇳 [1/3] 正在获取 A股数据: [{symbol}] (Tushare)...")
+        df = TushareDataSource.get_daily_data(symbol)
+        if df is not None and not df.empty:
+            print(f"✓ 使用 Tushare 数据成功 [{symbol}]")
+            return DataLoader._standardize_df(df, {}, "CN_Tushare")
+
+        # 策略 2: 东方财富
         try:
-            print(f"🇨🇳 [1/2] 正在获取 A股数据: [{symbol}] (EastMoney)...")
+            print(f"🇨🇳 [2/3] 正在获取 A股数据: [{symbol}] (EastMoney)...")
             df = ak.stock_zh_a_hist(symbol=symbol, period="daily", adjust="qfq")
             if df is not None and not df.empty:
                 return DataLoader._standardize_df(df, DataLoader.CN_EASTMONEY_MAP, "CN_EastMoney")
         except Exception:
             pass
 
-        # 策略 2: 新浪 (备用)
+        # 策略 3: 新浪 (备用)
         try:
-            print(f"🇨🇳 [2/2] 切换备用源: [{symbol}] (Sina)...")
+            print(f"🇨🇳 [3/3] 切换备用源: [{symbol}] (Sina)...")
             sina_symbol = f"sh{symbol}" if symbol.startswith("6") else f"sz{symbol}"
             df = ak.stock_zh_a_daily(symbol=sina_symbol, adjust="qfq")
             if df is not None and not df.empty:

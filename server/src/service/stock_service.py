@@ -96,13 +96,16 @@ class StockService:
 
     # ==================== 分析服务 ====================
 
-    def analyze_symbol(self, symbol: str, refresh: bool = False) -> Optional[AnalysisReport]:
+    def analyze_symbol(
+        self, symbol: str, refresh: bool = False, include_qlib_factors: bool = False
+    ) -> Optional[AnalysisReport]:
         """
         分析单只股票
 
         Args:
             symbol: 股票代码
             refresh: 是否强制刷新缓存
+            include_qlib_factors: 是否包含 Qlib 158 因子，默认 False
 
         Returns:
             分析报告
@@ -131,7 +134,9 @@ class StockService:
                 self.cache[cache_key] = None
                 return None
 
-            analyzer = MultiFactorAnalyzer(df, symbol, stock_name)
+            analyzer = MultiFactorAnalyzer(
+                df, symbol, stock_name, include_qlib_factors=include_qlib_factors
+            )
             report = analyzer.analyze()
             self.cache[cache_key] = report
 
@@ -157,13 +162,16 @@ class StockService:
             self.cache[self._build_cache_key(symbol)] = None
             return None
 
-    def batch_analyze(self, symbols: List[str], refresh: bool = False) -> List[AnalysisReport]:
+    def batch_analyze(
+        self, symbols: List[str], refresh: bool = False, include_qlib_factors: bool = False
+    ) -> List[AnalysisReport]:
         """
         批量分析股票
 
         Args:
             symbols: 股票代码列表
             refresh: 是否强制刷新缓存
+            include_qlib_factors: 是否包含 Qlib 158 因子，默认 False
 
         Returns:
             成功分析的报告列表
@@ -176,7 +184,7 @@ class StockService:
             if normalized in seen:
                 continue
             seen.add(normalized)
-            report = self.analyze_symbol(normalized, refresh)
+            report = self.analyze_symbol(normalized, refresh, include_qlib_factors)
             if report is not None:
                 reports.append(report)
 

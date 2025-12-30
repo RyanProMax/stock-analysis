@@ -57,11 +57,11 @@ class Qlib158FactorLibrary(FactorLibrary):
             if isinstance(result, tuple) and len(result) >= 2:
                 self.factor_expressions = result[0]  # 因子表达式列表
                 self.factor_names = result[1]  # 因子名称列表
-                print(f"✓ 成功加载 Alpha158 因子表达式，共 {len(self.factor_expressions)} 个因子")
+                # print(f"✓ 成功加载 Alpha158 因子表达式，共 {len(self.factor_expressions)} 个因子")
             else:
                 self.factor_expressions = []
                 self.factor_names = []
-                print("⚠️ 无法获取 Alpha158 因子表达式")
+                # print("⚠️ 无法获取 Alpha158 因子表达式")
         except Exception as e:
             print(f"⚠️ 初始化 Alpha158 因子表达式失败: {e}")
             self.factor_expressions = []

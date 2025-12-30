@@ -27,6 +27,9 @@ router = APIRouter()
 def analyze_stocks(payload: StockAnalysisRequest):
     """
     根据传入的股票代码列表执行批量分析，返回成功分析的结果列表。
+
+    Args:
+        payload: 包含股票代码列表和是否包含 Qlib 158 因子的标志
     """
     try:
         normalized = [symbol.strip().upper() for symbol in payload.symbols if symbol.strip()]
@@ -37,7 +40,9 @@ def analyze_stocks(payload: StockAnalysisRequest):
                 err_msg="请至少提供一个有效的股票代码。",
             )
 
-        reports = stock_service.batch_analyze(normalized)
+        reports = stock_service.batch_analyze(
+            normalized, include_qlib_factors=payload.include_qlib_factors
+        )
         if not reports:
             return StandardResponse(
                 status_code=404,
