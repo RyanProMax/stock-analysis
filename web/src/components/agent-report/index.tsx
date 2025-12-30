@@ -70,6 +70,7 @@ export function AgentReport() {
 
   // 处理 SSE 消息
   const handleMessage = useCallback((event: AgentReportEvent) => {
+    console.log('handleMessage', event)
     switch (event.type) {
       case 'start':
         setCurrentSymbol(event.symbol)
@@ -215,7 +216,7 @@ export function AgentReport() {
     const nodes = Object.values(progressNodes)
     if (nodes.length === 0) return 0
     const completed = nodes.filter(n => n.status === 'completed').length
-    return Math.floor((completed / 4) * 100) // qlib_analyzer 已注释，4个步骤
+    return Math.floor((completed / 5) * 100) // qlib_analyzer 已注释，4个步骤
   }
 
   return (
@@ -257,7 +258,7 @@ export function AgentReport() {
 
         {/* 节点进度卡片 - 仅在SSE开始加载后显示 */}
         {hasStarted && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-4 gap-3 mb-6">
             {STEP_ORDER.map(step => {
               const node = progressNodes[step]
               const config = STEP_CONFIG[step]
@@ -279,23 +280,24 @@ export function AgentReport() {
                           : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/30 opacity-60'
                   }`}
                 >
-                  <Space className="flex flex-col gap-2" size="small">
+                  <div className="flex flex-col items-center gap-2">
                     <div className={getIconColorClass(config.color)}>{config.icon}</div>
-                    <Text strong className="text-sm">
-                      {config.name}
-                    </Text>
-                    {/* 状态图标 */}
-                    {node?.status === 'running' && <Spin size="small" />}
-                    {node?.status === 'completed' && (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    )}
-                    {node?.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
-                    {node?.message && (
-                      <Text className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                        {node.message}
-                      </Text>
-                    )}
-                  </Space>
+
+                    <div className="flex items-center gap-1.5">
+                      {node?.status === 'running' && <Spin size="small" />}
+                      {node?.status === 'completed' && (
+                        <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                      )}
+                      {node?.status === 'error' && (
+                        <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+                      )}
+                      {node?.message && (
+                        <Text className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {node.message}
+                        </Text>
+                      )}
+                    </div>
+                  </div>
                 </Card>
               )
             })}
