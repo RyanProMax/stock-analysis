@@ -1,0 +1,14 @@
+{
+  "extends": ["stylelint-config-standard", "stylelint-config-clean-order"],
+  "plugins": ["stylelint-order"],
+  "rules": {
+    "at-rule-no-unknown": [
+      true,
+      {
+        "ignoreAtRules": ["tailwind", "apply", "layer", "variants", "responsive", "plugin"]
+      }
+    ],
+    "block-no-empty": null,
+    "no-descending-specificity": null
+  }
+}

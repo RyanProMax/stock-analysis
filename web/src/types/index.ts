@@ -89,11 +89,10 @@ export interface ErrorEvent extends BaseSSEEvent {
   step?: string
 }
 
-// 完���事件 - 分析结果
+// 完成事件 - 分析结果
 export interface AnalysisFactor {
   status: string
   signals?: string[]
-  score?: number
   details?: Record<string, any>
 }
 
@@ -104,10 +103,6 @@ export interface AnalysisResult {
     action: string
     analysis: string
   }
-  // Legacy fields (if available)
-  recommendation?: string
-  score?: number
-  summary?: string
   technical_analysis?: Record<string, AnalysisFactor>
   fundamental_analysis?: Record<string, AnalysisFactor>
   qlib_analysis?: Record<string, AnalysisFactor>

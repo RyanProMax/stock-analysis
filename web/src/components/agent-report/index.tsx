@@ -11,10 +11,12 @@ import {
   ThumbsUp,
   ThumbsDown,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { stockApi } from '../../api/client'
 import type { AgentReportEvent, ProgressNode, AnalysisResult, AnalysisFactor } from '../../types'
 
-const { Title, Text, Paragraph } = Typography
+const { Title, Text } = Typography
 
 // 步骤配置
 const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; defaultMessage: string }> =
@@ -72,7 +74,7 @@ const NODE_ICON_COLORS: Record<NodeStatus, string> = {
 
 // AI 彩虹标题样式
 const aiRainbowTitleClassName =
-  'mb-0 bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent font-medium dark:from-cyan-400 dark:via-purple-400 dark:to-pink-400'
+  'mb-0! bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent font-medium dark:from-cyan-400 dark:via-purple-400 dark:to-pink-400'
 
 // AI 彩虹边框卡片组件
 const AIRainbowCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -88,6 +90,23 @@ const AIRainbowCard = ({ title, children }: { title: string; children: React.Rea
     >
       {children}
     </Card>
+  </div>
+)
+
+// Markdown 内容渲染组件 - 使用 Tailwind Typography
+const MarkdownContent = ({ content, className = '' }: { content: string; className?: string }) => (
+  <div
+    className={`prose prose-sm max-w-none dark:prose-invert prose-a:text-cyan-600 dark:prose-a:text-cyan-400 prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:text-pink-600 dark:prose-code:text-pink-400 prose-pre:bg-gray-900 dark:prose-pre:bg-gray-950 ${className}`}
+  >
+    <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+  </div>
+)
+
+// 流式 Markdown 渲染组件 - 显示光标
+const StreamingMarkdown = ({ content }: { content: string }) => (
+  <div className="relative">
+    <MarkdownContent content={content} />
+    <span className="inline-block w-2 h-4 bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 ml-1 animate-pulse rounded-full align-middle" />
   </div>
 )
 
@@ -117,12 +136,6 @@ const renderFactorCard = (name: string, factor: AnalysisFactor) => {
                 • {signal}
               </div>
             ))}
-          </div>
-        )}
-        {factor.score !== undefined && (
-          <div className="text-sm">
-            <Text type="secondary">评分：</Text>
-            <Text strong>{factor.score.toFixed(2)}</Text>
           </div>
         )}
       </Space>
@@ -366,12 +379,7 @@ export function AgentReport() {
                 </Title>
               }
             >
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <Paragraph className="text-base leading-relaxed whitespace-pre-wrap">
-                  {streamingContent}
-                  <span className="inline-block w-2 h-4 bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 ml-1 animate-pulse rounded-full" />
-                </Paragraph>
-              </div>
+              <StreamingMarkdown content={streamingContent} />
             </Card>
           </div>
         )}
@@ -380,21 +388,11 @@ export function AgentReport() {
         {isComplete && analysisResult && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* 决策分析 */}
-            {analysisResult.decision ? (
+            {analysisResult.decision && (
               <AIRainbowCard title="AI 分析报告">
-                <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <Paragraph className="text-base leading-relaxed whitespace-pre-wrap">
-                    {analysisResult.decision.analysis}
-                  </Paragraph>
-                </div>
+                <MarkdownContent content={analysisResult.decision.analysis} />
               </AIRainbowCard>
-            ) : analysisResult.summary ? (
-              <AIRainbowCard title="分析摘要">
-                <Paragraph className="text-base leading-relaxed">
-                  {analysisResult.summary}
-                </Paragraph>
-              </AIRainbowCard>
-            ) : null}
+            )}
 
             {/* 关键因素 */}
             {analysisResult.key_factors && (

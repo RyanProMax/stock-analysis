@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@plugin "@tailwindcss/typography";
 
 /* AI 彩虹渐变动画 - 参考 Apple Intelligence 风格 */
 @keyframes gradient-flow {
