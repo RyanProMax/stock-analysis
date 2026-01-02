@@ -1,20 +1,12 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Spin, Card, Typography, Space, Tag, Progress, Alert } from 'antd'
-import {
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  BarChart3,
-  Brain,
-  FileText,
-  ThumbsUp,
-  ThumbsDown,
-} from 'lucide-react'
+import { Spin, Card, Typography, Progress, Alert } from 'antd'
+import { CheckCircle, AlertCircle, Clock, BarChart3, Brain, FileText } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { stockApi } from '../../api/client'
-import type { AgentReportEvent, ProgressNode, AnalysisResult, AnalysisFactor } from '../../types'
+import type { AgentReportEvent, ProgressNode, AnalysisResult, FactorDetail } from '../../types'
+import { FactorList as DesktopFactorList } from '../stock-analysis/desktop/DesktopFactorList'
 
 const { Title, Text } = Typography
 
@@ -107,87 +99,6 @@ const StreamingMarkdown = ({ content }: { content: string }) => (
   <div className="relative">
     <MarkdownContent content={content} />
     <span className="inline-block w-2 h-4 bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 ml-1 animate-pulse rounded-full align-middle" />
-  </div>
-)
-
-// 因子卡片样式
-const getFactorCardClass = (status: string) => {
-  if (status === 'bullish') return 'border-l-green-500 bg-green-50 dark:bg-green-950/20'
-  if (status === 'bearish') return 'border-l-red-500 bg-red-50 dark:bg-red-950/20'
-  return 'border-l-gray-400 bg-gray-50 dark:bg-gray-800/50'
-}
-
-// 渲染因子卡片
-const renderFactorCard = (name: string, factor: AnalysisFactor) => {
-  const isPositive = factor.status === 'bullish'
-  const isNegative = factor.status === 'bearish'
-
-  return (
-    <Card key={name} size="small" className={`border-l-4 ${getFactorCardClass(factor.status)}`}>
-      <Space className="flex flex-col w-full" size="small">
-        <div className="flex items-center justify-between">
-          <Text strong>{name}</Text>
-          <Tag color={isPositive ? 'green' : isNegative ? 'red' : 'default'}>{factor.status}</Tag>
-        </div>
-        {factor.signals && factor.signals.length > 0 && (
-          <div className="space-y-1">
-            {factor.signals.map((signal, idx) => (
-              <div key={idx} className="text-sm text-gray-600 dark:text-gray-400">
-                • {signal}
-              </div>
-            ))}
-          </div>
-        )}
-      </Space>
-    </Card>
-  )
-}
-
-// 因素列表组件
-const FactorList = ({
-  icon: Icon,
-  title,
-  iconColor,
-  items,
-}: {
-  icon: typeof CheckCircle
-  title: string
-  iconColor: string
-  items: string[]
-}) => (
-  <div>
-    <div className="flex items-center gap-2 mb-2">
-      <Icon className={`h-4 w-4 ${iconColor}`} />
-      <Text strong className={iconColor}>
-        {title}
-      </Text>
-    </div>
-    <ul className="space-y-1">
-      {items.map((factor, idx) => (
-        <li key={idx} className="flex items-start gap-2">
-          <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${iconColor}`} />
-          <Text>{factor}</Text>
-        </li>
-      ))}
-    </ul>
-  </div>
-)
-
-// 分析卡片标题组件
-const AnalysisCardTitle = ({
-  icon: Icon,
-  color,
-  title,
-}: {
-  icon: typeof BarChart3
-  color: string
-  title: string
-}) => (
-  <div className="flex items-center gap-2">
-    <Icon className={`h-5 w-5 text-${color}-500`} />
-    <Title level={5} className="mb-0">
-      {title}
-    </Title>
   </div>
 )
 
@@ -300,6 +211,11 @@ export function AgentReport() {
     return Math.floor((nodes.filter(n => n.status === 'completed').length / 4) * 100)
   }
 
+  const fundamental_factors: FactorDetail[] =
+    progressNodes['fundamental_analyzer']?.data?.factors || []
+
+  const technical_factors: FactorDetail[] = progressNodes['technical_analyzer']?.data?.factors || []
+
   return (
     <div className="bg-gray-50 dark:bg-gray-950 transition-colors min-h-screen">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -367,6 +283,31 @@ export function AgentReport() {
           </div>
         )}
 
+        {/* 分析因子 - 合并基本面和技术面 */}
+        {(progressNodes['fundamental_analyzer']?.status === 'completed' ||
+          progressNodes['technical_analyzer']?.status === 'completed') &&
+          (fundamental_factors.length > 0 || technical_factors.length > 0) && (
+            <Card className="mb-8! animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div>
+                {fundamental_factors.length > 0 && (
+                  <DesktopFactorList
+                    title={`基本面 (${fundamental_factors.length})`}
+                    factors={fundamental_factors}
+                  />
+                )}
+                {fundamental_factors.length > 0 && technical_factors.length > 0 && (
+                  <div className="border-t border-gray-100 dark:border-gray-800 my-6" />
+                )}
+                {technical_factors.length > 0 && (
+                  <DesktopFactorList
+                    title={`技术面 (${technical_factors.length})`}
+                    factors={technical_factors}
+                  />
+                )}
+              </div>
+            </Card>
+          )}
+
         {/* LLM 流式输出 */}
         {streamingContent && (
           <div className="ai-rainbow-border mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -385,66 +326,11 @@ export function AgentReport() {
         )}
 
         {/* 分析完成报告 */}
-        {isComplete && analysisResult && (
+        {isComplete && analysisResult?.decision && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* 决策分析 */}
-            {analysisResult.decision && (
-              <AIRainbowCard title="AI 分析报告">
-                <MarkdownContent content={analysisResult.decision.analysis} />
-              </AIRainbowCard>
-            )}
-
-            {/* 关键因素 */}
-            {analysisResult.key_factors && (
-              <Card title={<Title level={5}>关键因素</Title>}>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {analysisResult.key_factors.positive?.length > 0 && (
-                    <FactorList
-                      icon={ThumbsUp}
-                      title="看涨因素"
-                      iconColor="text-green-600 dark:text-green-400"
-                      items={analysisResult.key_factors.positive}
-                    />
-                  )}
-                  {analysisResult.key_factors.negative?.length > 0 && (
-                    <FactorList
-                      icon={ThumbsDown}
-                      title="看跌因素"
-                      iconColor="text-red-600 dark:text-red-400"
-                      items={analysisResult.key_factors.negative}
-                    />
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* 技术分析 */}
-            {analysisResult.technical_analysis &&
-              Object.keys(analysisResult.technical_analysis).length > 0 && (
-                <Card
-                  title={<AnalysisCardTitle icon={BarChart3} color="purple" title="技术分析" />}
-                >
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {Object.entries(analysisResult.technical_analysis).map(([name, factor]) =>
-                      renderFactorCard(name, factor)
-                    )}
-                  </div>
-                </Card>
-              )}
-
-            {/* 基本面分析 */}
-            {analysisResult.fundamental_analysis &&
-              Object.keys(analysisResult.fundamental_analysis).length > 0 && (
-                <Card
-                  title={<AnalysisCardTitle icon={FileText} color="green" title="基本面分析" />}
-                >
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {Object.entries(analysisResult.fundamental_analysis).map(([name, factor]) =>
-                      renderFactorCard(name, factor)
-                    )}
-                  </div>
-                </Card>
-              )}
+            <AIRainbowCard title="AI 分析报告">
+              <MarkdownContent content={analysisResult.decision.analysis} />
+            </AIRainbowCard>
           </div>
         )}
 

@@ -6,23 +6,60 @@ import type { FactorDetail } from '../../../types'
 interface FactorListProps {
   title: string
   factors: FactorDetail[]
-  getFactorStatus: (factor: FactorDetail) => 'bullish' | 'bearish' | 'neutral'
-  getFactorStatusStyle: (status: 'bullish' | 'bearish' | 'neutral') => {
-    bg: string
-    text: string
-    border: string
-    dot: string
-    detailBg: string
-    detailText: string
+}
+
+// 因子状态计算
+const getFactorStatus = (factor: FactorDetail): 'bullish' | 'bearish' | 'neutral' => {
+  const bullishCount = factor.bullish_signals.length
+  const bearishCount = factor.bearish_signals.length
+  if (bullishCount > bearishCount) return 'bullish'
+  if (bearishCount > bullishCount) return 'bearish'
+  return 'neutral'
+}
+
+// 因子状态样式
+const getFactorStatusStyle = (
+  status: 'bullish' | 'bearish' | 'neutral'
+): {
+  bg: string
+  text: string
+  border: string
+  dot: string
+  detailBg: string
+  detailText: string
+} => {
+  switch (status) {
+    case 'bullish':
+      return {
+        bg: 'bg-emerald-50/50 dark:bg-emerald-900/20',
+        text: 'text-emerald-700 dark:text-emerald-300',
+        border: 'border-emerald-200 dark:border-emerald-800',
+        dot: 'bg-emerald-500',
+        detailBg: 'bg-emerald-50/30 dark:bg-emerald-900/30',
+        detailText: 'text-emerald-900 dark:text-emerald-100',
+      }
+    case 'bearish':
+      return {
+        bg: 'bg-rose-50/50 dark:bg-rose-900/20',
+        text: 'text-rose-700 dark:text-rose-300',
+        border: 'border-rose-200 dark:border-rose-800',
+        dot: 'bg-rose-500',
+        detailBg: 'bg-rose-50/30 dark:bg-rose-900/30',
+        detailText: 'text-rose-900 dark:text-rose-100',
+      }
+    default:
+      return {
+        bg: 'bg-amber-50/50 dark:bg-amber-900/20',
+        text: 'text-amber-800 dark:text-amber-300',
+        border: 'border-amber-200 dark:border-amber-800',
+        dot: 'bg-amber-500',
+        detailBg: 'bg-amber-50/30 dark:bg-amber-900/30',
+        detailText: 'text-amber-900 dark:text-amber-100',
+      }
   }
 }
 
-export const FactorList: React.FC<FactorListProps> = ({
-  title,
-  factors,
-  getFactorStatus,
-  getFactorStatusStyle,
-}) => {
+export const FactorList: React.FC<FactorListProps> = ({ title, factors }) => {
   const [showOnlySignals, setShowOnlySignals] = useState(true) // 默认只显示信号因子
 
   // 过滤因子

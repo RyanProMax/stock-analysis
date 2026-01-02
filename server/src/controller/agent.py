@@ -4,7 +4,7 @@ Agent控制器 - 流式股票分析接口
 
 import json
 import asyncio
-from typing import Optional, List
+from typing import Optional, List, Any
 from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
 
@@ -18,7 +18,7 @@ llm_manager = LLMManager()
 
 
 def convert_factors_to_dict(factors) -> List[dict]:
-    """将因子对象转换为字典"""
+    """将因子对象转换为字典，符合前端 FactorDetail 接口"""
     result = []
     for factor in factors or []:
         if hasattr(factor, "name"):
@@ -27,8 +27,8 @@ def convert_factors_to_dict(factors) -> List[dict]:
                     "name": getattr(factor, "name", ""),
                     "key": getattr(factor, "key", ""),
                     "status": getattr(factor, "status", ""),
-                    "bullish": list(getattr(factor, "bullish_signals", [])),
-                    "bearish": list(getattr(factor, "bearish_signals", [])),
+                    "bullish_signals": list(getattr(factor, "bullish_signals", [])),
+                    "bearish_signals": list(getattr(factor, "bearish_signals", [])),
                 }
             )
     return result
@@ -54,17 +54,17 @@ def send_event(event_type: str, data: dict) -> dict:
     return {"event": event_type, "data": json.dumps(data, ensure_ascii=False)}
 
 
-def send_progress(step: str, status: str, message: str) -> dict:
+def send_progress(step: str, status: str, message: str, data: Optional[dict] = None) -> dict:
     """创建进度事件"""
-    return send_event(
-        "progress",
-        {
-            "type": "progress",
-            "step": step,
-            "status": status,
-            "message": message,
-        },
-    )
+    event_data: dict[str, Any] = {
+        "type": "progress",
+        "step": step,
+        "status": status,
+        "message": message,
+    }
+    if data:
+        event_data["data"] = data
+    return send_event("progress", event_data)
 
 
 @router.get("/analyze")
@@ -89,28 +89,37 @@ async def analyze_stock_stream(
                 return
             yield send_progress("data_fetcher", "success", f"成功获取 {symbol} 数据")
 
+            # 准备因子数据
+            fundamental_factors = convert_factors_to_dict(report.fundamental_factors)
+            technical_factors = convert_factors_to_dict(report.technical_factors)
+
             # 2. 基本面分析
             yield send_progress("fundamental_analyzer", "running", "基本面分析中...")
             await asyncio.sleep(0.05)
-            yield send_progress("fundamental_analyzer", "success", "基本面分析完成")
+            yield send_progress(
+                "fundamental_analyzer",
+                "success",
+                "基本面分析完成",
+                {"factors": fundamental_factors},
+            )
 
             # 3. 技术面分析
             yield send_progress("technical_analyzer", "running", "技术面分析中...")
             await asyncio.sleep(0.05)
-            yield send_progress("technical_analyzer", "success", "技术面分析完成")
+            yield send_progress(
+                "technical_analyzer",
+                "success",
+                "技术面分析完成",
+                {"factors": technical_factors},
+            )
 
             # 4. 决策分析（流式 LLM）
             yield send_progress("decision_maker", "running", "正在生成分析报告...")
 
             llm_data = {
                 "symbol": symbol,
-                "fundamental_factors": convert_factors_to_dict(report.fundamental_factors),
-                "technical_factors": convert_factors_to_dict(report.technical_factors),
-                "qlib_factors": convert_qlib_factors_to_dict(report.qlib_factors),
-                "fear_greed": {
-                    "index": report.fear_greed.index if report.fear_greed else 50,
-                    "label": report.fear_greed.label if report.fear_greed else "中性",
-                },
+                "fundamental_factors": fundamental_factors,
+                "technical_factors": technical_factors,
             }
 
             prompt = json.dumps(llm_data, indent=2, ensure_ascii=False)

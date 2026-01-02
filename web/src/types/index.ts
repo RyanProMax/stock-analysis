@@ -71,7 +71,9 @@ export interface ProgressEvent extends BaseSSEEvent {
   step: string
   status: string
   message: string
-  data?: any
+  data?: {
+    factors?: FactorDetail[]
+  }
   timestamp: string
 }
 
@@ -99,21 +101,9 @@ export interface AnalysisFactor {
 export interface AnalysisResult {
   symbol: string
   timestamp?: string
-  decision?: {
+  decision: {
     action: string
     analysis: string
-  }
-  technical_analysis?: Record<string, AnalysisFactor>
-  fundamental_analysis?: Record<string, AnalysisFactor>
-  qlib_analysis?: Record<string, AnalysisFactor>
-  key_factors?: {
-    positive: string[]
-    negative: string[]
-  }
-  price_target?: {
-    target: number
-    current: number
-    upside_potential: number
   }
 }
 

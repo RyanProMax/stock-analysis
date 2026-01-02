@@ -2,7 +2,7 @@ import { X, ChevronDown, ChevronUp, AlertCircle, FileText } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from 'antd'
-import type { AnalysisReport, FactorDetail } from '../../../types'
+import type { AnalysisReport } from '../../../types'
 import { FactorList } from './DesktopFactorList'
 
 interface ReportCardProps {
@@ -124,46 +124,6 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
       /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]/u
     )
     return emojiMatch ? emojiMatch[0] : ''
-  }
-
-  const getFactorStatus = (factor: FactorDetail) => {
-    const bullishCount = factor.bullish_signals.length
-    const bearishCount = factor.bearish_signals.length
-    if (bullishCount > bearishCount) return 'bullish'
-    if (bearishCount > bullishCount) return 'bearish'
-    return 'neutral'
-  }
-
-  const getFactorStatusStyle = (status: 'bullish' | 'bearish' | 'neutral') => {
-    switch (status) {
-      case 'bullish':
-        return {
-          bg: 'bg-emerald-50/50 dark:bg-emerald-900/20',
-          text: 'text-emerald-700 dark:text-emerald-300',
-          border: 'border-emerald-200 dark:border-emerald-800',
-          dot: 'bg-emerald-500',
-          detailBg: 'bg-emerald-50/30 dark:bg-emerald-900/30',
-          detailText: 'text-emerald-900 dark:text-emerald-100',
-        }
-      case 'bearish':
-        return {
-          bg: 'bg-rose-50/50 dark:bg-rose-900/20',
-          text: 'text-rose-700 dark:text-rose-300',
-          border: 'border-rose-200 dark:border-rose-800',
-          dot: 'bg-rose-500',
-          detailBg: 'bg-rose-50/30 dark:bg-rose-900/30',
-          detailText: 'text-rose-900 dark:text-rose-100',
-        }
-      default:
-        return {
-          bg: 'bg-amber-50/50 dark:bg-amber-900/20',
-          text: 'text-amber-800 dark:text-amber-300',
-          border: 'border-amber-200 dark:border-amber-800',
-          dot: 'bg-amber-500',
-          detailBg: 'bg-amber-50/30 dark:bg-amber-900/30',
-          detailText: 'text-amber-900 dark:text-amber-100',
-        }
-    }
   }
 
   const technicalFactors = report.technical_factors
@@ -311,16 +271,9 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
           <FactorList
             title={`基本面 (${fundamentalFactors.length})`}
             factors={fundamentalFactors}
-            getFactorStatus={getFactorStatus}
-            getFactorStatusStyle={getFactorStatusStyle}
           />
 
-          <FactorList
-            title={`技术面 (${technicalFactors.length})`}
-            factors={technicalFactors}
-            getFactorStatus={getFactorStatus}
-            getFactorStatusStyle={getFactorStatusStyle}
-          />
+          <FactorList title={`技术面 (${technicalFactors.length})`} factors={technicalFactors} />
 
           {/* Qlib 因子暂时注释 */}
           {/* <FactorList
