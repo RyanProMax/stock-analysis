@@ -40,6 +40,8 @@ class AnalysisReport:
     price: float
     # 基础指标
     fear_greed: FearGreed = field(default_factory=lambda: FearGreed(index=50.0, label="中性"))
+    # 行业信息（用于基本面分析时的行业对比）
+    industry: str = ""
     # 技术面因子
     technical_factors: List[FactorDetail] = field(default_factory=list)
     # 基本面因子

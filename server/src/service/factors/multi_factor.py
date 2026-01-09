@@ -175,6 +175,13 @@ class MultiFactorAnalyzer:
             print("财务数据获取错误堆栈:")
             traceback.print_exc()
 
+        # --- 获取股票信息（行业等）---
+        stock_info = {}
+        try:
+            stock_info = DataLoader.get_stock_info(self.symbol)
+        except Exception as e:
+            print(f"⚠️ 获取股票信息失败: {e}")
+
         # --- 从各个因子库加载因子 ---
         technical_factors = []
         fundamental_factors = []
@@ -236,6 +243,7 @@ class MultiFactorAnalyzer:
             fundamental_factors=fundamental_factors,
             qlib_factors=qlib_factors,
             fear_greed=fear_greed,
+            industry=stock_info.get("industry", ""),
         )
 
         return report

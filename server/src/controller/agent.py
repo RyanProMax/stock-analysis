@@ -1,52 +1,18 @@
 """
-Agent控制器 - 流式股票分析接口
+Agent控制器 - 流式股票分析接口 (Multi-Agent 架构)
 """
 
 import json
 import asyncio
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Tuple
 from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
 
-from ..service.stock_service import stock_service
-from ..agent import prompts
-from ..agent.llm import DEFAULT_TEMPERATURE, LLMManager
-from openai.types.chat import ChatCompletionMessageParam
+from ..agents.coordinator import MultiAgentSystem
+from ..agents.llm import LLMManager
 
 router = APIRouter()
 llm_manager = LLMManager()
-
-
-def convert_factors_to_dict(factors) -> List[dict]:
-    """将因子对象转换为字典，符合前端 FactorDetail 接口"""
-    result = []
-    for factor in factors or []:
-        if hasattr(factor, "name"):
-            result.append(
-                {
-                    "name": getattr(factor, "name", ""),
-                    "key": getattr(factor, "key", ""),
-                    "status": getattr(factor, "status", ""),
-                    "bullish_signals": list(getattr(factor, "bullish_signals", [])),
-                    "bearish_signals": list(getattr(factor, "bearish_signals", [])),
-                }
-            )
-    return result
-
-
-def convert_qlib_factors_to_dict(factors) -> List[dict]:
-    """将Qlib因子转换为字典"""
-    result = []
-    for factor in factors or []:
-        if hasattr(factor, "name"):
-            result.append(
-                {
-                    "name": getattr(factor, "name", ""),
-                    "key": getattr(factor, "key", ""),
-                    "value": getattr(factor, "status", ""),
-                }
-            )
-    return result
 
 
 def send_event(event_type: str, data: dict) -> dict:
@@ -73,96 +39,143 @@ async def analyze_stock_stream(
     refresh: Optional[bool] = Query(False, description="是否强制刷新缓存"),
     max_tokens: Optional[int] = Query(None, description="LLM 最大生成token数，默认不限制"),
 ):
-    """流式股票分析接口"""
+    """
+    流式股票分析接口 (Multi-Agent 架构)
+
+    分析流程：
+    1. DataAgent 获取股票数据（价格、基本面、技术面）
+    2. FundamentalAgent 基本面分析（独立 LLM）
+    3. TechnicalAgent 技术面分析（独立 LLM）
+    4. CoordinatorAgent 综合分析并给出最终投资建议（流式输出，包含思考过程）
+
+    子 Agents 并行执行，提升分析速度。
+    """
     symbol = symbol.upper()
     use_llm = llm_manager.is_available
+    system = MultiAgentSystem(llm_manager)
 
     async def generate():
         try:
             yield send_event("start", {"type": "start", "symbol": symbol})
 
-            # 1. 数据获取
-            yield send_progress("data_fetcher", "running", f"正在获取 {symbol} 数据...")
-            report = stock_service.analyze_symbol(symbol)
-            if not report:
-                yield send_event("error", {"type": "error", "message": "无法获取数据"})
+            # 用于收集进度事件的队列
+            progress_events = []
+
+            # 定义进度回调
+            async def on_progress(*args):
+                """处理进度回调，支持多种参数格式"""
+                if len(args) == 1:
+                    # 仅 message
+                    message = args[0]
+                    progress_events.append(("", "", message, None))
+                elif len(args) == 3:
+                    # (step, status, message)
+                    step, status, message = args
+                    progress_events.append((step, status, message, None))
+                elif len(args) == 4:
+                    # (step, status, message, data)
+                    step, status, message, data = args
+                    progress_events.append((step, status, message, data))
+
+            # 使用 Multi-Agent 系统执行分析
+            state, stream_gen = await system.analyze(symbol, progress_callback=on_progress)
+
+            # 先发送所有进度事件
+            for step, status, message, data in progress_events:
+                if step:  # 有 step 的是完整进度事件
+                    yield send_progress(step, status, message, data)
+                else:  # 只有 message 的是简单进度
+                    yield send_progress("info", "running", message)
+
+            # 检查是否有数据获取错误
+            if state.has_error("DataAgent"):
+                yield send_event(
+                    "error",
+                    {"type": "error", "message": state.errors["DataAgent"]},
+                )
                 return
-            yield send_progress("data_fetcher", "success", f"成功获取 {symbol} 数据")
 
-            # 准备因子数据
-            fundamental_factors = convert_factors_to_dict(report.fundamental_factors)
-            technical_factors = convert_factors_to_dict(report.technical_factors)
-
-            # 2. 基本面分析
-            yield send_progress("fundamental_analyzer", "running", "基本面分析中...")
-            await asyncio.sleep(0.05)
+            # 发送因子数据（用于前端展示）
             yield send_progress(
                 "fundamental_analyzer",
                 "success",
-                "基本面分析完成",
-                {"factors": fundamental_factors},
+                "基本面因子",
+                {"factors": state.fundamental_factors or []},
             )
-
-            # 3. 技术面分析
-            yield send_progress("technical_analyzer", "running", "技术面分析中...")
-            await asyncio.sleep(0.05)
             yield send_progress(
                 "technical_analyzer",
                 "success",
-                "技术面分析完成",
-                {"factors": technical_factors},
+                "技术面因子",
+                {"factors": state.technical_factors or []},
             )
 
-            # 4. 决策分析（流式 LLM）
-            yield send_progress("decision_maker", "running", "正在生成分析报告...")
-
-            llm_data = {
-                "symbol": symbol,
-                "fundamental_factors": fundamental_factors,
-                "technical_factors": technical_factors,
-            }
-
-            prompt = json.dumps(llm_data, indent=2, ensure_ascii=False)
+            # 流式输出综合分析结果
+            yield send_progress("coordinator", "running", "正在生成综合报告...")
 
             full_response = ""
-            if use_llm:
-                messages: List[ChatCompletionMessageParam] = [
-                    {"role": "system", "content": prompts.DECISION_SYSTEM_MESSAGE},
-                    {
-                        "role": "user",
-                        "content": f"请分析股票数据并给出建议：\n\n{prompt}",
-                    },
-                ]
+            thinking_process = ""
 
-                async for chunk in llm_manager.chat_completion_stream(
-                    messages=messages,
-                    temperature=DEFAULT_TEMPERATURE,
-                    max_tokens=max_tokens,
-                ):
-                    full_response += chunk
-                    yield send_event(
-                        "streaming",
-                        {
-                            "type": "streaming",
-                            "step": "decision_maker",
-                            "content": chunk,
-                        },
-                    )
+            if use_llm:
+                async for chunk, thinking_type in stream_gen:
+                    if thinking_type == "thinking":
+                        # 思考过程，单独发送
+                        thinking_process += chunk
+                        yield send_event(
+                            "thinking",
+                            {
+                                "type": "thinking",
+                                "step": "coordinator",
+                                "content": chunk,
+                            },
+                        )
+                    else:
+                        # 正常内容
+                        full_response += chunk
+                        yield send_event(
+                            "streaming",
+                            {
+                                "type": "streaming",
+                                "step": "coordinator",
+                                "content": chunk,
+                            },
+                        )
                     await asyncio.sleep(0)
 
-                decision = {"action": "分析完成", "analysis": full_response}
+                decision = {
+                    "action": "分析完成",
+                    "analysis": full_response,
+                    "thinking": thinking_process,
+                }
             else:
-                decision = {"action": "无LLM", "analysis": "LLM未配置"}
+                # 如果没有 LLM，返回因子数据
+                fundamental_text = state.fundamental_analysis or "基本面分析: " + str(
+                    state.fundamental_factors
+                )
+                technical_text = state.technical_analysis or "技术面分析: " + str(
+                    state.technical_factors
+                )
+                decision = {
+                    "action": "LLM未配置",
+                    "analysis": f"{fundamental_text}\n\n{technical_text}",
+                }
 
             # 更新最后一个节点状态为完成
-            yield send_progress("decision_maker", "success", "分析完成")
+            execution_time = state.execution_times.get("CoordinatorAgent", 0)
+            yield send_progress(
+                "coordinator", "success", "分析完成", {"execution_time": execution_time}
+            )
 
-            # 5. 完成
+            # 完成
             yield send_event(
                 "complete",
                 {
                     "type": "complete",
-                    "result": {"symbol": symbol, "decision": decision},
+                    "result": {
+                        "symbol": symbol,
+                        "stock_name": state.stock_name,
+                        "decision": decision,
+                        "execution_times": state.execution_times,
+                    },
                 },
             )
 

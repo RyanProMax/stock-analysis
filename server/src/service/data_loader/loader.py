@@ -100,6 +100,39 @@ class DataLoader:
         return symbol
 
     @staticmethod
+    def get_stock_info(symbol: str) -> dict:
+        """
+        获取股票基本信息（名称和行业）
+
+        Args:
+            symbol: 股票代码
+
+        Returns:
+            包含 name 和 industry 的字典
+        """
+        symbol = str(symbol).strip().upper()
+        info = {"name": symbol, "industry": ""}
+
+        try:
+            # 判断市场类型
+            is_us = bool(re.search(r"[A-Za-z]", symbol))
+
+            if is_us:
+                stocks = StockListService.get_us_stock_list()
+            else:
+                stocks = StockListService.get_a_stock_list()
+
+            for stock in stocks:
+                if stock.get("symbol") == symbol:
+                    info["name"] = stock.get("name", symbol)
+                    info["industry"] = stock.get("industry", "")
+                    break
+        except Exception as e:
+            print(f"⚠️ 获取股票信息失败: {e}")
+
+        return info
+
+    @staticmethod
     def _get_cn_stock_data(symbol: str) -> Optional[pd.DataFrame]:
         # 策略 1: Tushare（最高优先级）
         print(f"🇨🇳 [1/3] 正在获取 A股数据: [{symbol}] (Tushare)...")

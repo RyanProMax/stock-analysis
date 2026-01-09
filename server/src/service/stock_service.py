@@ -273,6 +273,7 @@ class StockService:
                 stock_name=report_dict.get("stock_name", ""),
                 price=report_dict.get("price", 0.0),
                 fear_greed=fear_greed,
+                industry=report_dict.get("industry", ""),
                 technical_factors=rebuild_factor_list(report_dict.get("technical_factors", [])),
                 fundamental_factors=rebuild_factor_list(report_dict.get("fundamental_factors", [])),
                 qlib_factors=rebuild_factor_list(report_dict.get("qlib_factors", [])),
