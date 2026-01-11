@@ -11,9 +11,7 @@ from openai.types.chat import ChatCompletionMessageParam
 from ..base import BaseAgent, AnalysisState
 from ..data import DataAgent
 from ..fundamental import FundamentalAgent
-from ..fundamental.prompts import FUNDAMENTAL_SYSTEM_MESSAGE, build_fundamental_prompt
 from ..technical import TechnicalAgent
-from ..technical.prompts import TECHNICAL_SYSTEM_MESSAGE, build_technical_prompt
 from ..llm import LLMManager
 from src.env import is_development
 from .prompts import (
@@ -288,88 +286,28 @@ class MultiAgentSystem:
 
         yield ("data_agent:success", state, None, "数据获取完成")
 
-        # 步骤 2: 并行执行基本面和技术面分析
-        # 使用 asyncio.Queue 来传递进度事件
+        # 步骤 2: 并行执行基本面和技术面分析（透传子 Agent 状态）
         progress_queue: asyncio.Queue = asyncio.Queue()
 
         async def wrapped_fundamental():
-            """包装 fundamental agent，发送进度到队列"""
-            await progress_queue.put(("fundamental_analyzer", "running", "正在分析基本面..."))
-            if state.fundamental_factors is None:
-                await progress_queue.put(("fundamental_analyzer", "error", "缺少基本面因子数据"))
-                return
-            try:
-                # 构建 prompt
-                user_prompt = build_fundamental_prompt(
-                    symbol=state.symbol,
-                    stock_name=state.stock_name,
-                    industry=state.industry,
-                    fundamental_factors=state.fundamental_factors,
-                )
-                messages: List[ChatCompletionMessageParam] = [
-                    {"role": "system", "content": FUNDAMENTAL_SYSTEM_MESSAGE},
-                    {"role": "user", "content": user_prompt},
-                ]
-
-                await progress_queue.put(("fundamental_analyzer", "analyzing", "LLM 正在推理..."))
-
-                # 调用 LLM
-                llm = self.fundamental_agent.llm
-                if not llm:
-                    raise RuntimeError("FundamentalAgent LLM 未配置")
-
-                full_response = ""
-                async for chunk in llm.chat_completion_stream(messages=messages, temperature=1.0):
-                    full_response += chunk
-                state.fundamental_analysis = full_response
-                state.set_execution_time("FundamentalAgent", self.fundamental_agent._end_timing())
-                await progress_queue.put(("fundamental_analyzer", "success", "基本面分析完成"))
-            except Exception as e:
-                state.set_error("FundamentalAgent", f"基本面分析失败: {str(e)}")
-                await progress_queue.put(
-                    ("fundamental_analyzer", "error", state.errors["FundamentalAgent"])
-                )
+            """透传 fundamental agent 的状态回调"""
+            await self.fundamental_agent.analyze(
+                state,
+                progress_callback=lambda step, status, message, data: progress_queue.put(
+                    (step, status, message)
+                ),
+            )
 
         async def wrapped_technical():
-            """包装 technical agent，发送进度到队列"""
-            await progress_queue.put(("technical_analyzer", "running", "正在分析技术面..."))
-            if state.technical_factors is None:
-                await progress_queue.put(("technical_analyzer", "error", "缺少技术面因子数据"))
-                return
-            try:
-                # 构建 prompt
-                user_prompt = build_technical_prompt(
-                    symbol=state.symbol,
-                    stock_name=state.stock_name,
-                    technical_factors=state.technical_factors,
-                )
-                messages: List[ChatCompletionMessageParam] = [
-                    {"role": "system", "content": TECHNICAL_SYSTEM_MESSAGE},
-                    {"role": "user", "content": user_prompt},
-                ]
-
-                await progress_queue.put(("technical_analyzer", "analyzing", "LLM 正在推理..."))
-
-                # 调用 LLM
-                llm = self.technical_agent.llm
-                if not llm:
-                    raise RuntimeError("TechnicalAgent LLM 未配置")
-
-                full_response = ""
-                async for chunk in llm.chat_completion_stream(messages=messages, temperature=1.0):
-                    full_response += chunk
-                state.technical_analysis = full_response
-                state.set_execution_time("TechnicalAgent", self.technical_agent._end_timing())
-                await progress_queue.put(("technical_analyzer", "success", "技术面分析完成"))
-            except Exception as e:
-                state.set_error("TechnicalAgent", f"技术面分析失败: {str(e)}")
-                await progress_queue.put(
-                    ("technical_analyzer", "error", state.errors["TechnicalAgent"])
-                )
+            """透传 technical agent 的状态回调"""
+            await self.technical_agent.analyze(
+                state,
+                progress_callback=lambda step, status, message, data: progress_queue.put(
+                    (step, status, message)
+                ),
+            )
 
         # 启动并行任务
-        self.fundamental_agent._start_timing()
-        self.technical_agent._start_timing()
         fund_task = asyncio.create_task(wrapped_fundamental())
         tech_task = asyncio.create_task(wrapped_technical())
 
@@ -379,6 +317,7 @@ class MultiAgentSystem:
             try:
                 event = await asyncio.wait_for(progress_queue.get(), timeout=0.01)
                 step, status, message = event
+                # 透传子 Agent 的状态
                 yield (f"{step}:{status}", state, None, message)
                 if status in ("success", "error"):
                     completed += 1
@@ -394,12 +333,6 @@ class MultiAgentSystem:
 
         # 等待任务完全完成
         await asyncio.gather(fund_task, tech_task, return_exceptions=True)
-
-        # 检查并发送最终状态
-        if not state.has_error("FundamentalAgent") and state.fundamental_analysis:
-            yield ("fundamental_analyzer:success", state, None, "基本面分析完成")
-        if not state.has_error("TechnicalAgent") and state.technical_analysis:
-            yield ("technical_analyzer:success", state, None, "技术面分析完成")
 
         # 步骤 3: 返回综合分析的流式生成器
         yield (

@@ -43,13 +43,23 @@ class FundamentalAgent(BaseAgent):
         """
         self._start_timing()
 
+        # 数据获取阶段
         if progress_callback:
-            await progress_callback("fundamental_agent", "running", "正在分析基本面...")
+            await progress_callback(
+                "fundamental_analyzer", "fetching", f"正在获取 {state.symbol} 基本面数据...", None
+            )
 
-        # 检查是否有数据
         if state.fundamental_factors is None:
-            state.set_error(self.get_name(), "缺少基本面因子数据")
+            state.set_error(self.get_name(), "基本面数据不可用")
+            if progress_callback:
+                await progress_callback("fundamental_analyzer", "error", "基本面数据不可用", None)
             return state
+
+        if progress_callback:
+            await progress_callback(
+                "fundamental_analyzer", "data_ready", "基本面数据获取完成", None
+            )
+            await progress_callback("fundamental_analyzer", "running", "正在分析基本面...", None)
 
         try:
             # 构建分析 prompt
@@ -60,22 +70,30 @@ class FundamentalAgent(BaseAgent):
                 fundamental_factors=state.fundamental_factors,
             )
 
-            # 调用 LLM 生成分析
             messages: List[ChatCompletionMessageParam] = [
                 {"role": "system", "content": FUNDAMENTAL_SYSTEM_MESSAGE},
                 {"role": "user", "content": user_prompt},
             ]
 
             if progress_callback:
-                await progress_callback("fundamental_agent", "analyzing", "LLM 正在推理...")
+                await progress_callback(
+                    "fundamental_analyzer", "analyzing", "LLM 正在推理...", None
+                )
 
             analysis = await self._call_llm(messages, temperature=1.0)
             state.fundamental_analysis = analysis
 
         except Exception as e:
             state.set_error(self.get_name(), f"基本面分析失败: {str(e)}")
+            if progress_callback:
+                await progress_callback(
+                    "fundamental_analyzer", "error", state.errors[self.get_name()], None
+                )
 
         execution_time = self._end_timing()
         state.set_execution_time(self.get_name(), execution_time)
+
+        if progress_callback and not state.has_error(self.get_name()):
+            await progress_callback("fundamental_analyzer", "success", "基本面分析完成", None)
 
         return state
