@@ -1,17 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Spin, Card, Typography, Alert } from 'antd'
-import {
-  CheckCircle,
-  AlertCircle,
-  BarChart3,
-  Brain,
-  FileText,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { CheckCircle, AlertCircle, BarChart3, Brain, FileText } from 'lucide-react'
 import { merge } from 'lodash-es'
 import { stockApi } from '../../api/client'
 import {
@@ -22,6 +12,8 @@ import {
   type FactorDetail,
 } from '../../types'
 import { FactorList as DesktopFactorList } from '../stock-analysis/desktop/DesktopFactorList'
+import { AIRainbowCard, MarkdownContent } from './components'
+import { CollapsibleThinking } from './CollapsibleThinking'
 
 const { Title, Text } = Typography
 
@@ -70,83 +62,6 @@ const NODE_ICON_COLORS: Record<NodeStatus, string> = {
   [NodeStatus.analyzing]: 'shimmer-icon',
   [NodeStatus.completed]: 'text-emerald-500 dark:text-emerald-400',
   [NodeStatus.error]: 'text-red-500 dark:text-red-400',
-}
-
-// AI 彩虹标题样式
-const aiRainbowTitleClassName =
-  'mb-0! bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent font-medium dark:from-cyan-400 dark:via-purple-400 dark:to-pink-400'
-
-// AI 彩虹边框卡片组件
-const AIRainbowCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="ai-rainbow-border relative">
-    <Card
-      variant={'borderless'}
-      className="bg-white dark:bg-gray-900"
-      title={
-        <Title level={5} className={aiRainbowTitleClassName}>
-          {title}
-        </Title>
-      }
-    >
-      {children}
-    </Card>
-  </div>
-)
-
-// Markdown 内容渲染组件 - 使用 Tailwind Typography
-const MarkdownContent = ({ content, className = '' }: { content: string; className?: string }) => (
-  <div
-    className={`prose prose-sm max-w-none dark:prose-invert prose-a:text-cyan-600 dark:prose-a:text-cyan-400 prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:text-pink-600 dark:prose-code:text-pink-400 prose-pre:bg-gray-900 dark:prose-pre:bg-gray-950 ${className}`}
-  >
-    <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-  </div>
-)
-
-// 可折叠的思考过程组件
-const CollapsibleThinking = ({
-  content,
-  autoCollapse = false,
-}: {
-  content: string
-  autoCollapse?: boolean
-}) => {
-  const [isExpanded, setIsExpanded] = useState(!autoCollapse)
-
-  const toggleExpanded = () => setIsExpanded(prev => !prev)
-
-  return (
-    <Card
-      variant={'borderless'}
-      className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 transition-all duration-300"
-      title={
-        <div
-          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-          onClick={toggleExpanded}
-        >
-          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          <Title level={5} className="text-gray-600 dark:text-gray-400 mb-0!">
-            💭 思考过程
-          </Title>
-        </div>
-      }
-    >
-      <div
-        className={`transition-all duration-300 overflow-hidden ${
-          isExpanded ? 'max-h-none' : 'max-h-[4.5em] line-clamp-3'
-        }`}
-      >
-        <div
-          className={`prose prose-sm max-w-none dark:prose-invert ${isExpanded ? 'opacity-70' : 'opacity-50'}`}
-        >
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-        </div>
-      </div>
-      {/* 流式输出时显示光标 */}
-      {isExpanded && (
-        <span className="inline-block w-2 h-4 bg-gray-400 ml-1 animate-pulse rounded-full align-middle" />
-      )}
-    </Card>
-  )
 }
 
 export function AgentReport() {
@@ -256,7 +171,7 @@ export function AgentReport() {
 
   const technical_factors: FactorDetail[] = progressNodes['technical_analyzer']?.data?.factors || []
 
-  console.log('progressNode', progressNodes)
+  // console.log('progressNode', progressNodes)
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950 transition-colors min-h-screen">
