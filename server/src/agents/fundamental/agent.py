@@ -36,7 +36,7 @@ class FundamentalAgent(BaseAgent):
 
         Args:
             state: 包含基本面数据的分析状态
-            progress_callback: 进度回调函数
+            progress_callback: 进度回调函数 callback(step, status, message, data)
 
         Returns:
             更新了基本面分析结论的状态
@@ -44,10 +44,10 @@ class FundamentalAgent(BaseAgent):
         self._start_timing()
 
         if progress_callback:
-            await progress_callback("正在分析基本面...")
+            await progress_callback("fundamental_agent", "running", "正在分析基本面...")
 
         # 检查是否有数据
-        if not state.fundamental_factors:
+        if state.fundamental_factors is None:
             state.set_error(self.get_name(), "缺少基本面因子数据")
             return state
 
@@ -65,6 +65,9 @@ class FundamentalAgent(BaseAgent):
                 {"role": "system", "content": FUNDAMENTAL_SYSTEM_MESSAGE},
                 {"role": "user", "content": user_prompt},
             ]
+
+            if progress_callback:
+                await progress_callback("fundamental_agent", "analyzing", "LLM 正在推理...")
 
             analysis = await self._call_llm(messages, temperature=1.0)
             state.fundamental_analysis = analysis

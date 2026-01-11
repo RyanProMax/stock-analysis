@@ -54,14 +54,13 @@ export interface StockListResponse {
 
 // SSE事件类型基础接口
 export interface BaseSSEEvent {
-  type: 'start' | 'progress' | 'streaming' | 'error' | 'complete'
+  type: 'start' | 'progress' | 'streaming' | 'thinking' | 'error' | 'complete'
   timestamp?: string
 }
 
 // 开始事件
 export interface StartEvent extends BaseSSEEvent {
   type: 'start'
-  message: string
   symbol: string
 }
 
@@ -73,8 +72,8 @@ export interface ProgressEvent extends BaseSSEEvent {
   message: string
   data?: {
     factors?: FactorDetail[]
+    execution_time?: number
   }
-  timestamp: string
 }
 
 // 流式事件 - LLM 流式输出
@@ -84,11 +83,17 @@ export interface StreamingEvent extends BaseSSEEvent {
   content: string
 }
 
+// 思考过程事件 - LLM 推理过程
+export interface ThinkingEvent extends BaseSSEEvent {
+  type: 'thinking'
+  step: string
+  content: string
+}
+
 // 错误事件
 export interface ErrorEvent extends BaseSSEEvent {
   type: 'error'
   message: string
-  step?: string
 }
 
 // 完成事件 - 分析结果
@@ -98,18 +103,21 @@ export interface AnalysisFactor {
   details?: Record<string, any>
 }
 
+export interface AnalysisDecision {
+  action: string
+  analysis: string
+  thinking?: string
+}
+
 export interface AnalysisResult {
   symbol: string
-  timestamp?: string
-  decision: {
-    action: string
-    analysis: string
-  }
+  stock_name: string
+  decision: AnalysisDecision
+  execution_times: Record<string, number>
 }
 
 export interface CompleteEvent extends BaseSSEEvent {
   type: 'complete'
-  message: string
   result: AnalysisResult
 }
 
@@ -118,6 +126,7 @@ export type AgentReportEvent =
   | StartEvent
   | ProgressEvent
   | StreamingEvent
+  | ThinkingEvent
   | ErrorEvent
   | CompleteEvent
 

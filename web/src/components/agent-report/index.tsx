@@ -97,6 +97,7 @@ export function AgentReport() {
   const [progressNodes, setProgressNodes] = useState<Record<string, ProgressNode>>({})
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [streamingContent, setStreamingContent] = useState('')
+  const [thinkingContent, setThinkingContent] = useState('')
   const [isComplete, setIsComplete] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null)
@@ -108,6 +109,7 @@ export function AgentReport() {
         setCurrentSymbol(event.symbol)
         setHasStarted(true)
         setStreamingContent('')
+        setThinkingContent('')
         break
 
       case 'progress': {
@@ -132,6 +134,18 @@ export function AgentReport() {
         }))
         break
 
+      case 'thinking':
+        setThinkingContent(prev => prev + event.content)
+        setProgressNodes(prev => ({
+          ...prev,
+          [event.step]: {
+            step: event.step,
+            status: 'running' as const,
+            message: '正在思考...',
+          },
+        }))
+        break
+
       case 'error':
         setError(event.message)
         break
@@ -140,6 +154,7 @@ export function AgentReport() {
         setAnalysisResult(event.result)
         setIsComplete(true)
         setStreamingContent('')
+        setThinkingContent('')
         // 将所有运行中的节点标记为完成
         setProgressNodes(prev =>
           Object.fromEntries(
@@ -169,6 +184,7 @@ export function AgentReport() {
       setProgressNodes({})
       setAnalysisResult(null)
       setStreamingContent('')
+      setThinkingContent('')
       setIsComplete(false)
       setError(null)
       setCurrentSymbol(null)
@@ -274,6 +290,26 @@ export function AgentReport() {
             </Card>
           )}
 
+        {/* LLM 思考过程 */}
+        {thinkingContent && (
+          <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <Card
+              variant={'borderless'}
+              className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
+              title={
+                <Title level={5} className="text-gray-600 dark:text-gray-400">
+                  💭 思考过程
+                </Title>
+              }
+            >
+              <div className="prose prose-sm max-w-none dark:prose-invert opacity-70">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{thinkingContent}</ReactMarkdown>
+              </div>
+              <span className="inline-block w-2 h-4 bg-gray-400 ml-1 animate-pulse rounded-full align-middle" />
+            </Card>
+          </div>
+        )}
+
         {/* LLM 流式输出 */}
         {streamingContent && (
           <div className="ai-rainbow-border mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -294,6 +330,19 @@ export function AgentReport() {
         {/* 分析完成报告 */}
         {isComplete && analysisResult?.decision && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* 思考过程 */}
+            {analysisResult.decision.thinking && (
+              <Card className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                <Title level={5} className="text-gray-600 dark:text-gray-400 mb-4">
+                  💭 思考过程
+                </Title>
+                <MarkdownContent
+                  content={analysisResult.decision.thinking}
+                  className="opacity-70"
+                />
+              </Card>
+            )}
+            {/* 分析报告 */}
             <AIRainbowCard title="AI 分析报告">
               <MarkdownContent content={analysisResult.decision.analysis} />
             </AIRainbowCard>

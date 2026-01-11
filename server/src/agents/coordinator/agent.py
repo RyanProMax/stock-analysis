@@ -5,13 +5,15 @@ Coordinator - 主协调 Agent 和 MultiAgentSystem
 """
 
 import asyncio
-from typing import Optional, AsyncGenerator, Tuple, Callable, List, Any, Dict
+from typing import Optional, AsyncGenerator, Tuple, Callable, List
 from openai.types.chat import ChatCompletionMessageParam
 
-from ..base import BaseAgent, AnalysisState, AgentStatus
+from ..base import BaseAgent, AnalysisState
 from ..data import DataAgent
 from ..fundamental import FundamentalAgent
+from ..fundamental.prompts import FUNDAMENTAL_SYSTEM_MESSAGE, build_fundamental_prompt
 from ..technical import TechnicalAgent
+from ..technical.prompts import TECHNICAL_SYSTEM_MESSAGE, build_technical_prompt
 from ..llm import LLMManager
 from src.env import is_development
 from .prompts import (
@@ -108,9 +110,12 @@ class CoordinatorAgent(BaseAgent):
             yield ("LLM 未配置，无法生成综合分析。", None)
             return
 
+        assert self.llm is not None  # Type narrowing for type checker
+
         thinking_buffer = ""
-        content_buffer = ""
         in_thinking = False
+        # 用于处理跨 chunk 的标签检测
+        pending_buffer = ""
         max_tokens = get_max_tokens()
 
         async for chunk in self.llm.chat_completion_stream(
@@ -118,34 +123,76 @@ class CoordinatorAgent(BaseAgent):
             temperature=1.0,
             max_tokens=max_tokens,
         ):
-            # 检测 thinking 标签
-            if "<thinking>" in chunk:
-                in_thinking = True
-                # 分割 chunk，处理 thinking 标签前后的内容
-                parts = chunk.split("<thinking>", 1)
-                if parts[0]:
-                    yield (parts[0], None)
-                if len(parts) > 1:
-                    thinking_buffer += parts[1]
-                continue
+            # 将待处理内容和当前 chunk 合并
+            combined = pending_buffer + chunk
+            pending_buffer = ""
 
-            if "</thinking>" in chunk:
-                in_thinking = False
-                # 分割 chunk，完成 thinking 并开始内容
-                parts = chunk.split("</thinking>", 1)
-                thinking_buffer += parts[0]
-                # 输出完整的思考过程
-                if thinking_buffer.strip():
-                    yield (thinking_buffer.strip(), "thinking")
-                thinking_buffer = ""
-                if len(parts) > 1 and parts[1]:
-                    yield (parts[1], None)
-                continue
-
-            if in_thinking:
-                thinking_buffer += chunk
+            if not in_thinking:
+                # 检测 <thinking> 标签开始
+                thinking_start = combined.find("<thinking>")
+                if thinking_start != -1:
+                    # 输出标签之前的内容
+                    if thinking_start > 0:
+                        yield (combined[:thinking_start], None)
+                    # 进入思考模式
+                    in_thinking = True
+                    # 标签之后的内容可能是思考内容
+                    remaining = combined[thinking_start + len("<thinking>") :]
+                    # 检查是否在同一 chunk 中有结束标签
+                    thinking_end = remaining.find("</thinking>")
+                    if thinking_end != -1:
+                        # 同一 chunk 中有开始和结束标签
+                        thinking_content = remaining[:thinking_end]
+                        if thinking_content.strip():
+                            yield (thinking_content, "thinking")
+                        # 退出思考模式
+                        in_thinking = False
+                        # 结束标签后的内容
+                        pending_buffer = remaining[thinking_end + len("</thinking>") :]
+                    else:
+                        # 只有开始标签，保存剩余内容
+                        thinking_buffer = remaining
+                else:
+                    # 检测部分标签（可能跨 chunk）
+                    if (
+                        combined.endswith("<")
+                        or combined.endswith("<t")
+                        or combined.endswith("<th")
+                        or combined.endswith("<thi")
+                        or combined.endswith("<thin")
+                        or combined.endswith("<think")
+                        or combined.endswith("<thinki")
+                        or combined.endswith("<thinkin")
+                    ):
+                        # 可能是 <thinking> 标签的开始，保存待下次处理
+                        pending_buffer = combined
+                    elif combined.startswith("<") and not combined.startswith("<thinking>"):
+                        # 检查是否是标签的一部分
+                        pending_buffer = combined
+                    else:
+                        # 正常内容
+                        yield (combined, None)
             else:
-                yield (chunk, None)
+                # 在思考模式中，检测 </thinking> 标签
+                thinking_end = combined.find("</thinking>")
+                if thinking_end != -1:
+                    # 找到结束标签
+                    thinking_buffer += combined[:thinking_end]
+                    if thinking_buffer.strip():
+                        yield (thinking_buffer.strip(), "thinking")
+                    thinking_buffer = ""
+                    in_thinking = False
+                    # 结束标签后的内容
+                    pending_buffer = combined[thinking_end + len("</thinking>") :]
+                else:
+                    # 仍在思考模式中
+                    thinking_buffer += combined
+
+        # 处理剩余内容
+        if in_thinking and thinking_buffer.strip():
+            yield (thinking_buffer.strip(), "thinking")
+        if pending_buffer and not in_thinking:
+            yield (pending_buffer, None)
 
     async def synthesize(self, state: AnalysisState) -> Tuple[str, str]:
         """
@@ -193,18 +240,185 @@ class MultiAgentSystem:
         self.technical_agent = TechnicalAgent(llm_manager)
         self.coordinator = CoordinatorAgent(llm_manager)
 
-    async def analyze(
+    async def analyze_stream(
         self,
         symbol: str,
-        progress_callback: Optional[Callable] = None,
-    ) -> Tuple[AnalysisState, AsyncGenerator[Tuple[str, Optional[str]], None]]:
+    ) -> AsyncGenerator[
+        Tuple[
+            str,
+            AnalysisState,
+            Optional[AsyncGenerator[Tuple[str, Optional[str]], None]],
+            Optional[str],
+        ],
+        None,
+    ]:
         """
-        执行完整的 Multi-Agent 分析流程
+        执行完整的 Multi-Agent 分析流程，流式输出进度
 
         流程：
         1. DataAgent 获取数据
         2. FundamentalAgent + TechnicalAgent 并行分析
         3. CoordinatorAgent 综合分析（返回流式生成器）
+
+        Yields:
+            (event_type, state, stream_gen, message) 元组
+            - event_type: 事件类型（如 "data_agent:running"）
+            - state: 当前分析状态
+            - stream_gen: 综合分析的流式生成器（仅在 coordinator 时有值）
+            - message: 进度消息文案
+        """
+        # 初始化状态
+        state = AnalysisState(symbol=symbol.upper())
+
+        # 步骤 1: 数据获取
+        yield ("progress", state, None, None)
+        yield ("data_agent:running", state, None, f"正在获取 {symbol} 数据...")
+
+        state = await self.data_agent.analyze(state)
+
+        if state.has_error("DataAgent"):
+            yield (
+                "data_agent:error",
+                state,
+                None,
+                state.errors.get("DataAgent", "数据获取失败"),
+            )
+            yield ("error", state, None, state.errors.get("DataAgent", "数据获取失败"))
+            return
+
+        yield ("data_agent:success", state, None, "数据获取完成")
+
+        # 步骤 2: 并行执行基本面和技术面分析
+        # 使用 asyncio.Queue 来传递进度事件
+        progress_queue: asyncio.Queue = asyncio.Queue()
+
+        async def wrapped_fundamental():
+            """包装 fundamental agent，发送进度到队列"""
+            await progress_queue.put(("fundamental_analyzer", "running", "正在分析基本面..."))
+            if state.fundamental_factors is None:
+                await progress_queue.put(("fundamental_analyzer", "error", "缺少基本面因子数据"))
+                return
+            try:
+                # 构建 prompt
+                user_prompt = build_fundamental_prompt(
+                    symbol=state.symbol,
+                    stock_name=state.stock_name,
+                    industry=state.industry,
+                    fundamental_factors=state.fundamental_factors,
+                )
+                messages: List[ChatCompletionMessageParam] = [
+                    {"role": "system", "content": FUNDAMENTAL_SYSTEM_MESSAGE},
+                    {"role": "user", "content": user_prompt},
+                ]
+
+                await progress_queue.put(("fundamental_analyzer", "analyzing", "LLM 正在推理..."))
+
+                # 调用 LLM
+                llm = self.fundamental_agent.llm
+                if not llm:
+                    raise RuntimeError("FundamentalAgent LLM 未配置")
+
+                full_response = ""
+                async for chunk in llm.chat_completion_stream(messages=messages, temperature=1.0):
+                    full_response += chunk
+                state.fundamental_analysis = full_response
+                state.set_execution_time("FundamentalAgent", self.fundamental_agent._end_timing())
+                await progress_queue.put(("fundamental_analyzer", "success", "基本面分析完成"))
+            except Exception as e:
+                state.set_error("FundamentalAgent", f"基本面分析失败: {str(e)}")
+                await progress_queue.put(
+                    ("fundamental_analyzer", "error", state.errors["FundamentalAgent"])
+                )
+
+        async def wrapped_technical():
+            """包装 technical agent，发送进度到队列"""
+            await progress_queue.put(("technical_analyzer", "running", "正在分析技术面..."))
+            if state.technical_factors is None:
+                await progress_queue.put(("technical_analyzer", "error", "缺少技术面因子数据"))
+                return
+            try:
+                # 构建 prompt
+                user_prompt = build_technical_prompt(
+                    symbol=state.symbol,
+                    stock_name=state.stock_name,
+                    technical_factors=state.technical_factors,
+                )
+                messages: List[ChatCompletionMessageParam] = [
+                    {"role": "system", "content": TECHNICAL_SYSTEM_MESSAGE},
+                    {"role": "user", "content": user_prompt},
+                ]
+
+                await progress_queue.put(("technical_analyzer", "analyzing", "LLM 正在推理..."))
+
+                # 调用 LLM
+                llm = self.technical_agent.llm
+                if not llm:
+                    raise RuntimeError("TechnicalAgent LLM 未配置")
+
+                full_response = ""
+                async for chunk in llm.chat_completion_stream(messages=messages, temperature=1.0):
+                    full_response += chunk
+                state.technical_analysis = full_response
+                state.set_execution_time("TechnicalAgent", self.technical_agent._end_timing())
+                await progress_queue.put(("technical_analyzer", "success", "技术面分析完成"))
+            except Exception as e:
+                state.set_error("TechnicalAgent", f"技术面分析失败: {str(e)}")
+                await progress_queue.put(
+                    ("technical_analyzer", "error", state.errors["TechnicalAgent"])
+                )
+
+        # 启动并行任务
+        self.fundamental_agent._start_timing()
+        self.technical_agent._start_timing()
+        fund_task = asyncio.create_task(wrapped_fundamental())
+        tech_task = asyncio.create_task(wrapped_technical())
+
+        # 实时消费进度事件
+        completed = 0
+        while completed < 2:
+            try:
+                event = await asyncio.wait_for(progress_queue.get(), timeout=0.01)
+                step, status, message = event
+                yield (f"{step}:{status}", state, None, message)
+                if status in ("success", "error"):
+                    completed += 1
+            except asyncio.TimeoutError:
+                # 检查任务是否完成
+                if fund_task.done():
+                    completed += 1
+                if tech_task.done():
+                    completed += 1
+                if completed >= 2:
+                    break
+                continue
+
+        # 等待任务完全完成
+        await asyncio.gather(fund_task, tech_task, return_exceptions=True)
+
+        # 检查并发送最终状态
+        if not state.has_error("FundamentalAgent") and state.fundamental_analysis:
+            yield ("fundamental_analyzer:success", state, None, "基本面分析完成")
+        if not state.has_error("TechnicalAgent") and state.technical_analysis:
+            yield ("technical_analyzer:success", state, None, "技术面分析完成")
+
+        # 步骤 3: 返回综合分析的流式生成器
+        yield (
+            "coordinator:running",
+            state,
+            self.coordinator.synthesize_stream(state),
+            "正在生成综合报告...",
+        )
+
+    async def analyze(
+        self,
+        symbol: str,
+        progress_callback: Optional[Callable] = None,
+    ) -> Tuple[
+        Optional[AnalysisState],
+        Optional[AsyncGenerator[Tuple[str, Optional[str]], None]],
+    ]:
+        """
+        执行完整的 Multi-Agent 分析流程（旧版接口，保持兼容）
 
         Args:
             symbol: 股票代码
@@ -213,88 +427,20 @@ class MultiAgentSystem:
         Returns:
             (分析状态, 流式输出生成器)
         """
-        # 初始化状态
-        state = AnalysisState(symbol=symbol.upper())
-
-        # 步骤 1: 数据获取
-        if progress_callback:
-            await progress_callback("data_agent", "running", f"正在获取 {symbol} 数据...")
-
-        state = await self.data_agent.analyze(state)
-
-        if state.has_error("DataAgent"):
-            if progress_callback:
-                await progress_callback(
-                    "data_agent",
-                    "error",
-                    state.errors["DataAgent"],
-                    {"execution_time": state.execution_times.get("DataAgent", 0)},
-                )
-            return state, self._error_stream(state.errors["DataAgent"])
-
-        if progress_callback:
-            await progress_callback(
-                "data_agent",
-                "success",
-                "数据获取完成",
-                {"execution_time": state.execution_times.get("DataAgent", 0)},
-            )
-
-        # 步骤 2: 并行执行基本面和技术面分析
-        if progress_callback:
-            await progress_callback("parallel_analysis", "running", "正在并行分析...")
-
-        await asyncio.gather(
-            self.fundamental_agent.analyze(state),
-            self.technical_agent.analyze(state),
-        )
-
-        # 检查分析结果
-        if state.has_error("FundamentalAgent"):
-            if progress_callback:
-                await progress_callback(
-                    "fundamental_agent",
-                    "error",
-                    state.errors["FundamentalAgent"],
-                    {"execution_time": state.execution_times.get("FundamentalAgent", 0)},
-                )
-        else:
-            if progress_callback:
-                await progress_callback(
-                    "fundamental_agent",
-                    "success",
-                    "基本面分析完成",
-                    {"execution_time": state.execution_times.get("FundamentalAgent", 0)},
-                )
-
-        if state.has_error("TechnicalAgent"):
-            if progress_callback:
-                await progress_callback(
-                    "technical_agent",
-                    "error",
-                    state.errors["TechnicalAgent"],
-                    {"execution_time": state.execution_times.get("TechnicalAgent", 0)},
-                )
-        else:
-            if progress_callback:
-                await progress_callback(
-                    "technical_agent",
-                    "success",
-                    "技术面分析完成",
-                    {"execution_time": state.execution_times.get("TechnicalAgent", 0)},
-                )
-
-        if progress_callback:
-            await progress_callback("parallel_analysis", "success", "子分析完成")
-
-        # 步骤 3: 返回综合分析的流式生成器
-        return state, self.coordinator.synthesize_stream(state)
+        # 使用新的流式接口
+        state = None
+        stream_gen = None
+        async for event_type, event_state, event_stream_gen, _ in self.analyze_stream(symbol):
+            state = event_state
+            if event_stream_gen is not None:
+                stream_gen = event_stream_gen
+        return state, stream_gen
 
     async def analyze_full(
         self,
         symbol: str,
         progress_callback: Optional[Callable] = None,
-    ) -> Tuple[AnalysisState, str, str]:
+    ) -> Tuple[Optional[AnalysisState], str, str]:
         """
         执行完整分析并返回完整结果（非流式）
 
@@ -310,18 +456,11 @@ class MultiAgentSystem:
         full_response = ""
         thinking_response = ""
 
-        async for chunk, thinking_type in stream_gen:
-            if thinking_type == "thinking":
-                thinking_response += chunk
-            else:
-                full_response += chunk
+        if stream_gen is not None:
+            async for chunk, thinking_type in stream_gen:
+                if thinking_type == "thinking":
+                    thinking_response += chunk
+                else:
+                    full_response += chunk
 
         return state, full_response, thinking_response
-
-    def _error_stream(self, error_msg: str) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
-        """生成错误消息流"""
-
-        async def gen():
-            yield (f"分析失败: {error_msg}", None)
-
-        return gen()

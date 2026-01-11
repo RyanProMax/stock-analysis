@@ -4,7 +4,7 @@ Agent控制器 - 流式股票分析接口 (Multi-Agent 架构)
 
 import json
 import asyncio
-from typing import Optional, List, Any, Tuple
+from typing import Optional, Any
 from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
 
@@ -58,37 +58,39 @@ async def analyze_stock_stream(
         try:
             yield send_event("start", {"type": "start", "symbol": symbol})
 
-            # 用于收集进度事件的队列
-            progress_events = []
+            # 使用新的流式接口，实时接收进度事件
+            state = None
+            stream_gen = None
 
-            # 定义进度回调
-            async def on_progress(*args):
-                """处理进度回调，支持多种参数格式"""
-                if len(args) == 1:
-                    # 仅 message
-                    message = args[0]
-                    progress_events.append(("", "", message, None))
-                elif len(args) == 3:
-                    # (step, status, message)
-                    step, status, message = args
-                    progress_events.append((step, status, message, None))
-                elif len(args) == 4:
-                    # (step, status, message, data)
-                    step, status, message, data = args
-                    progress_events.append((step, status, message, data))
+            async for (
+                event_type,
+                event_state,
+                event_stream_gen,
+                event_message,
+            ) in system.analyze_stream(symbol):
+                state = event_state
+                if event_stream_gen is not None:
+                    stream_gen = event_stream_gen
 
-            # 使用 Multi-Agent 系统执行分析
-            state, stream_gen = await system.analyze(symbol, progress_callback=on_progress)
+                # 解析事件类型
+                if event_type == "error":
+                    yield send_event(
+                        "error",
+                        {
+                            "type": "error",
+                            "message": event_message or state.errors.get("DataAgent", "分析错误"),
+                        },
+                    )
+                    return
 
-            # 先发送所有进度事件
-            for step, status, message, data in progress_events:
-                if step:  # 有 step 的是完整进度事件
-                    yield send_progress(step, status, message, data)
-                else:  # 只有 message 的是简单进度
-                    yield send_progress("info", "running", message)
+                # 解析 step:status 格式的事件，透传消息
+                if ":" in event_type:
+                    step, status = event_type.split(":", 1)
+                    message = event_message or status
+                    yield send_progress(step, status, message)
 
             # 检查是否有数据获取错误
-            if state.has_error("DataAgent"):
+            if state and state.has_error("DataAgent"):
                 yield send_event(
                     "error",
                     {"type": "error", "message": state.errors["DataAgent"]},
@@ -100,13 +102,13 @@ async def analyze_stock_stream(
                 "fundamental_analyzer",
                 "success",
                 "基本面因子",
-                {"factors": state.fundamental_factors or []},
+                {"factors": state.fundamental_factors or [] if state else []},
             )
             yield send_progress(
                 "technical_analyzer",
                 "success",
                 "技术面因子",
-                {"factors": state.technical_factors or []},
+                {"factors": state.technical_factors or [] if state else []},
             )
 
             # 流式输出综合分析结果
@@ -115,7 +117,7 @@ async def analyze_stock_stream(
             full_response = ""
             thinking_process = ""
 
-            if use_llm:
+            if use_llm and stream_gen is not None:
                 async for chunk, thinking_type in stream_gen:
                     if thinking_type == "thinking":
                         # 思考过程，单独发送
@@ -148,11 +150,15 @@ async def analyze_stock_stream(
                 }
             else:
                 # 如果没有 LLM，返回因子数据
-                fundamental_text = state.fundamental_analysis or "基本面分析: " + str(
-                    state.fundamental_factors
+                fundamental_text = (
+                    state.fundamental_analysis or "基本面分析: " + str(state.fundamental_factors)
+                    if state
+                    else "基本面分析: 无数据"
                 )
-                technical_text = state.technical_analysis or "技术面分析: " + str(
-                    state.technical_factors
+                technical_text = (
+                    state.technical_analysis or "技术面分析: " + str(state.technical_factors)
+                    if state
+                    else "技术面分析: 无数据"
                 )
                 decision = {
                     "action": "LLM未配置",
@@ -160,7 +166,7 @@ async def analyze_stock_stream(
                 }
 
             # 更新最后一个节点状态为完成
-            execution_time = state.execution_times.get("CoordinatorAgent", 0)
+            execution_time = state.execution_times.get("CoordinatorAgent", 0) if state else 0
             yield send_progress(
                 "coordinator", "success", "分析完成", {"execution_time": execution_time}
             )
@@ -172,9 +178,9 @@ async def analyze_stock_stream(
                     "type": "complete",
                     "result": {
                         "symbol": symbol,
-                        "stock_name": state.stock_name,
+                        "stock_name": state.stock_name if state else "",
                         "decision": decision,
-                        "execution_times": state.execution_times,
+                        "execution_times": state.execution_times if state else {},
                     },
                 },
             )

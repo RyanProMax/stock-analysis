@@ -116,6 +116,8 @@ class LLMManager:
         if not self.is_available or not self.llm:
             raise RuntimeError("LLM 未初始化或不可用")
 
+        assert self.llm is not None  # Type narrowing for type checker
+
         async for chunk in self.llm.chat_completion_stream(
             messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
         ):

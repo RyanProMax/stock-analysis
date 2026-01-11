@@ -78,10 +78,10 @@
 
 @keyframes shimmer-color-flow {
   0% {
-    background-position: 0% 50%;
+    background-position: 200% 50%;
   }
   100% {
-    background-position: 200% 50%;
+    background-position: 0% 50%;
   }
 }
 
@@ -108,7 +108,6 @@
     'Space Grotesk', 'Space Grotesk Fallback', ui-sans-serif, system-ui, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --color-primary: oklch(0.718 0.202 349.761);
-  --text-s: 1rem;
 
   font-family: var(--font-space-grotesk);
   line-height: 1.6;

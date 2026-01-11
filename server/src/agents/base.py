@@ -186,6 +186,8 @@ class BaseAgent(ABC):
         if not self.llm or not self.llm.is_available:
             return "LLM 未配置"
 
+        assert self.llm is not None  # Type narrowing for type checker
+
         full_response = ""
         async for chunk in self.llm.chat_completion_stream(
             messages=messages,
@@ -215,6 +217,8 @@ class BaseAgent(ABC):
         if not self.llm or not self.llm.is_available:
             yield "LLM 未配置"
             return
+
+        assert self.llm is not None  # Type narrowing for type checker
 
         async for chunk in self.llm.chat_completion_stream(
             messages=messages,

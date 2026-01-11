@@ -1,5 +1,6 @@
-import { Github } from 'lucide-react'
+import { GithubOutlined } from '@ant-design/icons'
 import { TabKey, Tabs } from './constant'
+import { Button } from 'antd'
 
 interface TitleBarProps {
   activeTab: TabKey
@@ -37,7 +38,7 @@ export function TitleBar({ activeTab, onTabChange }: TitleBarProps) {
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  style={{ fontSize: 'var(--text-s)' }}
+                  style={{ fontSize: 'var(--text-base)' }}
                   className={`cursor-pointer px-3 py-1.5 font-medium transition-colors ${
                     activeTab === tab.id
                       ? 'text-(--color-primary)'
@@ -50,15 +51,14 @@ export function TitleBar({ activeTab, onTabChange }: TitleBarProps) {
             </nav>
 
             {/* icon tab: GitHub 外链 */}
-            <a
+            <Button
               href="https://github.com/RyanProMax/stock-analysis"
               target="_blank"
-              rel="noopener noreferrer"
-              className="cursor-pointer flex items-center rounded-md px-2 py-1.5 text-gray-600 transition-colors hover:text-(--color-primary) dark:text-gray-400 dark:hover:text-(--color-primary)"
-              aria-label="GitHub 仓库"
-            >
-              <Github className="h-5 w-5" />
-            </a>
+              type="link"
+              icon={<GithubOutlined />}
+              className="text-gray-600! hover:text-(--color-primary)! dark:text-gray-400 dark:hover:text-(--color-primary)!"
+              style={{ fontSize: 'var(--text-lg)' }}
+            />
           </div>
         </div>
       </div>

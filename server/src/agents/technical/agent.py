@@ -36,7 +36,7 @@ class TechnicalAgent(BaseAgent):
 
         Args:
             state: 包含技术面数据的分析状态
-            progress_callback: 进度回调函数
+            progress_callback: 进度回调函数 callback(step, status, message, data)
 
         Returns:
             更新了技术面分析结论的状态
@@ -44,10 +44,10 @@ class TechnicalAgent(BaseAgent):
         self._start_timing()
 
         if progress_callback:
-            await progress_callback("正在分析技术面...")
+            await progress_callback("technical_agent", "running", "正在分析技术面...")
 
         # 检查是否有数据
-        if not state.technical_factors:
+        if state.technical_factors is None:
             state.set_error(self.get_name(), "缺少技术面因子数据")
             return state
 
@@ -64,6 +64,9 @@ class TechnicalAgent(BaseAgent):
                 {"role": "system", "content": TECHNICAL_SYSTEM_MESSAGE},
                 {"role": "user", "content": user_prompt},
             ]
+
+            if progress_callback:
+                await progress_callback("technical_agent", "analyzing", "LLM 正在推理...")
 
             analysis = await self._call_llm(messages, temperature=1.0)
             state.technical_analysis = analysis
