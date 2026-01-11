@@ -271,6 +271,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
           <FactorList
             title={`基本面 (${fundamentalFactors.length})`}
             factors={fundamentalFactors}
+            showAll={true}
           />
 
           <FactorList title={`技术面 (${technicalFactors.length})`} factors={technicalFactors} />

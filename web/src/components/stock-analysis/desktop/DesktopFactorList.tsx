@@ -6,6 +6,7 @@ import type { FactorDetail } from '../../../types'
 interface FactorListProps {
   title: string
   factors: FactorDetail[]
+  showAll?: boolean
 }
 
 // 因子状态计算
@@ -59,29 +60,32 @@ const getFactorStatusStyle = (
   }
 }
 
-export const FactorList: React.FC<FactorListProps> = ({ title, factors }) => {
-  const [showOnlySignals, setShowOnlySignals] = useState(true) // 默认只显示信号因子
+export const FactorList: React.FC<FactorListProps> = ({ title, factors, showAll = false }) => {
+  const [isFilter, setIsFilter] = useState(true)
 
   // 过滤因子
-  const filteredFactors = showOnlySignals
-    ? factors.filter(
-        factor => factor.bullish_signals.length > 0 || factor.bearish_signals.length > 0
-      )
-    : factors
+  const filteredFactors =
+    isFilter && !showAll
+      ? factors.filter(
+          factor => factor.bullish_signals.length > 0 || factor.bearish_signals.length > 0
+        )
+      : factors
 
   return (
     <div className="mb-6 last:mb-0">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-base font-light text-gray-900 dark:text-gray-100">{title}</h3>
-        <button
-          onClick={e => {
-            e.stopPropagation()
-            setShowOnlySignals(v => !v)
-          }}
-          className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-        >
-          {showOnlySignals ? '展示全部' : '筛选信号'}
-        </button>
+        {!showAll && (
+          <button
+            onClick={e => {
+              e.stopPropagation()
+              setIsFilter(v => !v)
+            }}
+            className="rounded-lg px-3 py-1.5 text-xs font-light text-gray-600 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            {isFilter ? '展示全部' : '筛选信号'}
+          </button>
+        )}
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
         {filteredFactors.length ? (

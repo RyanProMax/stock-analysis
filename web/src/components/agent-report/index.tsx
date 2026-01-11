@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Spin, Card, Typography, Progress, Alert } from 'antd'
-import { CheckCircle, AlertCircle, Clock, BarChart3, Brain, FileText } from 'lucide-react'
+import { CheckCircle, AlertCircle, BarChart3, Brain, FileText } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { stockApi } from '../../api/client'
@@ -13,11 +13,6 @@ const { Title, Text } = Typography
 // 步骤配置
 const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; defaultMessage: string }> =
   {
-    data_fetcher: {
-      name: '数据获取',
-      icon: <Clock className="h-5 w-5" />,
-      defaultMessage: '等待获取数据...',
-    },
     fundamental_analyzer: {
       name: '基本面分析',
       icon: <FileText className="h-5 w-5" />,
@@ -28,19 +23,14 @@ const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; default
       icon: <BarChart3 className="h-5 w-5" />,
       defaultMessage: '等待技术面分析...',
     },
-    decision_maker: {
+    coordinator: {
       name: '综合决策',
       icon: <Brain className="h-5 w-5" />,
       defaultMessage: '等待综合决策...',
     },
   } as const
 
-const STEP_ORDER = [
-  'data_fetcher',
-  'fundamental_analyzer',
-  'technical_analyzer',
-  'decision_maker',
-] as const
+const STEP_ORDER = ['fundamental_analyzer', 'technical_analyzer', 'coordinator'] as const
 
 // 节点状态类型
 type NodeStatus = 'pending' | 'running' | 'completed' | 'error'
@@ -208,7 +198,7 @@ export function AgentReport() {
   const calculateProgress = () => {
     const nodes = Object.values(progressNodes)
     if (nodes.length === 0) return 0
-    return Math.floor((nodes.filter(n => n.status === 'completed').length / 4) * 100)
+    return Math.floor((nodes.filter(n => n.status === 'completed').length / 3) * 100)
   }
 
   const fundamental_factors: FactorDetail[] =
@@ -253,7 +243,7 @@ export function AgentReport() {
 
         {/* 节点进度卡片 */}
         {hasStarted && (
-          <div className="grid grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-3 gap-3 mb-6">
             {STEP_ORDER.map(step => {
               const node = progressNodes[step]
               const config = STEP_CONFIG[step]
@@ -293,6 +283,7 @@ export function AgentReport() {
                   <DesktopFactorList
                     title={`基本面 (${fundamental_factors.length})`}
                     factors={fundamental_factors}
+                    showAll={true}
                   />
                 )}
                 {fundamental_factors.length > 0 && technical_factors.length > 0 && (
