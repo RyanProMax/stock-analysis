@@ -12,15 +12,6 @@
   }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
 /* AI 彩虹边框包装器 */
 .ai-rainbow-border {
   position: relative;
@@ -58,9 +49,58 @@
   animation: gradient-flow 3s ease infinite;
 }
 
-.animate-shimmer {
+/* 图标/文字扫光效果 - 颜色渐变流光 */
+.shimmer-icon {
+  background: linear-gradient(
+    90deg,
+    #06b6d4,
+    #22d3ee,
+    #3b82f6,
+    #8b5cf6,
+    #a855f7,
+    #8b5cf6,
+    #3b82f6,
+    #22d3ee,
+    #06b6d4
+  );
   background-size: 200% 100%;
-  animation: shimmer 2s linear infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer-color-flow 1.5s linear infinite;
+}
+
+/* 对于 SVG icon，需要特殊处理 */
+.shimmer-icon svg {
+  color: #06b6d4;
+  animation: shimmer-svg-flow 1.5s linear infinite;
+}
+
+@keyframes shimmer-color-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes shimmer-svg-flow {
+  0% {
+    color: #06b6d4;
+  }
+  25% {
+    color: #3b82f6;
+  }
+  50% {
+    color: #8b5cf6;
+  }
+  75% {
+    color: #3b82f6;
+  }
+  100% {
+    color: #06b6d4;
+  }
 }
 
 :root {

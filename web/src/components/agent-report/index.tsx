@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Spin, Card, Typography, Progress, Alert } from 'antd'
+import { Spin, Card, Typography, Alert } from 'antd'
 import { CheckCircle, AlertCircle, BarChart3, Brain, FileText } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -38,17 +38,17 @@ type NodeStatus = 'pending' | 'running' | 'completed' | 'error'
 // 节点样式配置
 const NODE_STYLES: Record<NodeStatus, string> = {
   running:
-    'border border-cyan-400/60 bg-gradient-to-br from-cyan-50/80 to-blue-50/80 dark:from-cyan-950/40 dark:to-blue-950/40 shadow-lg shadow-cyan-500/10',
+    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
   completed:
-    'border border-emerald-400/60 bg-gradient-to-br from-emerald-50/80 to-green-50/80 dark:from-emerald-950/30 dark:to-green-950/30',
+    'border border-emerald-400/60 bg-gradient-to-r from-emerald-50/80 via-green-50/80 to-teal-50/80 dark:from-emerald-950/30 dark:via-green-950/30 dark:to-teal-950/30',
   error:
-    'border border-red-400/60 bg-gradient-to-br from-red-50/80 to-orange-50/80 dark:from-red-950/30 dark:to-orange-950/30',
+    'border border-red-400/60 bg-gradient-to-r from-red-50/80 via-orange-50/80 to-yellow-50/80 dark:from-red-950/30 dark:via-orange-950/30 dark:to-yellow-950/30',
   pending:
-    'border border-gray-200/60 bg-gray-50/50 dark:border-gray-700/50 dark:bg-gray-800/30 opacity-70',
+    'border border-gray-200/60 bg-gradient-to-r from-gray-50/50 via-gray-50/30 to-gray-100/50 dark:border-gray-700/50 dark:from-gray-800/30 dark:via-gray-800/20 dark:to-gray-700/30 opacity-70',
 }
 
 const NODE_ICON_COLORS: Record<NodeStatus, string> = {
-  running: 'text-cyan-500 dark:text-cyan-400',
+  running: 'shimmer-icon',
   completed: 'text-emerald-500 dark:text-emerald-400',
   error: 'text-red-500 dark:text-red-400',
   pending: 'text-gray-400 dark:text-gray-500',
@@ -97,7 +97,6 @@ export function AgentReport() {
   const [progressNodes, setProgressNodes] = useState<Record<string, ProgressNode>>({})
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [streamingContent, setStreamingContent] = useState('')
-  const [isConnected, setIsConnected] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null)
@@ -107,7 +106,6 @@ export function AgentReport() {
     switch (event.type) {
       case 'start':
         setCurrentSymbol(event.symbol)
-        setIsConnected(true)
         setHasStarted(true)
         setStreamingContent('')
         break
@@ -136,13 +134,11 @@ export function AgentReport() {
 
       case 'error':
         setError(event.message)
-        setIsConnected(false)
         break
 
       case 'complete':
         setAnalysisResult(event.result)
         setIsComplete(true)
-        setIsConnected(false)
         setStreamingContent('')
         // 将所有运行中的节点标记为完成
         setProgressNodes(prev =>
@@ -159,7 +155,6 @@ export function AgentReport() {
 
   const handleError = useCallback((err: string) => {
     setError(err)
-    setIsConnected(false)
   }, [])
 
   const prevSymbolRef = useRef<string | null>(null)
@@ -174,7 +169,6 @@ export function AgentReport() {
       setProgressNodes({})
       setAnalysisResult(null)
       setStreamingContent('')
-      setIsConnected(true)
       setIsComplete(false)
       setError(null)
       setCurrentSymbol(null)
@@ -185,7 +179,6 @@ export function AgentReport() {
       onError: handleError,
       onComplete: () => {
         setIsComplete(true)
-        setIsConnected(false)
       },
     })
 
@@ -193,13 +186,6 @@ export function AgentReport() {
       eventSource?.close()
     }
   }, [symbol, handleMessage, handleError])
-
-  // 计算进度
-  const calculateProgress = () => {
-    const nodes = Object.values(progressNodes)
-    if (nodes.length === 0) return 0
-    return Math.floor((nodes.filter(n => n.status === 'completed').length / 3) * 100)
-  }
 
   const fundamental_factors: FactorDetail[] =
     progressNodes['fundamental_analyzer']?.data?.factors || []
@@ -214,20 +200,7 @@ export function AgentReport() {
           <Title level={2} className="font-light!">
             {currentSymbol || symbol}
           </Title>
-          {isConnected && (
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <Spin size="small" />
-              <Text type="secondary">正在分析中...</Text>
-            </div>
-          )}
         </div>
-
-        {/* 进度条 */}
-        {isConnected && Object.keys(progressNodes).length > 0 && (
-          <div className="mb-6">
-            <Progress percent={calculateProgress()} status="active" />
-          </div>
-        )}
 
         {/* 错误提示 */}
         {error && (
@@ -258,7 +231,9 @@ export function AgentReport() {
                 >
                   <div className="flex flex-col items-center gap-2">
                     <div className={NODE_ICON_COLORS[status]}>{config.icon}</div>
-                    <div className="flex items-center gap-1.5">
+                    <div
+                      className={`flex items-center gap-1.5 ${status === 'running' ? 'shimmer-icon' : ''}`}
+                    >
                       {status === 'running' && <Spin size="small" />}
                       {status === 'completed' && <CheckCircle className="h-4 w-4 shrink-0" />}
                       {status === 'error' && <AlertCircle className="h-4 w-4 shrink-0" />}

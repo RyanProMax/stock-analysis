@@ -5,6 +5,7 @@ import type {
   StockListResponse,
   AgentReportEvent,
 } from '../types'
+import { isMockMode, getMockEventSource } from './mock'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const PING_TIMEOUT = 60000
@@ -133,6 +134,13 @@ export const stockApi = {
     onMessage: (data: AgentReportEvent) => void,
     options?: { onError?: (error: string) => void; onComplete?: () => void }
   ) => {
+    // Mock 模式：使用模拟数据
+    if (isMockMode) {
+      console.log('[API] Using mock mode for agent report')
+      return getMockEventSource(symbol, onMessage, options)
+    }
+
+    // 正常模式：创建真实的 SSE 连接
     const es = new EventSource(`${API_BASE_URL}/agent/analyze?symbol=${encodeURIComponent(symbol)}`)
 
     // 监听 start 事件
