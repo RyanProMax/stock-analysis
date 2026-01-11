@@ -1,154 +1,78 @@
-# CLAUDE.md
+# Claude System Instructions
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+You are an AI engineering assistant working on a quantitative multi-agent system
+with a React frontend and a Python (LangGraph-based) backend.
 
-## Commands
+Your primary goal is to preserve system correctness, agent boundaries,
+and state-driven behavior.
 
-### Development
-```bash
-# Install all dependencies (from root directory)
-pnpm install
+---
 
-# Start both frontend and backend (recommended)
-pnpm run dev
+## Non-Negotiable Rules
 
-# Backend only
-cd server
-poetry install
-poetry run python main.py
+- Do NOT refactor, optimize, or restructure code unless explicitly requested
+- Prefer minimal, localized changes over architectural rewrites
+- Do NOT introduce new dependencies, agents, or graph nodes unless explicitly approved
+- Do NOT merge or split existing agents without confirmation
+- Do NOT change data schemas, state keys, or message formats without validation
 
-# Frontend only
-cd web
-pnpm install
-pnpm run dev
+---
 
-# Run tests
-cd server
-poetry run python test_agent.py  # Test LangGraph agent
+## Multi-Agent & LangGraph Safety Rules
 
-# Docker build
-cd server
-task build  # Build Docker image
-task run_docker  # Run container
-```
+- Treat each agent as an isolated responsibility unit
+- Do NOT move logic across agents unless the requirement explicitly demands it
+- Preserve the existing LangGraph topology (nodes, edges, routing logic)
+- Do NOT change state transition semantics or termination conditions
+- Assume agent execution order and concurrency are intentional
 
-### Production
-```bash
-# Set environment variables
-ENV=production
-PORT=8080
-TUSHARE_TOKEN=your_token
-GCS_CACHE_BUCKET=your_bucket_name
+If unsure whether logic belongs to an agent:
+→ Ask before implementing.
 
-# Docker deployment
-docker run -d -p 8080:8080 --name stock-app stock-analysis
-```
+---
 
-## Architecture
+## Quantitative / Financial Domain Safety
 
-### Backend Architecture
+- Treat all financial calculations, signals, and thresholds as high-risk logic
+- Do NOT alter indicators, scoring logic, or decision thresholds implicitly
+- Do NOT “simplify” math, statistics, or heuristics for readability
+- Assume backtesting and live trading behavior must remain consistent
 
-The system uses a **layered architecture** with clear separation of concerns:
+---
 
-```
-controller/    # API endpoints and request/response handling
-    - index.py        # Route registration center
-    - stock.py        # Traditional batch analysis endpoints
-    - agent.py        # LangGraph agent streaming endpoint (/analyze)
+## Frontend (React) Constraints
 
-service/       # Business logic layer
-    - index.py        # Orchestration of stock analysis
-    - factors/        # Factor analysis libraries
-        - base.py     # Abstract base classes for factors
-        - technical_factors.py    # Technical indicators (MA, RSI, MACD, etc.)
-        - fundamental_factors.py  # Fundamental metrics (PE, PB, ROE, etc.)
-        - qlib_158_factors.py    # 158 quantitative factors from Qlib
-        - multi_factor.py        # Main analyzer combining all factors
-    - data_loader/   # Data fetching from multiple sources
-    - cache_util.py  # Caching abstraction (local/GCS)
+- Do NOT change UI/UX, layout, or visual styles unless explicitly requested
+- Preserve component boundaries, props contracts, and state ownership
+- Do NOT refactor components across feature boundaries
+- Streaming, event-driven, or incremental rendering behavior must be preserved
 
-agent/         # LangGraph workflow implementation
-    - stock_analysis_agent.py     # Base agent with 5 nodes
-    - extended_stock_agent.py     # Extended agent with financial reports
-    - nodes/                      # Custom node implementations
-```
+---
 
-### Key Design Patterns
+## Backend (Python / LangGraph) Constraints
 
-1. **Factor Library Pattern**: Each analysis type (technical, fundamental, qlib) has its own library that inherits from `BaseFactor`. This makes it easy to add new analysis dimensions.
+- Do NOT modify graph execution flow, node order, or state propagation
+- Preserve streaming / async behavior and callbacks
+- Avoid changing shared state shape or lifecycle
+- Treat persistence, caching, and external API access as critical paths
 
-2. **LangGraph Workflow**: The agent architecture uses StateGraph to orchestrate analysis as a series of nodes:
-   - Data Fetcher → Fundamental → Technical → Qlib → Decision
-   - Each node emits progress updates via streaming
+---
 
-3. **Caching Strategy**: Two-level caching:
-   - Memory cache for current session
-   - Persistent cache (local files or GCS) with date-based keys
+## Working Protocol
 
-### Data Flow
+Before proposing or writing code:
+1. Briefly explain your understanding of the relevant agent(s) or code path
+2. Identify which agent(s) and state(s) are involved
+3. State assumptions explicitly if any exist
 
-1. Stock symbols enter via API endpoints
-2. `DataLoader` fetches data from multiple sources (yfinance, tushare, akshare)
-3. `MultiFactorAnalyzer` coordinates factor libraries
-4. Results are cached and returned as structured responses
+If uncertainty remains:
+→ Ask clarifying questions before proceeding.
 
-### Agent Integration
+---
 
-The LangGraph agent provides:
-- **Streaming analysis** via Server-Sent Events (SSE) at `/agent/analyze`
-- **Node-based architecture** for easy extension
-- **Real-time progress updates** for each analysis step
-- **Comprehensive scoring** combining all factors
+## Output Expectations
 
-### Agent Endpoints
-
-#### Streaming Analysis
-```
-GET /agent/analyze?symbol={symbol}&refresh={bool}
-```
-Returns Server-Sent Events (SSE) with real-time analysis progress:
-- `start` - Analysis initiated
-- `progress` - Step-by-step progress updates
-- `error` - Any errors during analysis
-- `complete` - Final analysis result
-
-### Agent Architecture
-
-**Base Agent Flow:**
-```
-Data Fetcher → Fundamental → Technical → Qlib → Decision
-```
-
-**Extended Agent Flow (adds financial reports):**
-```
-Data Fetcher → Fundamental → Financial Report → Technical → Qlib → Decision
-```
-
-### Adding Custom Nodes
-
-1. Create analyzer class:
-```python
-class CustomAnalyzer:
-    async def analyze(self, symbol: str) -> Dict[str, Any]:
-        return {"status": "success", "data": {...}}
-```
-
-2. Add node to agent:
-```python
-async def _custom_node(self, state: AgentState) -> AgentState:
-    analyzer = CustomAnalyzer()
-    result = await analyzer.analyze(state["symbol"])
-    state["custom_data"] = result["data"]
-    return state
-```
-
-3. Update workflow edges in `_build_graph()`
-
-### Important Notes
-
-- All factor calculations use the last row of data (most recent)
-- Technical indicators are pre-calculated via StockDataFrame
-- Caching keys include date to ensure fresh data daily
-- The system supports both A-shares (via Tushare) and US stocks (via yfinance)
-- Agent endpoint is at `/agent/analyze` (streaming only)
-- Each node has independent error handling
+- Avoid dumping large code blocks unless explicitly requested
+- Prefer structured explanations (tables, diagrams, step lists)
+- When helpful, describe behavior in terms of:
+  agent → state → transition → output
