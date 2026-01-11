@@ -7,7 +7,6 @@ Multi-Agent 系统 - 股票分析 Agent 框架
 from .base import BaseAgent, AnalysisState, AgentStatus, AgentResult
 from .llm import LLMManager, LLMProvider
 from .coordinator import CoordinatorAgent, MultiAgentSystem
-from .data import DataAgent
 from .fundamental import FundamentalAgent
 from .technical import TechnicalAgent
 
@@ -20,7 +19,6 @@ __all__ = [
     "LLMProvider",
     "CoordinatorAgent",
     "MultiAgentSystem",
-    "DataAgent",
     "FundamentalAgent",
     "TechnicalAgent",
 ]

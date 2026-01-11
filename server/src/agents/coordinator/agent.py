@@ -5,11 +5,10 @@ Coordinator - 主协调 Agent 和 MultiAgentSystem
 """
 
 import asyncio
-from typing import Optional, AsyncGenerator, Tuple, Callable, List
+from typing import Optional, AsyncGenerator, Tuple, Callable, List, Any
 from openai.types.chat import ChatCompletionMessageParam
 
 from ..base import BaseAgent, AnalysisState
-from ..data import DataAgent
 from ..fundamental import FundamentalAgent
 from ..technical import TechnicalAgent
 from ..llm import LLMManager
@@ -110,7 +109,6 @@ class CoordinatorAgent(BaseAgent):
 
         assert self.llm is not None  # Type narrowing for type checker
 
-        thinking_buffer = ""
         in_thinking = False
         # 用于处理跨 chunk 的标签检测
         pending_buffer = ""
@@ -134,61 +132,101 @@ class CoordinatorAgent(BaseAgent):
                         yield (combined[:thinking_start], None)
                     # 进入思考模式
                     in_thinking = True
-                    # 标签之后的内容可能是思考内容
+                    # 标签之后的内容
                     remaining = combined[thinking_start + len("<thinking>") :]
                     # 检查是否在同一 chunk 中有结束标签
                     thinking_end = remaining.find("</thinking>")
                     if thinking_end != -1:
                         # 同一 chunk 中有开始和结束标签
                         thinking_content = remaining[:thinking_end]
-                        if thinking_content.strip():
+                        if thinking_content:
                             yield (thinking_content, "thinking")
                         # 退出思考模式
                         in_thinking = False
                         # 结束标签后的内容
-                        pending_buffer = remaining[thinking_end + len("</thinking>") :]
+                        after_end = remaining[thinking_end + len("</thinking>") :]
+                        if after_end:
+                            # 检查是否还有嵌套的 thinking 标签
+                            next_thinking = after_end.find("<thinking>")
+                            if next_thinking != -1:
+                                # 先输出结束标签后到下一个开始标签之间的内容
+                                if next_thinking > 0:
+                                    yield (after_end[:next_thinking], None)
+                                # 处理下一个 thinking 块
+                                next_remaining = after_end[next_thinking + len("<thinking>") :]
+                                next_end = next_remaining.find("</thinking>")
+                                if next_end != -1:
+                                    if next_remaining[:next_end]:
+                                        yield (next_remaining[:next_end], "thinking")
+                                    if next_remaining[next_end + len("</thinking>") :]:
+                                        yield (
+                                            next_remaining[next_end + len("</thinking>") :],
+                                            None,
+                                        )
+                                else:
+                                    if next_remaining:
+                                        yield (next_remaining, "thinking")
+                                        in_thinking = True
+                            else:
+                                yield (after_end, None)
                     else:
-                        # 只有开始标签，保存剩余内容
-                        thinking_buffer = remaining
+                        # 只有开始标签，立即流式输出剩余内容
+                        if remaining:
+                            yield (remaining, "thinking")
                 else:
-                    # 检测部分标签（可能跨 chunk）
+                    # 检测部分 <thinking> 标签（可能跨 chunk）
                     if (
                         combined.endswith("<")
                         or combined.endswith("<t")
-                        or combined.endswith("<th")
-                        or combined.endswith("<thi")
-                        or combined.endswith("<thin")
-                        or combined.endswith("<think")
-                        or combined.endswith("<thinki")
-                        or combined.endswith("<thinkin")
+                        or (combined.endswith("<th") and "<thinking>" not in combined)
                     ):
                         # 可能是 <thinking> 标签的开始，保存待下次处理
                         pending_buffer = combined
                     elif combined.startswith("<") and not combined.startswith("<thinking>"):
-                        # 检查是否是标签的一部分
+                        # 其他标签开头，暂存
                         pending_buffer = combined
                     else:
-                        # 正常内容
+                        # 正常内容，流式输出
                         yield (combined, None)
             else:
                 # 在思考模式中，检测 </thinking> 标签
                 thinking_end = combined.find("</thinking>")
                 if thinking_end != -1:
-                    # 找到结束标签
-                    thinking_buffer += combined[:thinking_end]
-                    if thinking_buffer.strip():
-                        yield (thinking_buffer.strip(), "thinking")
-                    thinking_buffer = ""
+                    # 找到结束标签，输出之前的思考内容
+                    before_end = combined[:thinking_end]
+                    if before_end:
+                        yield (before_end, "thinking")
                     in_thinking = False
                     # 结束标签后的内容
-                    pending_buffer = combined[thinking_end + len("</thinking>") :]
+                    after_end = combined[thinking_end + len("</thinking>") :]
+                    if after_end:
+                        # 递归检查是否还有嵌套标签
+                        next_thinking = after_end.find("<thinking>")
+                        if next_thinking != -1:
+                            if next_thinking > 0:
+                                yield (after_end[:next_thinking], None)
+                            next_remaining = after_end[next_thinking + len("<thinking>") :]
+                            next_end = next_remaining.find("</thinking>")
+                            if next_end != -1:
+                                if next_remaining[:next_end]:
+                                    yield (next_remaining[:next_end], "thinking")
+                                if next_remaining[next_end + len("</thinking>") :]:
+                                    yield (
+                                        next_remaining[next_end + len("</thinking>") :],
+                                        None,
+                                    )
+                            else:
+                                if next_remaining:
+                                    yield (next_remaining, "thinking")
+                                    in_thinking = True
+                        else:
+                            yield (after_end, None)
                 else:
-                    # 仍在思考模式中
-                    thinking_buffer += combined
+                    # 仍在思考模式中，立即流式输出思考内容
+                    if combined:
+                        yield (combined, "thinking")
 
         # 处理剩余内容
-        if in_thinking and thinking_buffer.strip():
-            yield (thinking_buffer.strip(), "thinking")
         if pending_buffer and not in_thinking:
             yield (pending_buffer, None)
 
@@ -233,7 +271,6 @@ class MultiAgentSystem:
             llm_manager: LLM 管理器
         """
         self.llm_manager = llm_manager
-        self.data_agent = DataAgent()
         self.fundamental_agent = FundamentalAgent(llm_manager)
         self.technical_agent = TechnicalAgent(llm_manager)
         self.coordinator = CoordinatorAgent(llm_manager)
@@ -247,6 +284,7 @@ class MultiAgentSystem:
             AnalysisState,
             Optional[AsyncGenerator[Tuple[str, Optional[str]], None]],
             Optional[str],
+            Optional[Any],
         ],
         None,
     ]:
@@ -254,39 +292,22 @@ class MultiAgentSystem:
         执行完整的 Multi-Agent 分析流程，流式输出进度
 
         流程：
-        1. DataAgent 获取数据
-        2. FundamentalAgent + TechnicalAgent 并行分析
+        1. FundamentalAgent + TechnicalAgent 并行分析（各自负责获取数据）
+        2. 等待两个 Agent 都完成
         3. CoordinatorAgent 综合分析（返回流式生成器）
 
         Yields:
-            (event_type, state, stream_gen, message) 元组
-            - event_type: 事件类型（如 "data_agent:running"）
+            (event_type, state, stream_gen, message, data) 元组
+            - event_type: 事件类型（如 "fundamental_analyzer:running"）
             - state: 当前分析状态
             - stream_gen: 综合分析的流式生成器（仅在 coordinator 时有值）
             - message: 进度消息文案
+            - data: 可选的附加数据（如因子列表）
         """
         # 初始化状态
         state = AnalysisState(symbol=symbol.upper())
 
-        # 步骤 1: 数据获取
-        yield ("progress", state, None, None)
-        yield ("data_agent:running", state, None, f"正在获取 {symbol} 数据...")
-
-        state = await self.data_agent.analyze(state)
-
-        if state.has_error("DataAgent"):
-            yield (
-                "data_agent:error",
-                state,
-                None,
-                state.errors.get("DataAgent", "数据获取失败"),
-            )
-            yield ("error", state, None, state.errors.get("DataAgent", "数据获取失败"))
-            return
-
-        yield ("data_agent:success", state, None, "数据获取完成")
-
-        # 步骤 2: 并行执行基本面和技术面分析（透传子 Agent 状态）
+        # 步骤 1: 并行执行基本面和技术面分析（各自负责获取数据）
         progress_queue: asyncio.Queue = asyncio.Queue()
 
         async def wrapped_fundamental():
@@ -294,7 +315,7 @@ class MultiAgentSystem:
             await self.fundamental_agent.analyze(
                 state,
                 progress_callback=lambda step, status, message, data: progress_queue.put(
-                    (step, status, message)
+                    (step, status, message, data)
                 ),
             )
 
@@ -303,7 +324,7 @@ class MultiAgentSystem:
             await self.technical_agent.analyze(
                 state,
                 progress_callback=lambda step, status, message, data: progress_queue.put(
-                    (step, status, message)
+                    (step, status, message, data)
                 ),
             )
 
@@ -316,30 +337,31 @@ class MultiAgentSystem:
         while completed < 2:
             try:
                 event = await asyncio.wait_for(progress_queue.get(), timeout=0.01)
-                step, status, message = event
-                # 透传子 Agent 的状态
-                yield (f"{step}:{status}", state, None, message)
-                if status in ("success", "error"):
+                step, status, message, data = event
+                # 透传子 Agent 的状态（第5个元素是 data）
+                yield (f"{step}:{status}", state, None, message, data)
+                if status in ("completed", "error"):
                     completed += 1
             except asyncio.TimeoutError:
-                # 检查任务是否完成
-                if fund_task.done():
-                    completed += 1
-                if tech_task.done():
-                    completed += 1
-                if completed >= 2:
-                    break
+                # 超时，继续循环等待
                 continue
 
         # 等待任务完全完成
         await asyncio.gather(fund_task, tech_task, return_exceptions=True)
 
-        # 步骤 3: 返回综合分析的流式生成器
+        # 检查是否有数据获取错误
+        if state.has_error("FundamentalAgent") and state.has_error("TechnicalAgent"):
+            # 两个 agent 都失败了
+            yield ("error", state, None, "分析失败", None)
+            return
+
+        # 步骤 2: 返回综合分析的流式生成器
         yield (
             "coordinator:running",
             state,
             self.coordinator.synthesize_stream(state),
             "正在生成综合报告...",
+            None,
         )
 
     async def analyze(
@@ -363,7 +385,13 @@ class MultiAgentSystem:
         # 使用新的流式接口
         state = None
         stream_gen = None
-        async for event_type, event_state, event_stream_gen, _ in self.analyze_stream(symbol):
+        async for (
+            _event_type,
+            event_state,
+            event_stream_gen,
+            _event_message,
+            _event_data,
+        ) in self.analyze_stream(symbol):
             state = event_state
             if event_stream_gen is not None:
                 stream_gen = event_stream_gen

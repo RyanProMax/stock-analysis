@@ -43,10 +43,8 @@ async def analyze_stock_stream(
     流式股票分析接口 (Multi-Agent 架构)
 
     分析流程：
-    1. DataAgent 获取股票数据（价格、基本面、技术面）
-    2. FundamentalAgent 基本面分析（独立 LLM）
-    3. TechnicalAgent 技术面分析（独立 LLM）
-    4. CoordinatorAgent 综合分析并给出最终投资建议（流式输出，包含思考过程）
+    1. FundamentalAgent + TechnicalAgent 并行分析（各自负责获取数据）
+    2. CoordinatorAgent 综合分析并给出最终投资建议（流式输出，包含思考过程）
 
     子 Agents 并行执行，提升分析速度。
     """
@@ -67,7 +65,9 @@ async def analyze_stock_stream(
                 event_state,
                 event_stream_gen,
                 event_message,
+                event_data,
             ) in system.analyze_stream(symbol):
+
                 state = event_state
                 if event_stream_gen is not None:
                     stream_gen = event_stream_gen
@@ -78,41 +78,28 @@ async def analyze_stock_stream(
                         "error",
                         {
                             "type": "error",
-                            "message": event_message or state.errors.get("DataAgent", "分析错误"),
+                            "message": event_message or "分析错误",
                         },
                     )
                     return
 
-                # 解析 step:status 格式的事件，透传消息
+                # 解析 step:status 格式的事件，透传消息和数据
                 if ":" in event_type:
                     step, status = event_type.split(":", 1)
                     message = event_message or status
-                    yield send_progress(step, status, message)
+                    # 如果有 data 参数，将其包装为 factors 格式
+                    data = None
+                    if event_data is not None:
+                        data = {"factors": event_data}
+                    yield send_progress(step, status, message, data)
 
-            # 检查是否有数据获取错误
-            if state and state.has_error("DataAgent"):
+            # 检查是否所有分析都失败
+            if state and state.has_error("FundamentalAgent") and state.has_error("TechnicalAgent"):
                 yield send_event(
                     "error",
-                    {"type": "error", "message": state.errors["DataAgent"]},
+                    {"type": "error", "message": "分析失败"},
                 )
                 return
-
-            # 发送因子数据（用于前端展示）
-            yield send_progress(
-                "fundamental_analyzer",
-                "success",
-                "基本面因子",
-                {"factors": state.fundamental_factors or [] if state else []},
-            )
-            yield send_progress(
-                "technical_analyzer",
-                "success",
-                "技术面因子",
-                {"factors": state.technical_factors or [] if state else []},
-            )
-
-            # 流式输出综合分析结果
-            yield send_progress("coordinator", "running", "正在生成综合报告...")
 
             full_response = ""
             thinking_process = ""
@@ -168,7 +155,10 @@ async def analyze_stock_stream(
             # 更新最后一个节点状态为完成
             execution_time = state.execution_times.get("CoordinatorAgent", 0) if state else 0
             yield send_progress(
-                "coordinator", "success", "分析完成", {"execution_time": execution_time}
+                "coordinator",
+                "completed",
+                "分析完成",
+                {"execution_time": execution_time},
             )
 
             # 完成

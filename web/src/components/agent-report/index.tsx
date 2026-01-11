@@ -4,6 +4,7 @@ import { Spin, Card, Typography, Alert } from 'antd'
 import { CheckCircle, AlertCircle, BarChart3, Brain, FileText } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { merge } from 'lodash-es'
 import { stockApi } from '../../api/client'
 import type { AgentReportEvent, ProgressNode, AnalysisResult, FactorDetail } from '../../types'
 import { FactorList as DesktopFactorList } from '../stock-analysis/desktop/DesktopFactorList'
@@ -33,11 +34,15 @@ const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; default
 const STEP_ORDER = ['fundamental_analyzer', 'technical_analyzer', 'coordinator'] as const
 
 // 节点状态类型
-type NodeStatus = 'pending' | 'running' | 'completed' | 'error'
+type NodeStatus = 'pending' | 'fetching' | 'running' | 'analyzing' | 'completed' | 'error'
 
 // 节点样式配置
 const NODE_STYLES: Record<NodeStatus, string> = {
+  fetching:
+    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
   running:
+    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
+  analyzing:
     'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
   completed:
     'border border-emerald-400/60 bg-gradient-to-r from-emerald-50/80 via-green-50/80 to-teal-50/80 dark:from-emerald-950/30 dark:via-green-950/30 dark:to-teal-950/30',
@@ -48,7 +53,9 @@ const NODE_STYLES: Record<NodeStatus, string> = {
 }
 
 const NODE_ICON_COLORS: Record<NodeStatus, string> = {
+  fetching: 'shimmer-icon',
   running: 'shimmer-icon',
+  analyzing: 'shimmer-icon',
   completed: 'text-emerald-500 dark:text-emerald-400',
   error: 'text-red-500 dark:text-red-400',
   pending: 'text-gray-400 dark:text-gray-500',
@@ -113,37 +120,30 @@ export function AgentReport() {
         break
 
       case 'progress': {
-        const status =
-          event.status === 'success' ? 'completed' : event.status === 'error' ? 'error' : 'running'
-        setProgressNodes(prev => ({
-          ...prev,
-          [event.step]: { step: event.step, status, message: event.message, data: event.data },
-        }))
+        setProgressNodes(prev =>
+          merge({}, prev, {
+            [event.step]: event,
+          })
+        )
         break
       }
 
       case 'streaming':
         setStreamingContent(prev => prev + event.content)
-        setProgressNodes(prev => ({
-          ...prev,
-          [event.step]: {
-            step: event.step,
-            status: 'running' as const,
-            message: '正在生成分析报告...',
-          },
-        }))
+        setProgressNodes(prev =>
+          merge({}, prev, {
+            [event.step]: event,
+          })
+        )
         break
 
       case 'thinking':
         setThinkingContent(prev => prev + event.content)
-        setProgressNodes(prev => ({
-          ...prev,
-          [event.step]: {
-            step: event.step,
-            status: 'running' as const,
-            message: '正在思考...',
-          },
-        }))
+        setProgressNodes(prev =>
+          merge({}, prev, {
+            [event.step]: event,
+          })
+        )
         break
 
       case 'error':
@@ -208,6 +208,8 @@ export function AgentReport() {
 
   const technical_factors: FactorDetail[] = progressNodes['technical_analyzer']?.data?.factors || []
 
+  console.log('progressNode', progressNodes)
+
   return (
     <div className="bg-gray-50 dark:bg-gray-950 transition-colors min-h-screen">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -265,30 +267,28 @@ export function AgentReport() {
         )}
 
         {/* 分析因子 - 合并基本面和技术面 */}
-        {(progressNodes['fundamental_analyzer']?.status === 'completed' ||
-          progressNodes['technical_analyzer']?.status === 'completed') &&
-          (fundamental_factors.length > 0 || technical_factors.length > 0) && (
-            <Card className="mb-8! animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div>
-                {fundamental_factors.length > 0 && (
-                  <DesktopFactorList
-                    title={`基本面 (${fundamental_factors.length})`}
-                    factors={fundamental_factors}
-                    showAll={true}
-                  />
-                )}
-                {fundamental_factors.length > 0 && technical_factors.length > 0 && (
-                  <div className="border-t border-gray-100 dark:border-gray-800 my-6" />
-                )}
-                {technical_factors.length > 0 && (
-                  <DesktopFactorList
-                    title={`技术面 (${technical_factors.length})`}
-                    factors={technical_factors}
-                  />
-                )}
-              </div>
-            </Card>
-          )}
+        {fundamental_factors.length > 0 || technical_factors.length > 0 ? (
+          <Card className="mb-8! animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div>
+              {fundamental_factors.length > 0 && (
+                <DesktopFactorList
+                  title={`基本面 (${fundamental_factors.length})`}
+                  factors={fundamental_factors}
+                  showAll={true}
+                />
+              )}
+              {fundamental_factors.length > 0 && technical_factors.length > 0 && (
+                <div className="border-t border-gray-100 dark:border-gray-800 my-6" />
+              )}
+              {technical_factors.length > 0 && (
+                <DesktopFactorList
+                  title={`技术面 (${technical_factors.length})`}
+                  factors={technical_factors}
+                />
+              )}
+            </div>
+          </Card>
+        ) : null}
 
         {/* LLM 思考过程 */}
         {thinkingContent && (

@@ -133,7 +133,7 @@ export type AgentReportEvent =
 // 向后兼容的消息类型（用于内部状态管理）
 export interface ProgressNode {
   step: string
-  status: 'running' | 'completed' | 'error'
+  status: 'fetching' | 'running' | 'analyzing' | 'completed' | 'error'
   message: string
   data?: any
 }

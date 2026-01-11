@@ -29,7 +29,7 @@ class AnalysisState:
     industry: str = ""
     price: float = 0.0
 
-    # 数据层（由 DataAgent 填充）
+    # 数据层（由分析 Agent 填充）
     price_data: Optional[pd.DataFrame] = None
     financial_data: Optional[dict] = None
     stock_data: Optional[Any] = None
@@ -45,6 +45,9 @@ class AnalysisState:
     # 综合分析结果（由 Coordinator 填充）
     coordinator_analysis: str = ""
     thinking_process: str = ""
+
+    # 数据获取标记（防止重复获取）
+    _data_fetched: bool = False
 
     # 错误跟踪
     errors: Dict[str, str] = field(default_factory=dict)
