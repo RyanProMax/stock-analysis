@@ -163,6 +163,16 @@ export const stockApi = {
       }
     })
 
+    // 监听 thinking 事件 - LLM 流式输出
+    es.addEventListener('thinking', (e: Event) => {
+      try {
+        const data = JSON.parse((e as MessageEvent).data)
+        onMessage(data)
+      } catch (err) {
+        console.error('解析 thinking 事件失败:', err)
+      }
+    })
+
     // 监听 streaming 事件 - LLM 流式输出
     es.addEventListener('streaming', (e: Event) => {
       try {

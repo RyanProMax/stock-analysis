@@ -113,7 +113,7 @@ async def analyze_stock_stream(
                             "thinking",
                             {
                                 "type": "thinking",
-                                "step": "coordinator",
+                                "step": "coordinator_thinking",
                                 "content": chunk,
                             },
                         )
@@ -124,7 +124,7 @@ async def analyze_stock_stream(
                             "streaming",
                             {
                                 "type": "streaming",
-                                "step": "coordinator",
+                                "step": "coordinator_streaming",
                                 "content": chunk,
                             },
                         )

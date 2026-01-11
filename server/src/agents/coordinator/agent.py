@@ -109,126 +109,130 @@ class CoordinatorAgent(BaseAgent):
 
         assert self.llm is not None  # Type narrowing for type checker
 
+        # 标签常量
+        THINKING_START = "<thinking>"
+        THINKING_END = "</thinking>"
+        THINKING_START_LEN = len(THINKING_START)
+        THINKING_END_LEN = len(THINKING_END)
+
         in_thinking = False
-        # 用于处理跨 chunk 的标签检测
         pending_buffer = ""
         max_tokens = get_max_tokens()
+
+        def process_after_end(content: str) -> List[Tuple[str, Optional[str]]]:
+            """处理结束标签后的内容，检查嵌套的 thinking 标签"""
+            nonlocal in_thinking
+            results = []
+            if not content:
+                return results
+
+            next_thinking = content.find(THINKING_START)
+            if next_thinking != -1:
+                # 先输出结束标签后到下一个开始标签之间的内容
+                if next_thinking > 0:
+                    results.append((content[:next_thinking], None))
+                # 处理下一个 thinking 块
+                next_remaining = content[next_thinking + THINKING_START_LEN :]
+                next_end = next_remaining.find(THINKING_END)
+                if next_end != -1:
+                    if next_remaining[:next_end]:
+                        results.append((next_remaining[:next_end], "thinking"))
+                    if next_remaining[next_end + THINKING_END_LEN :]:
+                        results.append((next_remaining[next_end + THINKING_END_LEN :], None))
+                else:
+                    if next_remaining:
+                        results.append((next_remaining, "thinking"))
+                        in_thinking = True
+            else:
+                results.append((content, None))
+            return results
+
+        def is_partial_start_tag(s: str) -> bool:
+            """检查是否是部分开始标签"""
+            return (
+                s.endswith("<")
+                or s.endswith("<t")
+                or (s.endswith("<th") and THINKING_START not in s)
+            )
+
+        def is_partial_end_tag(s: str) -> bool:
+            """检查是否是部分结束标签"""
+            return (
+                s.endswith("<")
+                or s.endswith("</")
+                or s.endswith("</t")
+                or s.endswith("</th")
+                or s.endswith("</thi")
+                or s.endswith("</thin")
+                or s.endswith("</think")
+                or s.endswith("</thinking")
+            )
 
         async for chunk in self.llm.chat_completion_stream(
             messages=messages,
             temperature=1.0,
             max_tokens=max_tokens,
         ):
-            # 将待处理内容和当前 chunk 合并
             combined = pending_buffer + chunk
             pending_buffer = ""
 
             if not in_thinking:
                 # 检测 <thinking> 标签开始
-                thinking_start = combined.find("<thinking>")
+                thinking_start = combined.find(THINKING_START)
                 if thinking_start != -1:
                     # 输出标签之前的内容
                     if thinking_start > 0:
                         yield (combined[:thinking_start], None)
-                    # 进入思考模式
                     in_thinking = True
                     # 标签之后的内容
-                    remaining = combined[thinking_start + len("<thinking>") :]
+                    remaining = combined[thinking_start + THINKING_START_LEN :]
                     # 检查是否在同一 chunk 中有结束标签
-                    thinking_end = remaining.find("</thinking>")
+                    thinking_end = remaining.find(THINKING_END)
                     if thinking_end != -1:
-                        # 同一 chunk 中有开始和结束标签
                         thinking_content = remaining[:thinking_end]
                         if thinking_content:
                             yield (thinking_content, "thinking")
-                        # 退出思考模式
                         in_thinking = False
-                        # 结束标签后的内容
-                        after_end = remaining[thinking_end + len("</thinking>") :]
-                        if after_end:
-                            # 检查是否还有嵌套的 thinking 标签
-                            next_thinking = after_end.find("<thinking>")
-                            if next_thinking != -1:
-                                # 先输出结束标签后到下一个开始标签之间的内容
-                                if next_thinking > 0:
-                                    yield (after_end[:next_thinking], None)
-                                # 处理下一个 thinking 块
-                                next_remaining = after_end[next_thinking + len("<thinking>") :]
-                                next_end = next_remaining.find("</thinking>")
-                                if next_end != -1:
-                                    if next_remaining[:next_end]:
-                                        yield (next_remaining[:next_end], "thinking")
-                                    if next_remaining[next_end + len("</thinking>") :]:
-                                        yield (
-                                            next_remaining[next_end + len("</thinking>") :],
-                                            None,
-                                        )
-                                else:
-                                    if next_remaining:
-                                        yield (next_remaining, "thinking")
-                                        in_thinking = True
-                            else:
-                                yield (after_end, None)
+                        # 处理结束标签后的内容
+                        after_end = remaining[thinking_end + THINKING_END_LEN :]
+                        for result in process_after_end(after_end):
+                            yield result
                     else:
-                        # 只有开始标签，立即流式输出剩余内容
+                        # 只有开始标签，输出剩余内容
                         if remaining:
                             yield (remaining, "thinking")
+                elif is_partial_start_tag(combined) or (
+                    combined.startswith("<") and not combined.startswith(THINKING_START)
+                ):
+                    # 部分标签或其他标签开头，保存待下次处理
+                    pending_buffer = combined
                 else:
-                    # 检测部分 <thinking> 标签（可能跨 chunk）
-                    if (
-                        combined.endswith("<")
-                        or combined.endswith("<t")
-                        or (combined.endswith("<th") and "<thinking>" not in combined)
-                    ):
-                        # 可能是 <thinking> 标签的开始，保存待下次处理
-                        pending_buffer = combined
-                    elif combined.startswith("<") and not combined.startswith("<thinking>"):
-                        # 其他标签开头，暂存
-                        pending_buffer = combined
-                    else:
-                        # 正常内容，流式输出
-                        yield (combined, None)
+                    # 正常内容，流式输出
+                    yield (combined, None)
             else:
                 # 在思考模式中，检测 </thinking> 标签
-                thinking_end = combined.find("</thinking>")
+                thinking_end = combined.find(THINKING_END)
                 if thinking_end != -1:
                     # 找到结束标签，输出之前的思考内容
                     before_end = combined[:thinking_end]
                     if before_end:
                         yield (before_end, "thinking")
                     in_thinking = False
-                    # 结束标签后的内容
-                    after_end = combined[thinking_end + len("</thinking>") :]
-                    if after_end:
-                        # 递归检查是否还有嵌套标签
-                        next_thinking = after_end.find("<thinking>")
-                        if next_thinking != -1:
-                            if next_thinking > 0:
-                                yield (after_end[:next_thinking], None)
-                            next_remaining = after_end[next_thinking + len("<thinking>") :]
-                            next_end = next_remaining.find("</thinking>")
-                            if next_end != -1:
-                                if next_remaining[:next_end]:
-                                    yield (next_remaining[:next_end], "thinking")
-                                if next_remaining[next_end + len("</thinking>") :]:
-                                    yield (
-                                        next_remaining[next_end + len("</thinking>") :],
-                                        None,
-                                    )
-                            else:
-                                if next_remaining:
-                                    yield (next_remaining, "thinking")
-                                    in_thinking = True
-                        else:
-                            yield (after_end, None)
+                    # 处理结束标签后的内容
+                    after_end = combined[thinking_end + THINKING_END_LEN :]
+                    for result in process_after_end(after_end):
+                        yield result
+                elif is_partial_end_tag(combined):
+                    # 部分结束标签，保存待下次处理
+                    pending_buffer = combined
                 else:
-                    # 仍在思考模式中，立即流式输出思考内容
+                    # 仍在思考模式中，输出思考内容
                     if combined:
                         yield (combined, "thinking")
 
         # 处理剩余内容
-        if pending_buffer and not in_thinking:
-            yield (pending_buffer, None)
+        if pending_buffer:
+            yield (pending_buffer, "thinking" if in_thinking else None)
 
     async def synthesize(self, state: AnalysisState) -> Tuple[str, str]:
         """

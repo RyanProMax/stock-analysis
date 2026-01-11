@@ -1,12 +1,26 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Spin, Card, Typography, Alert } from 'antd'
-import { CheckCircle, AlertCircle, BarChart3, Brain, FileText } from 'lucide-react'
+import {
+  CheckCircle,
+  AlertCircle,
+  BarChart3,
+  Brain,
+  FileText,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { merge } from 'lodash-es'
 import { stockApi } from '../../api/client'
-import type { AgentReportEvent, ProgressNode, AnalysisResult, FactorDetail } from '../../types'
+import {
+  type AgentReportEvent,
+  NodeStatus,
+  type ProgressNode,
+  type AnalysisResult,
+  type FactorDetail,
+} from '../../types'
 import { FactorList as DesktopFactorList } from '../stock-analysis/desktop/DesktopFactorList'
 
 const { Title, Text } = Typography
@@ -33,32 +47,29 @@ const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; default
 
 const STEP_ORDER = ['fundamental_analyzer', 'technical_analyzer', 'coordinator'] as const
 
-// 节点状态类型
-type NodeStatus = 'pending' | 'fetching' | 'running' | 'analyzing' | 'completed' | 'error'
-
 // 节点样式配置
 const NODE_STYLES: Record<NodeStatus, string> = {
-  fetching:
-    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
-  running:
-    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
-  analyzing:
-    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
-  completed:
-    'border border-emerald-400/60 bg-gradient-to-r from-emerald-50/80 via-green-50/80 to-teal-50/80 dark:from-emerald-950/30 dark:via-green-950/30 dark:to-teal-950/30',
-  error:
-    'border border-red-400/60 bg-gradient-to-r from-red-50/80 via-orange-50/80 to-yellow-50/80 dark:from-red-950/30 dark:via-orange-950/30 dark:to-yellow-950/30',
-  pending:
+  [NodeStatus.pending]:
     'border border-gray-200/60 bg-gradient-to-r from-gray-50/50 via-gray-50/30 to-gray-100/50 dark:border-gray-700/50 dark:from-gray-800/30 dark:via-gray-800/20 dark:to-gray-700/30 opacity-70',
+  [NodeStatus.fetching]:
+    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
+  [NodeStatus.running]:
+    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
+  [NodeStatus.analyzing]:
+    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
+  [NodeStatus.completed]:
+    'border border-emerald-400/60 bg-gradient-to-r from-emerald-50/80 via-green-50/80 to-teal-50/80 dark:from-emerald-950/30 dark:from-green-950/30 dark:to-teal-950/30',
+  [NodeStatus.error]:
+    'border border-red-400/60 bg-gradient-to-r from-red-50/80 via-orange-50/80 to-yellow-50/80 dark:from-red-950/30 dark:from-orange-950/30 dark:to-yellow-950/30',
 }
 
 const NODE_ICON_COLORS: Record<NodeStatus, string> = {
-  fetching: 'shimmer-icon',
-  running: 'shimmer-icon',
-  analyzing: 'shimmer-icon',
-  completed: 'text-emerald-500 dark:text-emerald-400',
-  error: 'text-red-500 dark:text-red-400',
-  pending: 'text-gray-400 dark:text-gray-500',
+  [NodeStatus.pending]: 'text-gray-400 dark:text-gray-500',
+  [NodeStatus.fetching]: 'shimmer-icon',
+  [NodeStatus.running]: 'shimmer-icon',
+  [NodeStatus.analyzing]: 'shimmer-icon',
+  [NodeStatus.completed]: 'text-emerald-500 dark:text-emerald-400',
+  [NodeStatus.error]: 'text-red-500 dark:text-red-400',
 }
 
 // AI 彩虹标题样式
@@ -67,7 +78,7 @@ const aiRainbowTitleClassName =
 
 // AI 彩虹边框卡片组件
 const AIRainbowCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="ai-rainbow-border">
+  <div className="ai-rainbow-border relative">
     <Card
       variant={'borderless'}
       className="bg-white dark:bg-gray-900"
@@ -91,13 +102,52 @@ const MarkdownContent = ({ content, className = '' }: { content: string; classNa
   </div>
 )
 
-// 流式 Markdown 渲染组件 - 显示光标
-const StreamingMarkdown = ({ content }: { content: string }) => (
-  <div className="relative">
-    <MarkdownContent content={content} />
-    <span className="inline-block w-2 h-4 bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 ml-1 animate-pulse rounded-full align-middle" />
-  </div>
-)
+// 可折叠的思考过程组件
+const CollapsibleThinking = ({
+  content,
+  autoCollapse = false,
+}: {
+  content: string
+  autoCollapse?: boolean
+}) => {
+  const [isExpanded, setIsExpanded] = useState(!autoCollapse)
+
+  const toggleExpanded = () => setIsExpanded(prev => !prev)
+
+  return (
+    <Card
+      variant={'borderless'}
+      className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 transition-all duration-300"
+      title={
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={toggleExpanded}
+        >
+          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <Title level={5} className="text-gray-600 dark:text-gray-400 mb-0!">
+            💭 思考过程
+          </Title>
+        </div>
+      }
+    >
+      <div
+        className={`transition-all duration-300 overflow-hidden ${
+          isExpanded ? 'max-h-none' : 'max-h-[4.5em] line-clamp-3'
+        }`}
+      >
+        <div
+          className={`prose prose-sm max-w-none dark:prose-invert ${isExpanded ? 'opacity-70' : 'opacity-50'}`}
+        >
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        </div>
+      </div>
+      {/* 流式输出时显示光标 */}
+      {isExpanded && (
+        <span className="inline-block w-2 h-4 bg-gray-400 ml-1 animate-pulse rounded-full align-middle" />
+      )}
+    </Card>
+  )
+}
 
 export function AgentReport() {
   const { symbol } = useParams<{ symbol: string }>()
@@ -105,10 +155,10 @@ export function AgentReport() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [streamingContent, setStreamingContent] = useState('')
   const [thinkingContent, setThinkingContent] = useState('')
-  const [isComplete, setIsComplete] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null)
   const [hasStarted, setHasStarted] = useState(false)
+  const [hasStreaming, setHasStreaming] = useState(false)
 
   const handleMessage = useCallback((event: AgentReportEvent) => {
     switch (event.type) {
@@ -117,6 +167,7 @@ export function AgentReport() {
         setHasStarted(true)
         setStreamingContent('')
         setThinkingContent('')
+        setHasStreaming(false)
         break
 
       case 'progress': {
@@ -130,6 +181,7 @@ export function AgentReport() {
 
       case 'streaming':
         setStreamingContent(prev => prev + event.content)
+        setHasStreaming(true)
         setProgressNodes(prev =>
           merge({}, prev, {
             [event.step]: event,
@@ -152,15 +204,14 @@ export function AgentReport() {
 
       case 'complete':
         setAnalysisResult(event.result)
-        setIsComplete(true)
         setStreamingContent('')
-        setThinkingContent('')
+        setHasStreaming(false)
         // 将所有运行中的节点标记为完成
         setProgressNodes(prev =>
           Object.fromEntries(
             Object.entries(prev).map(([k, v]) => [
               k,
-              v.status === 'running' ? { ...v, status: 'completed' as const } : v,
+              v.status === NodeStatus.running ? { ...v, status: NodeStatus.completed } : v,
             ])
           )
         )
@@ -185,17 +236,14 @@ export function AgentReport() {
       setAnalysisResult(null)
       setStreamingContent('')
       setThinkingContent('')
-      setIsComplete(false)
       setError(null)
       setCurrentSymbol(null)
       setHasStarted(false)
+      setHasStreaming(false)
     })
 
     const eventSource = stockApi.getAgentReport(symbol, handleMessage, {
       onError: handleError,
-      onComplete: () => {
-        setIsComplete(true)
-      },
     })
 
     return () => {
@@ -238,8 +286,13 @@ export function AgentReport() {
             {STEP_ORDER.map(step => {
               const node = progressNodes[step]
               const config = STEP_CONFIG[step]
-              const status: NodeStatus = node?.status || 'pending'
+              const status: NodeStatus = node?.status || NodeStatus.pending
               const displayMessage = node?.message || config.defaultMessage
+              const isLoading = [
+                NodeStatus.fetching,
+                NodeStatus.running,
+                NodeStatus.analyzing,
+              ].includes(status)
 
               return (
                 <Card
@@ -249,12 +302,12 @@ export function AgentReport() {
                 >
                   <div className="flex flex-col items-center gap-2">
                     <div className={NODE_ICON_COLORS[status]}>{config.icon}</div>
-                    <div
-                      className={`flex items-center gap-1.5 ${status === 'running' ? 'shimmer-icon' : ''}`}
-                    >
-                      {status === 'running' && <Spin size="small" />}
-                      {status === 'completed' && <CheckCircle className="h-4 w-4 shrink-0" />}
-                      {status === 'error' && <AlertCircle className="h-4 w-4 shrink-0" />}
+                    <div className={`flex items-center gap-1.5 ${isLoading ? 'shimmer-icon' : ''}`}>
+                      {status === NodeStatus.running && <Spin size="small" />}
+                      {status === NodeStatus.completed && (
+                        <CheckCircle className="h-4 w-4 shrink-0" />
+                      )}
+                      {status === NodeStatus.error && <AlertCircle className="h-4 w-4 shrink-0" />}
                       <Text className="text-xs text-gray-600 dark:text-gray-400 truncate">
                         {displayMessage}
                       </Text>
@@ -290,67 +343,31 @@ export function AgentReport() {
           </Card>
         ) : null}
 
-        {/* LLM 思考过程 */}
+        {/* LLM 思考过程 - 可折叠，有流式输出时自动折叠 */}
         {thinkingContent && (
           <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <Card
-              variant={'borderless'}
-              className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
-              title={
-                <Title level={5} className="text-gray-600 dark:text-gray-400">
-                  💭 思考过程
-                </Title>
-              }
-            >
-              <div className="prose prose-sm max-w-none dark:prose-invert opacity-70">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{thinkingContent}</ReactMarkdown>
-              </div>
-              <span className="inline-block w-2 h-4 bg-gray-400 ml-1 animate-pulse rounded-full align-middle" />
-            </Card>
+            <CollapsibleThinking
+              key={hasStreaming ? 'collapsed' : 'expanded'}
+              content={thinkingContent}
+              autoCollapse={hasStreaming}
+            />
           </div>
         )}
 
-        {/* LLM 流式输出 */}
-        {streamingContent && (
-          <div className="ai-rainbow-border mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <Card
-              variant={'borderless'}
-              className="bg-white dark:bg-gray-900"
-              title={
-                <Title level={5} className={aiRainbowTitleClassName}>
-                  AI 分析中
-                </Title>
-              }
-            >
-              <StreamingMarkdown content={streamingContent} />
-            </Card>
-          </div>
-        )}
-
-        {/* 分析完成报告 */}
-        {isComplete && analysisResult?.decision && (
+        {/* 分析完成报告 - 使用 AI 彩虹边框 */}
+        {analysisResult?.decision || streamingContent ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* 思考过程 */}
-            {analysisResult.decision.thinking && (
-              <Card className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                <Title level={5} className="text-gray-600 dark:text-gray-400 mb-4">
-                  💭 思考过程
-                </Title>
-                <MarkdownContent
-                  content={analysisResult.decision.thinking}
-                  className="opacity-70"
-                />
-              </Card>
-            )}
-            {/* 分析报告 */}
-            <AIRainbowCard title="AI 分析报告">
-              <MarkdownContent content={analysisResult.decision.analysis} />
+            <AIRainbowCard title={!analysisResult?.decision ? 'AI 分析中' : 'AI 分析报告'}>
+              <MarkdownContent content={analysisResult?.decision?.analysis || streamingContent} />
+              {!analysisResult?.decision && (
+                <span className="inline-block w-2 h-4 bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 ml-1 animate-pulse rounded-full align-middle" />
+              )}
             </AIRainbowCard>
           </div>
-        )}
+        ) : null}
 
         {/* 初始加载状态 */}
-        {!hasStarted && !isComplete && !error && (
+        {!hasStarted && !analysisResult && !error && (
           <Card className="text-center py-16">
             <Spin size="large" />
             <div className="mt-4">

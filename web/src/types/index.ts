@@ -130,10 +130,20 @@ export type AgentReportEvent =
   | ErrorEvent
   | CompleteEvent
 
+// 节点状态类型
+export enum NodeStatus {
+  pending = 'pending',
+  fetching = 'fetching',
+  running = 'running',
+  analyzing = 'analyzing',
+  completed = 'completed',
+  error = 'error',
+}
+
 // 向后兼容的消息类型（用于内部状态管理）
 export interface ProgressNode {
   step: string
-  status: 'fetching' | 'running' | 'analyzing' | 'completed' | 'error'
+  status: NodeStatus
   message: string
   data?: any
 }
