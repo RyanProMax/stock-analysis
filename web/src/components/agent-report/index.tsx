@@ -12,8 +12,7 @@ import {
   type FactorDetail,
 } from '../../types'
 import { FactorList as DesktopFactorList } from '../stock-analysis/desktop/DesktopFactorList'
-import { AIRainbowCard, MarkdownContent } from './components'
-import { CollapsibleThinking } from './CollapsibleThinking'
+import { ThinkingAndReport } from './ThinkingAndReport'
 
 const { Title, Text } = Typography
 
@@ -64,25 +63,50 @@ const NODE_ICON_COLORS: Record<NodeStatus, string> = {
   [NodeStatus.error]: 'text-red-500 dark:text-red-400',
 }
 
+// 每个 step 的流式内容状态
+interface StepContent {
+  streaming: string
+  thinking: string
+  isStreaming: boolean
+  executionTime: number // 执行耗时（秒）
+}
+
 export function AgentReport() {
   const { symbol } = useParams<{ symbol: string }>()
   const [progressNodes, setProgressNodes] = useState<Record<string, ProgressNode>>({})
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
-  const [streamingContent, setStreamingContent] = useState('')
-  const [thinkingContent, setThinkingContent] = useState('')
+  const [stepContents, setStepContents] = useState<Record<string, StepContent>>({
+    fundamental_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+    technical_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+    coordinator: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+  })
   const [error, setError] = useState<string | null>(null)
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null)
   const [hasStarted, setHasStarted] = useState(false)
-  const [hasStreaming, setHasStreaming] = useState(false)
+
+  // 获取 step 的根名称（处理 coordinator_streaming 等情况）
+  const getStepKey = (step: string): string => {
+    if (step.startsWith('fundamental_analyzer')) return 'fundamental_analyzer'
+    if (step.startsWith('technical_analyzer')) return 'technical_analyzer'
+    if (step.startsWith('coordinator')) return 'coordinator'
+    return step
+  }
 
   const handleMessage = useCallback((event: AgentReportEvent) => {
     switch (event.type) {
       case 'start':
         setCurrentSymbol(event.symbol)
         setHasStarted(true)
-        setStreamingContent('')
-        setThinkingContent('')
-        setHasStreaming(false)
+        setStepContents({
+          fundamental_analyzer: {
+            streaming: '',
+            thinking: '',
+            isStreaming: false,
+            executionTime: 0,
+          },
+          technical_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+          coordinator: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+        })
         break
 
       case 'progress': {
@@ -91,27 +115,54 @@ export function AgentReport() {
             [event.step]: event,
           })
         )
+        // 提取执行时间
+        if (event.data?.execution_time) {
+          const stepKey = getStepKey(event.step)
+          setStepContents(prev => ({
+            ...prev,
+            [stepKey]: {
+              ...prev[stepKey],
+              executionTime: event.data!.execution_time,
+            },
+          }))
+        }
         break
       }
 
-      case 'streaming':
-        setStreamingContent(prev => prev + event.content)
-        setHasStreaming(true)
+      case 'streaming': {
+        const stepKey = getStepKey(event.step)
+        setStepContents(prev => ({
+          ...prev,
+          [stepKey]: {
+            ...prev[stepKey],
+            streaming: prev[stepKey].streaming + event.content,
+            isStreaming: true,
+          },
+        }))
         setProgressNodes(prev =>
           merge({}, prev, {
             [event.step]: event,
           })
         )
         break
+      }
 
-      case 'thinking':
-        setThinkingContent(prev => prev + event.content)
+      case 'thinking': {
+        const stepKey = getStepKey(event.step)
+        setStepContents(prev => ({
+          ...prev,
+          [stepKey]: {
+            ...prev[stepKey],
+            thinking: prev[stepKey].thinking + event.content,
+          },
+        }))
         setProgressNodes(prev =>
           merge({}, prev, {
             [event.step]: event,
           })
         )
         break
+      }
 
       case 'error':
         setError(event.message)
@@ -119,8 +170,14 @@ export function AgentReport() {
 
       case 'complete':
         setAnalysisResult(event.result)
-        setStreamingContent('')
-        setHasStreaming(false)
+        // 停止所有流式状态
+        setStepContents(prev => {
+          const updated = { ...prev }
+          Object.keys(updated).forEach(key => {
+            updated[key] = { ...updated[key], isStreaming: false }
+          })
+          return updated
+        })
         // 将所有运行中的节点标记为完成
         setProgressNodes(prev =>
           Object.fromEntries(
@@ -149,12 +206,14 @@ export function AgentReport() {
     queueMicrotask(() => {
       setProgressNodes({})
       setAnalysisResult(null)
-      setStreamingContent('')
-      setThinkingContent('')
+      setStepContents({
+        fundamental_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+        technical_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+        coordinator: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+      })
       setError(null)
       setCurrentSymbol(null)
       setHasStarted(false)
-      setHasStreaming(false)
     })
 
     const eventSource = stockApi.getAgentReport(symbol, handleMessage, {
@@ -170,8 +229,6 @@ export function AgentReport() {
     progressNodes['fundamental_analyzer']?.data?.factors || []
 
   const technical_factors: FactorDetail[] = progressNodes['technical_analyzer']?.data?.factors || []
-
-  // console.log('progressNode', progressNodes)
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950 transition-colors min-h-screen">
@@ -258,28 +315,64 @@ export function AgentReport() {
           </Card>
         ) : null}
 
-        {/* LLM 思考过程 - 可折叠，有流式输出时自动折叠 */}
-        {thinkingContent && (
-          <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <CollapsibleThinking
-              key={hasStreaming ? 'collapsed' : 'expanded'}
-              content={thinkingContent}
-              autoCollapse={hasStreaming}
+        {/* 基本面分析 - 思考过程和分析报告 */}
+        {(stepContents.fundamental_analyzer.thinking ||
+          stepContents.fundamental_analyzer.streaming) && (
+          <div className="mb-6">
+            <ThinkingAndReport
+              title="基本面分析"
+              thinkingContent={stepContents.fundamental_analyzer.thinking}
+              reportContent={
+                stepContents.fundamental_analyzer.streaming ||
+                (analysisResult && progressNodes.fundamental_analyzer?.status === 'completed'
+                  ? '分析完成'
+                  : '')
+              }
+              isStreaming={stepContents.fundamental_analyzer.isStreaming}
+              executionTime={stepContents.fundamental_analyzer.executionTime}
             />
           </div>
         )}
 
-        {/* 分析完成报告 - 使用 AI 彩虹边框 */}
-        {analysisResult?.decision || streamingContent ? (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <AIRainbowCard title={!analysisResult?.decision ? 'AI 分析中' : 'AI 分析报告'}>
-              <MarkdownContent content={analysisResult?.decision?.analysis || streamingContent} />
-              {!analysisResult?.decision && (
-                <span className="inline-block w-2 h-4 bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 ml-1 animate-pulse rounded-full align-middle" />
-              )}
-            </AIRainbowCard>
+        {/* 技术面分析 - 思考过程和分析报告 */}
+        {(stepContents.technical_analyzer.thinking ||
+          stepContents.technical_analyzer.streaming) && (
+          <div className="mb-6">
+            <ThinkingAndReport
+              title="技术面分析"
+              thinkingContent={stepContents.technical_analyzer.thinking}
+              reportContent={
+                stepContents.technical_analyzer.streaming ||
+                (analysisResult && progressNodes.technical_analyzer?.status === 'completed'
+                  ? '分析完成'
+                  : '')
+              }
+              isStreaming={stepContents.technical_analyzer.isStreaming}
+              executionTime={stepContents.technical_analyzer.executionTime}
+            />
           </div>
-        ) : null}
+        )}
+
+        {/* 综合分析 - 思考过程和分析报告 */}
+        {(stepContents.coordinator.thinking ||
+          stepContents.coordinator.streaming ||
+          analysisResult?.decision) && (
+          <div className="mb-6">
+            <ThinkingAndReport
+              title="综合分析"
+              thinkingContent={stepContents.coordinator.thinking}
+              reportContent={
+                stepContents.coordinator.streaming || analysisResult?.decision?.analysis || ''
+              }
+              isStreaming={stepContents.coordinator.isStreaming}
+              executionTime={
+                stepContents.coordinator.executionTime ||
+                analysisResult?.execution_times?.CoordinatorAgent ||
+                0
+              }
+            />
+          </div>
+        )}
 
         {/* 初始加载状态 */}
         {!hasStarted && !analysisResult && !error && (

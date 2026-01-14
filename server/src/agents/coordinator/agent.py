@@ -313,24 +313,45 @@ class MultiAgentSystem:
 
         # 步骤 1: 并行执行基本面和技术面分析（各自负责获取数据）
         progress_queue: asyncio.Queue = asyncio.Queue()
+        stream_generators: dict[str, AsyncGenerator] = {}
 
         async def wrapped_fundamental():
-            """透传 fundamental agent 的状态回调"""
-            await self.fundamental_agent.analyze(
+            """执行 fundamental agent 分析，支持流式输出"""
+            async for chunk, thinking_type in self.fundamental_agent.analyze_stream(
                 state,
                 progress_callback=lambda step, status, message, data: progress_queue.put(
-                    (step, status, message, data)
+                    (step, status, message, data, None)  # 添加 None 作为第5个元素
                 ),
-            )
+            ):
+                # 将内容放入队列供前端消费
+                await progress_queue.put(
+                    (
+                        "fundamental_analyzer",
+                        "streaming",
+                        chunk,
+                        None,
+                        (chunk, thinking_type),
+                    )
+                )
 
         async def wrapped_technical():
-            """透传 technical agent 的状态回调"""
-            await self.technical_agent.analyze(
+            """执行 technical agent 分析，支持流式输出"""
+            async for chunk, thinking_type in self.technical_agent.analyze_stream(
                 state,
                 progress_callback=lambda step, status, message, data: progress_queue.put(
-                    (step, status, message, data)
+                    (step, status, message, data, None)  # 添加 None 作为第5个元素
                 ),
-            )
+            ):
+                # 将内容放入队列供前端消费
+                await progress_queue.put(
+                    (
+                        "technical_analyzer",
+                        "streaming",
+                        chunk,
+                        None,
+                        (chunk, thinking_type),
+                    )
+                )
 
         # 启动并行任务
         fund_task = asyncio.create_task(wrapped_fundamental())
@@ -341,9 +362,15 @@ class MultiAgentSystem:
         while completed < 2:
             try:
                 event = await asyncio.wait_for(progress_queue.get(), timeout=0.01)
-                step, status, message, data = event
-                # 透传子 Agent 的状态（第5个元素是 data）
-                yield (f"{step}:{status}", state, None, message, data)
+                # 事件格式: (step, status, message, data, stream_chunk)
+                if len(event) >= 5:
+                    step, status, message, data, stream_chunk = event
+                else:
+                    step, status, message, data = event
+                    stream_chunk = None
+
+                # 透传子 Agent 的状态
+                yield (f"{step}:{status}", state, stream_chunk, message, data)
                 if status in ("completed", "error"):
                     completed += 1
             except asyncio.TimeoutError:
@@ -359,14 +386,11 @@ class MultiAgentSystem:
             yield ("error", state, None, "分析失败", None)
             return
 
-        # 步骤 2: 返回综合分析的流式生成器
-        yield (
-            "coordinator:running",
-            state,
-            self.coordinator.synthesize_stream(state),
-            "正在生成综合报告...",
-            None,
-        )
+        # 步骤 2: 流式输出综合分析的内容
+        yield ("coordinator:running", state, None, "正在生成综合报告...", None)
+
+        async for chunk, thinking_type in self.coordinator.synthesize_stream(state):
+            yield (f"coordinator:streaming", state, (chunk, thinking_type), None, None)
 
     async def analyze(
         self,

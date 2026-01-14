@@ -58,19 +58,18 @@ async def analyze_stock_stream(
 
             # 使用新的流式接口，实时接收进度事件
             state = None
-            stream_gen = None
+            coordinator_full_response = ""
+            coordinator_thinking = ""
 
             async for (
                 event_type,
                 event_state,
-                event_stream_gen,
+                event_stream_chunk,
                 event_message,
                 event_data,
             ) in system.analyze_stream(symbol):
 
                 state = event_state
-                if event_stream_gen is not None:
-                    stream_gen = event_stream_gen
 
                 # 解析事件类型
                 if event_type == "error":
@@ -83,6 +82,39 @@ async def analyze_stock_stream(
                     )
                     return
 
+                # 处理子 Agent 的流式输出 (event_stream_chunk 是 (chunk, thinking_type) 元组)
+                if event_stream_chunk is not None:
+                    chunk, thinking_type = event_stream_chunk
+                    step_key = event_type.split(":")[0] if ":" in event_type else "unknown"
+
+                    # 累积 coordinator 的内容用于最终结果
+                    if step_key == "coordinator":
+                        if thinking_type == "thinking":
+                            coordinator_thinking += chunk
+                        else:
+                            coordinator_full_response += chunk
+
+                    if thinking_type == "thinking":
+                        yield send_event(
+                            "thinking",
+                            {
+                                "type": "thinking",
+                                "step": step_key,
+                                "content": chunk,
+                            },
+                        )
+                    else:
+                        yield send_event(
+                            "streaming",
+                            {
+                                "type": "streaming",
+                                "step": step_key,
+                                "content": chunk,
+                            },
+                        )
+                    await asyncio.sleep(0)
+                    continue
+
                 # 解析 step:status 格式的事件，透传消息和数据
                 if ":" in event_type:
                     step, status = event_type.split(":", 1)
@@ -93,6 +125,11 @@ async def analyze_stock_stream(
                         data = {"factors": event_data}
                     yield send_progress(step, status, message, data)
 
+                    # 收集 coordinator 的完整响应用于最终结果
+                    if step == "coordinator" and status == "streaming":
+                        # 由流式事件处理，这里不需要额外处理
+                        pass
+
             # 检查是否所有分析都失败
             if state and state.has_error("FundamentalAgent") and state.has_error("TechnicalAgent"):
                 yield send_event(
@@ -101,39 +138,12 @@ async def analyze_stock_stream(
                 )
                 return
 
-            full_response = ""
-            thinking_process = ""
-
-            if use_llm and stream_gen is not None:
-                async for chunk, thinking_type in stream_gen:
-                    if thinking_type == "thinking":
-                        # 思考过程，单独发送
-                        thinking_process += chunk
-                        yield send_event(
-                            "thinking",
-                            {
-                                "type": "thinking",
-                                "step": "coordinator_thinking",
-                                "content": chunk,
-                            },
-                        )
-                    else:
-                        # 正常内容
-                        full_response += chunk
-                        yield send_event(
-                            "streaming",
-                            {
-                                "type": "streaming",
-                                "step": "coordinator_streaming",
-                                "content": chunk,
-                            },
-                        )
-                    await asyncio.sleep(0)
-
+            # 构建最终决策
+            if use_llm:
                 decision = {
                     "action": "分析完成",
-                    "analysis": full_response,
-                    "thinking": thinking_process,
+                    "analysis": coordinator_full_response or state.coordinator_analysis or "",
+                    "thinking": coordinator_thinking or state.thinking_process or "",
                 }
             else:
                 # 如果没有 LLM，返回因子数据
