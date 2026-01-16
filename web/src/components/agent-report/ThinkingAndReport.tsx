@@ -1,5 +1,5 @@
 import { Card, Typography, Button } from 'antd'
-import { Brain, FileText, Clock } from 'lucide-react'
+import { Brain, FileText, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useState, useMemo } from 'react'
@@ -18,6 +18,7 @@ interface ThinkingAndReportProps {
   isStreaming?: boolean
   title?: string
   executionTime?: number // 执行耗时（秒）
+  defaultExpanded?: boolean // 默认是否展开
 }
 
 // 粗略估算 token 数（中文约 2 字符/token，英文约 4 字符/token）
@@ -42,8 +43,10 @@ export function ThinkingAndReport({
   isStreaming = false,
   title = 'AI 分析',
   executionTime = 0,
+  defaultExpanded = true,
 }: ThinkingAndReportProps) {
   const [userSelectedMode, setUserSelectedMode] = useState<ViewMode | null>(null)
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   const hasThinking = Boolean(thinkingContent)
   const hasReport = Boolean(reportContent)
@@ -91,6 +94,9 @@ export function ThinkingAndReport({
     setUserSelectedMode(mode)
   }
 
+  // 切换折叠状态
+  const toggleExpanded = () => setIsExpanded(!isExpanded)
+
   // 如果两个都为空，不显示
   if (!hasThinking && !hasReport) {
     return null
@@ -101,29 +107,47 @@ export function ThinkingAndReport({
       <Card
         variant={'borderless'}
         className="bg-white dark:bg-gray-900"
+        styles={{
+          body: {
+            padding: 0,
+          },
+        }}
         title={
-          <div className="flex items-center justify-between">
-            <Title level={5} className={aiRainbowTitleClassName}>
-              {title}
-            </Title>
-            {/* 统计信息 */}
-            <div className="flex items-center gap-3">
+          <div
+            className="flex items-center justify-between cursor-pointer"
+            onClick={toggleExpanded}
+          >
+            {/* 左侧：标题 + 折叠图标 */}
+            <div className="flex items-center gap-2">
+              <Title level={5} className={aiRainbowTitleClassName}>
+                {title}
+              </Title>
+              <div className="flex items-center justify-center w-6 h-6 text-gray-500 dark:text-gray-400">
+                {isExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </div>
+            </div>
+            {/* 右侧：统计信息 + 切换按钮 - 点击不折叠 */}
+            <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
               {executionTime > 0 && (
                 <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                   <Clock className="h-3 w-3" />
                   <span>{formatTime(executionTime)}</span>
                 </div>
               )}
-              {/* Token 统计 */}
-              <div className="flex items-center gap-2 text-xs">
-                {thinkingTokens > 0 && (
-                  <span className="text-gray-500 dark:text-gray-400">思考: ~{thinkingTokens}</span>
-                )}
-                {reportTokens > 0 && (
-                  <span className="text-gray-500 dark:text-gray-400">报告: ~{reportTokens}</span>
-                )}
-              </div>
-              {/* 切换按钮 */}
+              {thinkingTokens > 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  思考: ~{thinkingTokens}
+                </span>
+              )}
+              {reportTokens > 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  报告: ~{reportTokens}
+                </span>
+              )}
               <div className="flex items-center gap-1">
                 {hasThinking && (
                   <Button
@@ -132,7 +156,7 @@ export function ThinkingAndReport({
                     icon={<Brain className="h-4 w-4" />}
                     className={
                       viewMode === 'thinking'
-                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                        ? 'text-(--color-primary)!'
                         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                     }
                     onClick={() => handleSetViewMode('thinking')}
@@ -147,7 +171,7 @@ export function ThinkingAndReport({
                     icon={<FileText className="h-4 w-4" />}
                     className={
                       viewMode === 'report'
-                        ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
+                        ? 'text-(--color-primary)!'
                         : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                     }
                     onClick={() => handleSetViewMode('report')}
@@ -160,13 +184,20 @@ export function ThinkingAndReport({
           </div>
         }
       >
-        <div className="prose prose-sm max-w-none dark:prose-invert prose-a:text-cyan-600 dark:prose-a:text-cyan-400 prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:text-pink-600 dark:prose-code:text-pink-400 prose-pre:bg-gray-900 dark:prose-pre:bg-gray-950">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentContent}</ReactMarkdown>
+        {/* 内容区域，带折叠动画 */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            isExpanded ? 'max-h-[5000px] opacity-100 p-6' : 'max-h-0 opacity-0 pl-6 pr-6'
+          }`}
+        >
+          <div className="prose prose-sm max-w-none dark:prose-invert prose-a:text-cyan-600 dark:prose-a:text-cyan-400 prose-headings:font-bold prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-code:text-pink-600 dark:prose-code:text-pink-400 prose-pre:bg-gray-900 dark:prose-pre:bg-gray-950">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentContent}</ReactMarkdown>
+          </div>
+          {/* 流式输出时光标 */}
+          {isStreaming && (
+            <span className="inline-block w-2 h-4 bg-linear-to-r from-cyan-400 via-purple-500 to-pink-500 ml-1 animate-pulse rounded-full align-middle" />
+          )}
         </div>
-        {/* 流式输出时光标 */}
-        {isStreaming && (
-          <span className="inline-block w-2 h-4 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 ml-1 animate-pulse rounded-full align-middle" />
-        )}
       </Card>
     </div>
   )

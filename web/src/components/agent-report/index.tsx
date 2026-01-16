@@ -122,7 +122,7 @@ export function AgentReport() {
             ...prev,
             [stepKey]: {
               ...prev[stepKey],
-              executionTime: event.data!.execution_time,
+              executionTime: event.data?.execution_time ?? 0,
             },
           }))
         }
@@ -172,9 +172,15 @@ export function AgentReport() {
         setAnalysisResult(event.result)
         // 停止所有流式状态
         setStepContents(prev => {
-          const updated = { ...prev }
+          const updated: Record<string, StepContent> = { ...prev }
           Object.keys(updated).forEach(key => {
-            updated[key] = { ...updated[key], isStreaming: false }
+            const current = updated[key]
+            updated[key] = {
+              streaming: current.streaming,
+              thinking: current.thinking,
+              isStreaming: false,
+              executionTime: current.executionTime,
+            }
           })
           return updated
         })

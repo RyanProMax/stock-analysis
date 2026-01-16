@@ -310,7 +310,12 @@ class FundamentalAgent(BaseAgent):
         state.set_execution_time(self.get_name(), execution_time)
 
         if progress_callback and not state.has_error(self.get_name()):
-            await progress_callback("fundamental_analyzer", "completed", "基本面分析完成", None)
+            await progress_callback(
+                "fundamental_analyzer",
+                "completed",
+                "基本面分析完成",
+                {"execution_time": execution_time},
+            )
 
     async def analyze(
         self, state: AnalysisState, progress_callback: Optional[Callable] = None
@@ -390,6 +395,11 @@ class FundamentalAgent(BaseAgent):
         state.set_execution_time(self.get_name(), execution_time)
 
         if progress_callback and not state.has_error(self.get_name()):
-            await progress_callback("fundamental_analyzer", "completed", "基本面分析完成", None)
+            await progress_callback(
+                "fundamental_analyzer",
+                "completed",
+                "基本面分析完成",
+                {"execution_time": execution_time},
+            )
 
         return state
