@@ -44,7 +44,7 @@ async def analyze_stock_stream(
 
     分析流程：
     1. FundamentalAgent + TechnicalAgent 并行分析（各自负责获取数据）
-    2. CoordinatorAgent 综合分析并给出最终投资建议（流式输出，包含思考过程）
+    2. CoordinatorAgent 综合分析并给出最终投资建议（流式输出���包含思考过程）
 
     子 Agents 并行执行，提升分析速度。
     """
@@ -53,37 +53,38 @@ async def analyze_stock_stream(
     system = MultiAgentSystem(llm_manager)
 
     async def generate():
-        try:
-            yield send_event("start", {"type": "start", "symbol": symbol})
+        yield send_event("start", {"type": "start", "symbol": symbol})
 
-            # 使用新的流式接口，实时接收进度事件
-            state = None
-            coordinator_full_response = ""
-            coordinator_thinking = ""
+        # 使用新的流式接口，实时接收进度事件
+        state = None
+        coordinator_full_response = ""
+        coordinator_thinking = ""
 
-            async for (
-                event_type,
-                event_state,
-                event_stream_chunk,
-                event_message,
-                event_data,
-            ) in system.analyze_stream(symbol):
+        async for (
+            event_type,
+            event_state,
+            event_stream_chunk,
+            event_message,
+            event_data,
+        ) in system.analyze_stream(symbol):
 
-                state = event_state
+            state = event_state
 
-                # 解析事件类型
-                if event_type == "error":
-                    yield send_event(
-                        "error",
-                        {
-                            "type": "error",
-                            "message": event_message or "分析错误",
-                        },
-                    )
-                    return
+            # 解析事件类型
+            if event_type == "error":
+                yield send_event(
+                    "error",
+                    {
+                        "type": "error",
+                        "message": event_message or "分析错误",
+                    },
+                )
+                return
 
-                # 处理子 Agent 的流式输出 (event_stream_chunk 是 (chunk, thinking_type) 元组)
-                if event_stream_chunk is not None:
+            # 处理子 Agent 的流式输出 (event_stream_chunk 是 (chunk, thinking_type) 元组)
+            if event_stream_chunk is not None:
+                # 检查是否为正确的格式
+                if isinstance(event_stream_chunk, tuple) and len(event_stream_chunk) == 2:
                     chunk, thinking_type = event_stream_chunk
                     step_key = event_type.split(":")[0] if ":" in event_type else "unknown"
 
@@ -114,81 +115,86 @@ async def analyze_stock_stream(
                         )
                     await asyncio.sleep(0)
                     continue
+                else:
+                    # event_stream_chunk 格式不正确，可能是旧版本返回的生成器
+                    # 跳过并记录警告
+                    import logging
 
-                # 解析 step:status 格式的事件，透传消息和数据
-                if ":" in event_type:
-                    step, status = event_type.split(":", 1)
-                    message = event_message or status
-                    # 如果有 data 参数，将其包装为 factors 格式
-                    data = None
-                    if event_data is not None:
-                        data = {"factors": event_data}
-                    yield send_progress(step, status, message, data)
+                    logging.warning(
+                        f"Invalid event_stream_chunk format: {type(event_stream_chunk)}"
+                    )
+                    continue
 
-                    # 收集 coordinator 的完整响应用于最终结果
-                    if step == "coordinator" and status == "streaming":
-                        # 由流式事件处理，这里不需要额外处理
-                        pass
+            # 解析 step:status 格式的事件，透传消息和数据
+            if ":" in event_type:
+                step, status = event_type.split(":", 1)
+                message = event_message or status
+                # 如果有 data 参数，将其包装为 factors 格式
+                data = None
+                if event_data is not None:
+                    data = {"factors": event_data}
+                yield send_progress(step, status, message, data)
 
-            # 检查是否所有分析都失败
-            if state and state.has_error("FundamentalAgent") and state.has_error("TechnicalAgent"):
-                yield send_event(
-                    "error",
-                    {"type": "error", "message": "分析失败"},
-                )
-                return
+                # 收集 coordinator 的完整响应用于最终结果
+                if step == "coordinator" and status == "streaming":
+                    # 由流式事件处理，这里不需要额外处理
+                    pass
 
-            # 构建最终决策
-            if use_llm:
-                decision = {
-                    "action": "分析完成",
-                    "analysis": coordinator_full_response or state.coordinator_analysis or "",
-                    "thinking": coordinator_thinking or state.thinking_process or "",
-                }
-            else:
-                # 如果没有 LLM，返回因子数据
-                fundamental_text = (
-                    state.fundamental_analysis or "基本面分析: " + str(state.fundamental_factors)
-                    if state
-                    else "基本面分析: 无数据"
-                )
-                technical_text = (
-                    state.technical_analysis or "技术面分析: " + str(state.technical_factors)
-                    if state
-                    else "技术面分析: 无数据"
-                )
-                decision = {
-                    "action": "LLM未配置",
-                    "analysis": f"{fundamental_text}\n\n{technical_text}",
-                }
-
-            # 更新最后一个节点状态为完成
-            execution_time = state.execution_times.get("CoordinatorAgent", 0) if state else 0
-            yield send_progress(
-                "coordinator",
-                "completed",
-                "分析完成",
-                {"execution_time": execution_time},
-            )
-
-            # 完成
+        # 检查是否所有分析都失败
+        if state and state.has_error("FundamentalAgent") and state.has_error("TechnicalAgent"):
             yield send_event(
-                "complete",
-                {
-                    "type": "complete",
-                    "result": {
-                        "symbol": symbol,
-                        "stock_name": state.stock_name if state else "",
-                        "decision": decision,
-                        "execution_times": state.execution_times if state else {},
-                    },
-                },
+                "error",
+                {"type": "error", "message": "分析失败"},
             )
+            return
 
-        except Exception as e:
-            import traceback
+        # 构建最终决策
+        if use_llm:
+            decision = {
+                "action": "分析完成",
+                "analysis": coordinator_full_response
+                or (state.coordinator_analysis if state else "")
+                or "",
+                "thinking": coordinator_thinking or (state.thinking_process if state else "") or "",
+            }
+        else:
+            # 如果没有 LLM，返回因子数据
+            fundamental_text = (
+                state.fundamental_analysis or "基本面分析: " + str(state.fundamental_factors)
+                if state
+                else "基本面分析: 无数据"
+            )
+            technical_text = (
+                state.technical_analysis or "技术面分析: " + str(state.technical_factors)
+                if state
+                else "技术面分析: 无数据"
+            )
+            decision = {
+                "action": "LLM未配置",
+                "analysis": f"{fundamental_text}\n\n{technical_text}",
+            }
 
-            traceback.print_exc()
-            yield send_event("error", {"type": "error", "message": f"分析错误: {str(e)}"})
+        # 更新最后一个节点状态为完成
+        execution_time = state.execution_times.get("CoordinatorAgent", 0) if state else 0
+        yield send_progress(
+            "coordinator",
+            "completed",
+            "分析完成",
+            {"execution_time": execution_time},
+        )
+
+        # 完成
+        yield send_event(
+            "complete",
+            {
+                "type": "complete",
+                "result": {
+                    "symbol": symbol,
+                    "stock_name": state.stock_name if state else "",
+                    "decision": decision,
+                    "execution_times": state.execution_times if state else {},
+                },
+            },
+        )
 
     return EventSourceResponse(generate(), media_type="text/event-stream")

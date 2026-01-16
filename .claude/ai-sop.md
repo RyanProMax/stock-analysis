@@ -260,5 +260,6 @@ Edit index.tsx ...
 
 5. **错误处理**
    - Agent 不抛异常，用 state.set_error
+   - 尽量不用 try-catch / try-except，从根源上解决问题
    - API 返回统一格式
    - 前端 try-catch 所有调用

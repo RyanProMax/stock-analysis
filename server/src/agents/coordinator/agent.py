@@ -284,11 +284,11 @@ class MultiAgentSystem:
         symbol: str,
     ) -> AsyncGenerator[
         Tuple[
-            str,
-            AnalysisState,
-            Optional[AsyncGenerator[Tuple[str, Optional[str]], None]],
-            Optional[str],
-            Optional[Any],
+            str,  # event_type
+            AnalysisState,  # state
+            Optional[Tuple[str, Optional[str]]],  # stream_chunk (chunk, thinking_type)
+            Optional[str],  # message
+            Optional[Any],  # data
         ],
         None,
     ]:
@@ -296,15 +296,15 @@ class MultiAgentSystem:
         执行完整的 Multi-Agent 分析流程，流式输出进度
 
         流程：
-        1. FundamentalAgent + TechnicalAgent 并行分析（各自负责获取数据）
+        1. FundamentalAgent + TechnicalAgent 并行分析（各自负责获取数据，支持流式输出）
         2. 等待两个 Agent 都完成
-        3. CoordinatorAgent 综合分析（返回流式生成器）
+        3. CoordinatorAgent 综合分析（支持流式输出）
 
         Yields:
-            (event_type, state, stream_gen, message, data) 元组
+            (event_type, state, stream_chunk, message, data) 元组
             - event_type: 事件类型（如 "fundamental_analyzer:running"）
             - state: 当前分析状态
-            - stream_gen: 综合分析的流式生成器（仅在 coordinator 时有值）
+            - stream_chunk: (chunk, thinking_type) 流式内容元组，如果有
             - message: 进度消息文案
             - data: 可选的附加数据（如因子列表）
         """
@@ -396,10 +396,7 @@ class MultiAgentSystem:
         self,
         symbol: str,
         progress_callback: Optional[Callable] = None,
-    ) -> Tuple[
-        Optional[AnalysisState],
-        Optional[AsyncGenerator[Tuple[str, Optional[str]], None]],
-    ]:
+    ) -> Optional[AnalysisState]:
         """
         执行完整的 Multi-Agent 分析流程（旧版接口，保持兼容）
 
@@ -408,22 +405,19 @@ class MultiAgentSystem:
             progress_callback: 进度回调函数 callback(step, status, message, data)
 
         Returns:
-            (分析状态, 流式输出生成器)
+            分析状态
         """
         # 使用新的流式接口
         state = None
-        stream_gen = None
         async for (
             _event_type,
             event_state,
-            event_stream_gen,
+            _event_stream_chunk,
             _event_message,
             _event_data,
         ) in self.analyze_stream(symbol):
             state = event_state
-            if event_stream_gen is not None:
-                stream_gen = event_stream_gen
-        return state, stream_gen
+        return state
 
     async def analyze_full(
         self,
@@ -440,13 +434,20 @@ class MultiAgentSystem:
         Returns:
             (分析状态, 完整综合分析文本, 思考过程)
         """
-        state, stream_gen = await self.analyze(symbol, progress_callback)
-
         full_response = ""
         thinking_response = ""
+        state = None
 
-        if stream_gen is not None:
-            async for chunk, thinking_type in stream_gen:
+        async for (
+            _event_type,
+            event_state,
+            event_stream_chunk,
+            _event_message,
+            _event_data,
+        ) in self.analyze_stream(symbol):
+            state = event_state
+            if event_stream_chunk is not None:
+                chunk, thinking_type = event_stream_chunk
                 if thinking_type == "thinking":
                     thinking_response += chunk
                 else:
