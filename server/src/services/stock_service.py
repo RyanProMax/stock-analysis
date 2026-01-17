@@ -14,11 +14,9 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import asdict
 import pandas as pd
 
-from .data_loader import DataLoader
-from .data_loader.stock_list import StockListService
-from .factors import MultiFactorAnalyzer
-from .model import AnalysisReport, FactorDetail, FearGreed
-from .cache_util import CacheUtil
+from ..data import DataLoader, StockListService, CacheUtil
+from ..indicators import MultiFactorAnalyzer
+from ..core import AnalysisReport, FactorDetail, FearGreed
 from ..env import is_development
 
 
@@ -35,7 +33,7 @@ class StockService:
 
     # ==================== 基础数据获取 ====================
 
-    def get_stock_data(self, symbol: str) -> Tuple[Optional[pd.DataFrame], str]:
+    def get_stock_data(self, symbol: str) -> Tuple[Optional[pd.DataFrame], str, str]:
         """
         获取股票日线数据
 
@@ -43,11 +41,11 @@ class StockService:
             symbol: 股票代码
 
         Returns:
-            (DataFrame, stock_name): 数据和股票名称，失败时返回 (None, symbol)
+            (DataFrame, stock_name, data_source): 数据、股票名称和数据源，失败时返回 (None, symbol, "")
         """
         return DataLoader.get_stock_daily(symbol)
 
-    def get_financial_data(self, symbol: str) -> Optional[Dict[str, Any]]:
+    def get_financial_data(self, symbol: str) -> Tuple[Optional[Dict[str, Any]], str]:
         """
         获取财务数据
 
@@ -55,7 +53,7 @@ class StockService:
             symbol: 股票代码
 
         Returns:
-            财务数据字典，包含PE、PB、ROE等指标
+            (财务数据字典, 数据源): 包含PE、PB、ROE等指标
         """
         return DataLoader.get_financial_data(symbol)
 
@@ -129,13 +127,21 @@ class StockService:
 
             # 执行分析
             print(f"Update Data: {symbol}")
-            df, stock_name = self.get_stock_data(symbol)
+            df, stock_name, data_source = self.get_stock_data(symbol)
             if df is None or df.empty:
                 self.cache[cache_key] = None
                 return None
 
+            # 获取财务数据源
+            _, financial_data_source = self.get_financial_data(symbol)
+
             analyzer = MultiFactorAnalyzer(
-                df, symbol, stock_name, include_qlib_factors=include_qlib_factors
+                df,
+                symbol,
+                stock_name,
+                include_qlib_factors=include_qlib_factors,
+                data_source=data_source,
+                financial_data_source=financial_data_source,
             )
             report = analyzer.analyze()
             self.cache[cache_key] = report
@@ -263,6 +269,8 @@ class StockService:
                         status=f.get("status", ""),
                         bullish_signals=f.get("bullish_signals", []),
                         bearish_signals=f.get("bearish_signals", []),
+                        raw_data=f.get("raw_data"),
+                        data_source=f.get("data_source", ""),
                     )
                     for f in factors_data
                 ]
@@ -274,9 +282,13 @@ class StockService:
                 price=report_dict.get("price", 0.0),
                 fear_greed=fear_greed,
                 industry=report_dict.get("industry", ""),
+                data_source=report_dict.get("data_source", ""),
+                financial_data_source=report_dict.get("financial_data_source", ""),
                 technical_factors=rebuild_factor_list(report_dict.get("technical_factors", [])),
                 fundamental_factors=rebuild_factor_list(report_dict.get("fundamental_factors", [])),
                 qlib_factors=rebuild_factor_list(report_dict.get("qlib_factors", [])),
+                technical_raw_data=report_dict.get("technical_raw_data"),
+                fundamental_raw_data=report_dict.get("fundamental_raw_data"),
             )
 
             return report
@@ -298,12 +310,15 @@ class StockService:
             包含基础信息的字典
         """
         try:
-            df, stock_name = self.get_stock_data(symbol)
+            df, stock_name, data_source = self.get_stock_data(symbol)
             if df is None or df.empty:
                 return {"success": False, "error": f"无法获取股票 {symbol} 的数据"}
 
             # 获取最新数据
             latest_data = df.iloc[-1]
+
+            # 获取财务数据
+            financial_data, financial_data_source = self.get_financial_data(symbol)
 
             return {
                 "success": True,
@@ -314,9 +329,11 @@ class StockService:
                         "price": latest_data.get("close", 0),
                         "change": latest_data.get("change", 0),
                         "change_pct": latest_data.get("change_pct", 0),
+                        "data_source": data_source,
+                        "financial_data_source": financial_data_source,
                     },
                     "stock_data": df.to_dict("records"),
-                    "financial_data": self.get_financial_data(symbol) or {},
+                    "financial_data": financial_data or {},
                 },
             }
         except Exception as e:

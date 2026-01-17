@@ -1,8 +1,8 @@
 from stockstats import StockDataFrame
 import pandas as pd
 
-from ..model import AnalysisReport, FearGreed
-from ..data_loader import DataLoader
+from ..core import AnalysisReport, FearGreed
+from ..data import DataLoader
 from .base import BaseFactor
 from .technical_factors import TechnicalFactorLibrary
 from .fundamental_factors import FundamentalFactorLibrary
@@ -53,7 +53,13 @@ class MultiFactorAnalyzer:
     ]
 
     def __init__(
-        self, df: pd.DataFrame, symbol: str, stock_name: str, include_qlib_factors: bool = False
+        self,
+        df: pd.DataFrame,
+        symbol: str,
+        stock_name: str,
+        include_qlib_factors: bool = False,
+        data_source: str = "",
+        financial_data_source: str = "",
     ):
         """
         初始化多因子分析器
@@ -63,6 +69,8 @@ class MultiFactorAnalyzer:
             symbol: 股票代码
             stock_name: 股票名称
             include_qlib_factors: 是否包含 Qlib 158 因子，默认 False
+            data_source: 日线数据源标识
+            financial_data_source: 财务数据源标识
         """
         if df is None or df.empty:
             raise ValueError("DataFrame cannot be None or empty")
@@ -73,6 +81,8 @@ class MultiFactorAnalyzer:
         self.symbol = symbol.strip().upper()
         self.stock_name = stock_name or symbol
         self.include_qlib_factors = include_qlib_factors
+        self.data_source = data_source
+        self.financial_data_source = financial_data_source
 
         # 初始化技术指标计算引擎
         self.stock = StockDataFrame.retype(self.raw_df.copy())
@@ -166,12 +176,19 @@ class MultiFactorAnalyzer:
 
         # --- 获取财务数据（基本面因子）---
         financial_data = None
+        financial_data_source = self.financial_data_source
+        financial_raw_data = None
         try:
-            financial_data = DataLoader.get_financial_data(self.symbol)
+            financial_data, source = DataLoader.get_financial_data(self.symbol)
+            if source:
+                financial_data_source = source
+            # 提取原始数据
+            if financial_data and "raw_data" in financial_data:
+                financial_raw_data = financial_data.get("raw_data")
         except Exception as e:
             import traceback
 
-            print(f"⚠️ 获取财务数据失败: {e}")
+            print(f"⚠️ 获���财务数据失败: {e}")
             print("财务数据获取错误堆栈:")
             traceback.print_exc()
 
@@ -181,6 +198,12 @@ class MultiFactorAnalyzer:
             stock_info = DataLoader.get_stock_info(self.symbol)
         except Exception as e:
             print(f"⚠️ 获取股票信息失败: {e}")
+
+        # --- 准备技术面原始数据 ---
+        technical_raw_data = {
+            "latest": last_row.to_dict(),
+            "data_source": self.data_source,
+        }
 
         # --- 从各个因子库加载因子 ---
         technical_factors = []
@@ -195,6 +218,8 @@ class MultiFactorAnalyzer:
                 fg_index=fg_index,
                 volume_ma5=volume_ma5,
                 volume_ma20=volume_ma20,
+                data_source=self.data_source,
+                raw_data=technical_raw_data,
             )
         except Exception as e:
             import traceback
@@ -208,6 +233,8 @@ class MultiFactorAnalyzer:
                 self.stock,
                 self.raw_df,
                 financial_data=financial_data,
+                data_source=financial_data_source,
+                raw_data=financial_raw_data,
             )
         except Exception as e:
             import traceback
@@ -222,6 +249,8 @@ class MultiFactorAnalyzer:
                     self.stock,
                     self.raw_df,
                     symbol=self.symbol,
+                    data_source=self.data_source,
+                    raw_data=technical_raw_data,
                 )
             else:
                 qlib_factors = []
@@ -244,6 +273,10 @@ class MultiFactorAnalyzer:
             qlib_factors=qlib_factors,
             fear_greed=fear_greed,
             industry=stock_info.get("industry", ""),
+            data_source=self.data_source,
+            financial_data_source=financial_data_source,
+            technical_raw_data=technical_raw_data,
+            fundamental_raw_data=financial_raw_data,
         )
 
         return report

@@ -35,7 +35,7 @@ class BaseStockDataSource(ABC):
     @staticmethod
     def get_cache_key() -> str:
         """获取缓存日期键"""
-        from ..cache_util import CacheUtil
+        from ..cache import CacheUtil
 
         return CacheUtil.get_cst_date_key()
 
@@ -51,7 +51,7 @@ class BaseStockDataSource(ABC):
 
     def update_cache(self, market: str, stocks: List[Dict[str, Any]]) -> None:
         """更新缓存"""
-        from ..cache_util import CacheUtil
+        from ..cache import CacheUtil
 
         if len(stocks) > 0:
             self._cache[market] = stocks
@@ -64,7 +64,7 @@ class BaseStockDataSource(ABC):
             return self._cache[market]
 
         # 尝试从文件缓存加载
-        from ..cache_util import CacheUtil
+        from ..cache import CacheUtil
 
         cached_data = CacheUtil.load_stock_list(market)
         if cached_data is not None:

@@ -8,8 +8,8 @@ from typing import Optional, Any
 from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
 
-from ..agents.coordinator import MultiAgentSystem
-from ..agents.llm import LLMManager
+from ...agents.coordinator import MultiAgentSystem
+from ...agents.llm import LLMManager
 
 router = APIRouter()
 llm_manager = LLMManager()

@@ -56,16 +56,32 @@
 stock-analysis/
 ├── server/                    # Python 后端
 │   ├── src/
-│   │   ├── agent/            # Agent 架构
+│   │   ├── agents/           # Agent 架构（数据分析、调度）
 │   │   │   ├── base.py       # 基类和状态管理
 │   │   │   ├── coordinator/  # 协调 Agent
 │   │   │   ├── fundamental/  # 基本面 Agent
 │   │   │   ├── technical/    # 技术面 Agent
 │   │   │   └── llm.py        # LLM 管理器
-│   │   ├── controller/       # API 层
-│   │   ├── service/          # 业务逻辑层
-│   │   │   ├── factors/      # 因子库
-│   │   │   └── data_loader/  # 数据加载
+│   │   ├── api/              # API 层（HTTP 接口）
+│   │   │   ├── routes/       # 路由定义
+│   │   │   └── schemas.py    # 请求/响应模型
+│   │   ├── core/             # 核心层（数据模型、常量）
+│   │   │   ├── models.py     # 数据类定义
+│   │   │   └── constants.py  # 配置常量
+│   │   ├── data/             # 数据层（缓存、拉取、格式处理）
+│   │   │   ├── cache.py      # 缓存管理
+│   │   │   ├── loader.py     # 统一数据加载入口
+│   │   │   ├── stock_list.py # 股票列表服务
+│   │   │   └── sources/      # 数据源（Tushare、AkShare 等）
+│   │   ├── services/         # 服务层（报告服务编排）
+│   │   │   ├── stock_service.py   # 统一股票服务
+│   │   │   └── console_report.py  # 控制台报告
+│   │   ├── indicators/       # 技术指标计算
+│   │   │   ├── base.py       # 指标基类
+│   │   │   ├── technical_factors.py    # 技术面因子
+│   │   │   ├── fundamental_factors.py  # 基本面因子
+│   │   │   ├── qlib_158_factors.py     # Qlib 因子
+│   │   │   └── multi_factor.py         # 多因子分析器
 │   │   └── env.py            # 环境配置
 │   └── main.py               # 应用入口
 └── web/                       # React 前端

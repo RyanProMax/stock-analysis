@@ -8,7 +8,7 @@ from typing import Optional, Callable, List, AsyncGenerator, Tuple
 from openai.types.chat import ChatCompletionMessageParam
 
 from ..base import BaseAgent, AnalysisState
-from ...service.stock_service import stock_service
+from ...services.stock_service import stock_service
 from .prompts import (
     FUNDAMENTAL_SYSTEM_MESSAGE,
     build_fundamental_prompt,
@@ -27,6 +27,8 @@ def convert_factors_to_dict(factors) -> List[dict]:
                     "status": getattr(factor, "status", ""),
                     "bullish_signals": list(getattr(factor, "bullish_signals", [])),
                     "bearish_signals": list(getattr(factor, "bearish_signals", [])),
+                    "raw_data": getattr(factor, "raw_data", None),
+                    "data_source": getattr(factor, "data_source", ""),
                 }
             )
     return result

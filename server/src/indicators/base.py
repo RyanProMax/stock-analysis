@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 import pandas as pd
 from stockstats import StockDataFrame
 
-from ..model import FactorDetail
+from ..core import FactorDetail
 
 
 class BaseFactor(ABC):
@@ -36,13 +36,48 @@ class BaseFactor(ABC):
         self.stock = stock
         self.raw_df = raw_df
 
+    def _create_factor_detail(
+        self,
+        key: str,
+        name: str,
+        status: str,
+        bullish_signals: List[str] = None,
+        bearish_signals: List[str] = None,
+        raw_data: Optional[dict] = None,
+        data_source: str = "",
+    ) -> FactorDetail:
+        """
+        创建 FactorDetail 对象的辅助方法
+
+        Args:
+            key: 因子 key
+            name: 因子名称
+            status: 因子状态
+            bullish_signals: 看涨信号列表
+            bearish_signals: 看跌信号列表
+            raw_data: 原始数据
+            data_source: 数据源标识
+
+        Returns:
+            FactorDetail 对象
+        """
+        return FactorDetail(
+            key=key,
+            name=name,
+            status=status,
+            bullish_signals=bullish_signals or [],
+            bearish_signals=bearish_signals or [],
+            raw_data=raw_data,
+            data_source=data_source,
+        )
+
     @abstractmethod
     def calculate(self, **kwargs) -> FactorDetail:
         """
         计算因子（抽象方法，子类必须实现）
 
         Args:
-            **kwargs: 额外的参数，如 financial_data, fg_index 等
+            **kwargs: 额外的参数，如 financial_data, fg_index, data_source, raw_data 等
 
         Returns:
             FactorDetail: 因子详情对象

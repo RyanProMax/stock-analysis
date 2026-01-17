@@ -4,7 +4,7 @@ from rich.panel import Panel
 from rich import box
 from rich.progress import Progress, BarColumn, TextColumn
 
-from .model import AnalysisReport
+from ..core import AnalysisReport
 
 
 def console_report(report: AnalysisReport):

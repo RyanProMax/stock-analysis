@@ -8,11 +8,12 @@
 - 量能因子：成交量比率、VR
 """
 
-from typing import List
+from typing import List, Optional
 import pandas as pd
 from stockstats import StockDataFrame
 
-from ..model import FactorDetail, cfg
+from ..core import FactorDetail
+from ..core.constants import cfg
 from .base import BaseFactor, FactorLibrary
 
 
@@ -381,6 +382,8 @@ class TechnicalFactorLibrary(FactorLibrary):
         fg_index: float = 50.0,
         volume_ma5: float = 0.0,
         volume_ma20: float = 0.0,
+        data_source: str = "",
+        raw_data: Optional[dict] = None,
         **kwargs,
     ) -> List[FactorDetail]:
         """
@@ -392,6 +395,8 @@ class TechnicalFactorLibrary(FactorLibrary):
             fg_index: 贪恐指数
             volume_ma5: 5日成交量均线
             volume_ma20: 20日成交量均线
+            data_source: 数据源标识
+            raw_data: 原始数据
             **kwargs: 其他参数
 
         Returns:
@@ -400,26 +405,51 @@ class TechnicalFactorLibrary(FactorLibrary):
         factors = []
 
         # 趋势因子
-        factors.append(MAFactor(stock, raw_df).calculate())
-        factors.append(EMAFactor(stock, raw_df).calculate())
-        factors.append(MACDFactor(stock, raw_df).calculate())
+        factors.append(
+            MAFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
+        )
+        factors.append(
+            EMAFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
+        )
+        factors.append(
+            MACDFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
+        )
 
         # 动量因子
-        factors.append(RSIFactor(stock, raw_df).calculate())
-        factors.append(KDJFactor(stock, raw_df).calculate())
-        factors.append(WRFactor(stock, raw_df).calculate())
+        factors.append(
+            RSIFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
+        )
+        factors.append(
+            KDJFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
+        )
+        factors.append(
+            WRFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
+        )
 
         # 波动率因子
-        factors.append(BollingerFactor(stock, raw_df).calculate())
-        factors.append(ATRFactor(stock, raw_df).calculate())
-        factors.append(SentimentFactor(stock, raw_df).calculate(fg_index=fg_index))
+        factors.append(
+            BollingerFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
+        )
+        factors.append(
+            ATRFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
+        )
+        factors.append(
+            SentimentFactor(stock, raw_df).calculate(
+                fg_index=fg_index, data_source=data_source, raw_data=raw_data
+            )
+        )
 
         # 量能因子
         factors.append(
             VolumeRatioFactor(stock, raw_df).calculate(
-                volume_ma5=volume_ma5, volume_ma20=volume_ma20
+                volume_ma5=volume_ma5,
+                volume_ma20=volume_ma20,
+                data_source=data_source,
+                raw_data=raw_data,
             )
         )
-        factors.append(VRFactor(stock, raw_df).calculate())
+        factors.append(
+            VRFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
+        )
 
         return factors
