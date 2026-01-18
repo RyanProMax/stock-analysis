@@ -59,10 +59,10 @@
 | 状态定义 | `server/src/agents/base.py:AnalysisState` |
 | 协调 Agent | `server/src/agents/coordinator/agent.py` |
 | 流式 LLM 解析 | `server/src/agents/coordinator/agent.py:synthesize_stream` |
-| 因子基类 | `server/src/service/factors/base.py` |
-| 技术因子库 | `server/src/service/factors/technical_factors.py` |
-| 数据加载器 | `server/src/service/data_loader/loader.py` |
-| 缓存工具 | `server/src/service/cache_util.py` |
+| 因子基类 | `server/src/indicators/base.py` |
+| 技术因子库 | `server/src/indicators/technical_factors.py` |
+| 数据加载器 | `server/src/data/loader.py` |
+| 缓存工具 | `server/src/data/cache_util.py` |
 | SSE 控制器 | `server/src/controller/agent.py` |
 | 前端 API | `web/src/api/client.ts` |
 | Agent 报告组件 | `web/src/components/agent-report/` |
@@ -90,8 +90,8 @@
     "technical_analysis": "技术面分析文本...",
     "coordinator_analysis": "综合建议...",
     "thinking_process": "推理过程...",
-    "fundamental_factors": [...],
-    "technical_factors": [...],
+    "fundamental": {"factors": [...], "data_source": "...", "raw_data": {...}},
+    "technical": {"factors": [...], "data_source": "...", "raw_data": {...}},
     "errors": {},
     "execution_times": {}
 }

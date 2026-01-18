@@ -212,10 +212,10 @@ Grep "AgentName" --检查引用
 
 ```python
 # 1. Read 因子基类
-Read server/src/service/factors/base.py
+Read server/src/indicators/base.py
 
 # 2. Read 参考现有因子
-Read server/src/service/factors/technical_factors.py
+Read server/src/indicators/technical_factors.py
 
 # 3. 在对应库中添加新因子
 Edit technical_factors.py ...

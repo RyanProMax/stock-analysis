@@ -148,10 +148,10 @@ class AnalysisState:
     price_data: Optional[pd.DataFrame] = None
     financial_data: Optional[dict] = None
 
-    # 分析结果
-    fundamental_factors: Optional[List[dict]] = None
+    # 分析结果（使用 FactorAnalysis 结构）
+    fundamental: Optional[FactorAnalysis] = None
     fundamental_analysis: str = ""
-    technical_factors: Optional[List[dict]] = None
+    technical: Optional[FactorAnalysis] = None
     technical_analysis: str = ""
     coordinator_analysis: str = ""
     thinking_process: str = ""
