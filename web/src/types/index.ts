@@ -5,6 +5,8 @@ export interface FactorDetail {
   status: string
   bullish_signals: string[]
   bearish_signals: string[]
+  raw_data: Record<string, any> | null
+  data_source: string
 }
 
 export interface FearGreed {
@@ -12,13 +14,19 @@ export interface FearGreed {
   label: string
 }
 
+export interface FactorAnalysis {
+  factors: FactorDetail[]
+  data_source: string
+  raw_data: Record<string, any> | null
+}
+
 export interface AnalysisReport {
   symbol: string
   stock_name: string | null
   price: number
-  technical_factors: FactorDetail[]
-  fundamental_factors: FactorDetail[]
-  qlib_factors: FactorDetail[]
+  technical: FactorAnalysis
+  fundamental: FactorAnalysis
+  qlib: FactorAnalysis
   fear_greed: FearGreed
   status?: 'success' | 'error'
   error?: string

@@ -1,9 +1,8 @@
 from stockstats import StockDataFrame
 import pandas as pd
 
-from ..core import AnalysisReport, FearGreed
+from ..core import AnalysisReport, FactorAnalysis, FearGreed
 from ..data import DataLoader
-from .base import BaseFactor
 from .technical_factors import TechnicalFactorLibrary
 from .fundamental_factors import FundamentalFactorLibrary
 from .qlib_158_factors import Qlib158FactorLibrary
@@ -268,15 +267,23 @@ class MultiFactorAnalyzer:
             symbol=self.symbol,
             stock_name=self.stock_name,
             price=close,
-            technical_factors=technical_factors,
-            fundamental_factors=fundamental_factors,
-            qlib_factors=qlib_factors,
+            technical=FactorAnalysis(
+                factors=technical_factors,
+                data_source=self.data_source,
+                raw_data=technical_raw_data,
+            ),
+            fundamental=FactorAnalysis(
+                factors=fundamental_factors,
+                data_source=financial_data_source,
+                raw_data=financial_raw_data,
+            ),
+            qlib=FactorAnalysis(
+                factors=qlib_factors,
+                data_source=self.data_source,
+                raw_data=None,
+            ),
             fear_greed=fear_greed,
             industry=stock_info.get("industry", ""),
-            data_source=self.data_source,
-            financial_data_source=financial_data_source,
-            technical_raw_data=technical_raw_data,
-            fundamental_raw_data=financial_raw_data,
         )
 
         return report

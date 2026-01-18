@@ -9,6 +9,7 @@
 
 from .models import (
     FactorDetail,
+    FactorAnalysis,
     FearGreed,
     AnalysisReport,
     FactorSignal,
@@ -17,6 +18,7 @@ from .constants import Config
 
 __all__ = [
     "FactorDetail",
+    "FactorAnalysis",
     "FearGreed",
     "AnalysisReport",
     "FactorSignal",

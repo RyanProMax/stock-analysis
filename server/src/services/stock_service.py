@@ -16,7 +16,7 @@ import pandas as pd
 
 from ..data import DataLoader, StockListService, CacheUtil
 from ..indicators import MultiFactorAnalyzer
-from ..core import AnalysisReport, FactorDetail, FearGreed
+from ..core import AnalysisReport, FactorAnalysis, FactorDetail, FearGreed
 from ..env import is_development
 
 
@@ -169,7 +169,10 @@ class StockService:
             return None
 
     def batch_analyze(
-        self, symbols: List[str], refresh: bool = False, include_qlib_factors: bool = False
+        self,
+        symbols: List[str],
+        refresh: bool = False,
+        include_qlib_factors: bool = False,
     ) -> List[AnalysisReport]:
         """
         批量分析股票
@@ -209,7 +212,7 @@ class StockService:
             基本面因子列表
         """
         report = self.analyze_symbol(symbol)
-        return report.fundamental_factors if report else None
+        return report.fundamental.factors if report else None
 
     def get_technical_factors(self, symbol: str) -> Optional[List[FactorDetail]]:
         """
@@ -222,7 +225,7 @@ class StockService:
             技术面因子列表
         """
         report = self.analyze_symbol(symbol)
-        return report.technical_factors if report else None
+        return report.technical.factors if report else None
 
     def get_qlib_factors(self, symbol: str) -> Optional[List[FactorDetail]]:
         """
@@ -235,7 +238,7 @@ class StockService:
             Qlib因子列表
         """
         report = self.analyze_symbol(symbol)
-        return report.qlib_factors if report else None
+        return report.qlib.factors if report else None
 
     # ==================== 辅助方法 ====================
 
@@ -275,6 +278,18 @@ class StockService:
                     for f in factors_data
                 ]
 
+            # 重建 FactorAnalysis 的辅助函数
+            def rebuild_factor_analysis(key: str) -> FactorAnalysis:
+                if key in report_dict:
+                    data = report_dict[key]
+                    if isinstance(data, dict):
+                        return FactorAnalysis(
+                            factors=rebuild_factor_list(data.get("factors", [])),
+                            data_source=data.get("data_source", ""),
+                            raw_data=data.get("raw_data"),
+                        )
+                return FactorAnalysis()
+
             # 重建报告
             report = AnalysisReport(
                 symbol=report_dict.get("symbol", symbol),
@@ -282,13 +297,9 @@ class StockService:
                 price=report_dict.get("price", 0.0),
                 fear_greed=fear_greed,
                 industry=report_dict.get("industry", ""),
-                data_source=report_dict.get("data_source", ""),
-                financial_data_source=report_dict.get("financial_data_source", ""),
-                technical_factors=rebuild_factor_list(report_dict.get("technical_factors", [])),
-                fundamental_factors=rebuild_factor_list(report_dict.get("fundamental_factors", [])),
-                qlib_factors=rebuild_factor_list(report_dict.get("qlib_factors", [])),
-                technical_raw_data=report_dict.get("technical_raw_data"),
-                fundamental_raw_data=report_dict.get("fundamental_raw_data"),
+                technical=rebuild_factor_analysis("technical"),
+                fundamental=rebuild_factor_analysis("fundamental"),
+                qlib=rebuild_factor_analysis("qlib"),
             )
 
             return report

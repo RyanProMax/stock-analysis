@@ -2,7 +2,9 @@
 TechnicalAgent Prompts - 技术面分析提示词
 """
 
-from typing import Optional, List
+from typing import Optional
+
+from ...core import FactorAnalysis
 
 
 TECHNICAL_SYSTEM_MESSAGE = """
@@ -47,11 +49,9 @@ TECHNICAL_SYSTEM_MESSAGE = """
 def build_technical_prompt(
     symbol: str,
     stock_name: str = "",
-    technical_factors: Optional[List[dict]] = None,
+    technical: Optional[FactorAnalysis] = None,
 ) -> str:
     """构建技术面分析提示词"""
-    technical_factors = technical_factors or []
-
     prompt_parts = []
 
     # 股票基本信息
@@ -61,13 +61,13 @@ def build_technical_prompt(
     prompt_parts.append(stock_info)
 
     # 技术面数据
-    if technical_factors:
+    if technical and technical.factors:
         prompt_parts.append("\n## 技术面数据")
-        for factor in technical_factors:
-            name = factor.get("name", factor.get("key", ""))
-            status = factor.get("status", "N/A")
-            bullish = factor.get("bullish_signals", [])
-            bearish = factor.get("bearish_signals", [])
+        for factor in technical.factors:
+            name = factor.name or factor.key
+            status = factor.status
+            bullish = factor.bullish_signals
+            bearish = factor.bearish_signals
 
             prompt_parts.append(f"\n### {name}")
             prompt_parts.append(f"- 状态: {status}")

@@ -15,25 +15,6 @@ from .prompts import (
 )
 
 
-def convert_factors_to_dict(factors) -> List[dict]:
-    """将因子对象转换为字典，符合前端 FactorDetail 接口"""
-    result = []
-    for factor in factors or []:
-        if hasattr(factor, "name"):
-            result.append(
-                {
-                    "name": getattr(factor, "name", ""),
-                    "key": getattr(factor, "key", ""),
-                    "status": getattr(factor, "status", ""),
-                    "bullish_signals": list(getattr(factor, "bullish_signals", [])),
-                    "bearish_signals": list(getattr(factor, "bearish_signals", [])),
-                    "raw_data": getattr(factor, "raw_data", None),
-                    "data_source": getattr(factor, "data_source", ""),
-                }
-            )
-    return result
-
-
 class FundamentalAgent(BaseAgent):
     """
     基本面分析 Agent
@@ -70,9 +51,9 @@ class FundamentalAgent(BaseAgent):
             state.price = report.price or 0.0
             state.stock_data = report
 
-            # 保存因子数据
-            state.fundamental_factors = convert_factors_to_dict(report.fundamental_factors)
-            state.technical_factors = convert_factors_to_dict(report.technical_factors)
+            # 保存因子数据（直接使用 FactorAnalysis）
+            state.fundamental = report.fundamental
+            state.technical = report.technical
 
             # 标记数据已获取
             state._data_fetched = True
@@ -114,7 +95,7 @@ class FundamentalAgent(BaseAgent):
                 yield ("数据获取失败", None)
                 return
 
-        if state.fundamental_factors is None:
+        if state.fundamental is None:
             state.set_error(self.get_name(), "基本面数据不可用")
             if progress_callback:
                 await progress_callback("fundamental_analyzer", "error", "基本面数据不可用", None)
@@ -126,7 +107,7 @@ class FundamentalAgent(BaseAgent):
                 "fundamental_analyzer",
                 "running",
                 "正在分析基本面...",
-                state.fundamental_factors,
+                state.fundamental,
             )
 
         try:
@@ -135,7 +116,7 @@ class FundamentalAgent(BaseAgent):
                 symbol=state.symbol,
                 stock_name=state.stock_name,
                 industry=state.industry,
-                fundamental_factors=state.fundamental_factors,
+                fundamental=state.fundamental,
             )
 
             messages: List[ChatCompletionMessageParam] = [
@@ -350,7 +331,7 @@ class FundamentalAgent(BaseAgent):
                     await progress_callback("fundamental_analyzer", "error", "数据获取失败", None)
                 return state
 
-        if state.fundamental_factors is None:
+        if state.fundamental is None:
             state.set_error(self.get_name(), "基本面数据不可用")
             if progress_callback:
                 await progress_callback("fundamental_analyzer", "error", "基本面数据不可用", None)
@@ -361,7 +342,7 @@ class FundamentalAgent(BaseAgent):
                 "fundamental_analyzer",
                 "running",
                 "正在分析基本面...",
-                state.fundamental_factors,
+                state.fundamental,
             )
 
         try:
@@ -370,7 +351,7 @@ class FundamentalAgent(BaseAgent):
                 symbol=state.symbol,
                 stock_name=state.stock_name,
                 industry=state.industry,
-                fundamental_factors=state.fundamental_factors,
+                fundamental=state.fundamental,
             )
 
             messages: List[ChatCompletionMessageParam] = [

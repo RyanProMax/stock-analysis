@@ -9,6 +9,8 @@ from typing import Optional, Any, Dict, List, AsyncGenerator, Callable
 from enum import Enum
 import pandas as pd
 
+from ..core import FactorAnalysis
+
 
 class AgentStatus(Enum):
     """Agent 执行状态"""
@@ -35,11 +37,11 @@ class AnalysisState:
     stock_data: Optional[Any] = None
 
     # 基本面分析结果（由 FundamentalAgent 填充）
-    fundamental_factors: Optional[List[dict]] = None
+    fundamental: Optional[FactorAnalysis] = None
     fundamental_analysis: str = ""
 
     # 技术面分析结果（由 TechnicalAgent 填充）
-    technical_factors: Optional[List[dict]] = None
+    technical: Optional[FactorAnalysis] = None
     technical_analysis: str = ""
 
     # 综合分析结果（由 Coordinator 填充）

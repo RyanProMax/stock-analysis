@@ -2,7 +2,9 @@
 FundamentalAgent Prompts - 基本面分析提示词
 """
 
-from typing import Optional, List
+from typing import Optional
+
+from ...core import FactorAnalysis
 
 
 FUNDAMENTAL_SYSTEM_MESSAGE = """
@@ -66,11 +68,9 @@ def build_fundamental_prompt(
     symbol: str,
     stock_name: str = "",
     industry: str = "",
-    fundamental_factors: Optional[List[dict]] = None,
+    fundamental: Optional[FactorAnalysis] = None,
 ) -> str:
     """构建基本面分析提示词"""
-    fundamental_factors = fundamental_factors or []
-
     prompt_parts = []
 
     # 股票基本信息
@@ -82,13 +82,13 @@ def build_fundamental_prompt(
     prompt_parts.append(stock_info)
 
     # 基本面数据
-    if fundamental_factors:
+    if fundamental and fundamental.factors:
         prompt_parts.append("\n## 基本面数据")
         prompt_parts.append("| 指标 | 数值 |")
         prompt_parts.append("|------|------|")
-        for factor in fundamental_factors:
-            name = factor.get("name", factor.get("key", ""))
-            status = factor.get("status", "N/A")
+        for factor in fundamental.factors:
+            name = factor.name or factor.key
+            status = factor.status
             prompt_parts.append(f"| {name} | {status} |")
 
     prompt_parts.append("\n## 请根据以上基本面数据，给出专业的基本面分析报告。")

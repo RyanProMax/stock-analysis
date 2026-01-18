@@ -4,6 +4,7 @@
 
 from fastapi import APIRouter
 from typing import List, Optional
+from dataclasses import asdict
 
 from ...services.stock_service import stock_service
 from ..schemas import (
@@ -50,9 +51,12 @@ def analyze_stocks(payload: StockAnalysisRequest):
                 err_msg="无法获取任何股票的数据，请确认代码是否有效。",
             )
 
+        # 内部结构已与 API 响应结构一致，直接使用 asdict 转换
+        response_reports = [AnalysisReportResponse(**asdict(r)) for r in reports]
+
         return StandardResponse(
             status_code=200,
-            data=reports,
+            data=response_reports,
             err_msg=None,
         )
     except Exception as e:

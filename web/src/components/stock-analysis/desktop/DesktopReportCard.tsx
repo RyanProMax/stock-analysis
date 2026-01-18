@@ -126,9 +126,9 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
     return emojiMatch ? emojiMatch[0] : ''
   }
 
-  const technicalFactors = report.technical_factors
-  const fundamentalFactors = report.fundamental_factors
-  // const qlibFactors = report.qlib_factors
+  const technicalFactors = report.technical.factors
+  const fundamentalFactors = report.fundamental.factors
+  // const qlibFactors = report.qlib.factors
   const fearGreedTheme = getFearGreedTheme(report.fear_greed.index)
   const emoji = getEmojiFromLabel(report.fear_greed.label)
   const labelText = report.fear_greed.label

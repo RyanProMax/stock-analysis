@@ -47,6 +47,8 @@ class FactorDetailResponse(BaseModel):
     status: str
     bullish_signals: List[str]
     bearish_signals: List[str]
+    raw_data: Dict[str, Any] | None
+    data_source: str = ""
 
 
 class FearGreedResponse(BaseModel):
@@ -56,14 +58,22 @@ class FearGreedResponse(BaseModel):
     label: str
 
 
+class FactorAnalysisResponse(BaseModel):
+    """因子分析响应（技术面/基本面/Qlib）"""
+
+    factors: List[FactorDetailResponse]
+    data_source: str = ""
+    raw_data: Dict[str, Any] | None
+
+
 class AnalysisReportResponse(BaseModel):
     symbol: str
     stock_name: str | None = None
     price: float
     fear_greed: FearGreedResponse
-    technical_factors: List[FactorDetailResponse]
-    fundamental_factors: List[FactorDetailResponse]
-    qlib_factors: List[FactorDetailResponse]
+    technical: FactorAnalysisResponse
+    fundamental: FactorAnalysisResponse
+    qlib: FactorAnalysisResponse
 
     class Config:
         from_attributes = True

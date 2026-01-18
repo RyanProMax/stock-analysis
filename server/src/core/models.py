@@ -17,8 +17,17 @@ class FactorDetail:
     status: str  # 因子状态描述
     bullish_signals: List[str] = field(default_factory=list)
     bearish_signals: List[str] = field(default_factory=list)
-    raw_data: Optional[Dict[str, Any]] = None  # 原始数据（全量）
+    raw_data: Dict[str, Any] | None = None  # 原始数据（全量）
     data_source: str = ""  # 数据源标识
+
+
+@dataclass
+class FactorAnalysis:
+    """因子分析结果（技术面/基本面/Qlib）"""
+
+    factors: List[FactorDetail] = field(default_factory=list)
+    data_source: str = ""
+    raw_data: Dict[str, Any] | None = None
 
 
 @dataclass
@@ -40,18 +49,10 @@ class AnalysisReport:
     fear_greed: FearGreed = field(default_factory=lambda: FearGreed(index=50.0, label="中性"))
     # 行业信息（用于基本面分析时的行业对比）
     industry: str = ""
-    # 数据源标识
-    data_source: str = ""  # 日线数据源（如 "CN_Tushare", "US_Sina"）
-    financial_data_source: str = ""  # 财务数据源（如 "CN_EastMoney", "US_yfinance"）
-    # 技术面因子
-    technical_factors: List[FactorDetail] = field(default_factory=list)
-    # 基本面因子
-    fundamental_factors: List[FactorDetail] = field(default_factory=list)
-    # Qlib 因子
-    qlib_factors: List[FactorDetail] = field(default_factory=list)
-    # 原始数据（全量，可选）
-    technical_raw_data: Optional[Dict[str, Any]] = None  # 技术面原始日线数据
-    fundamental_raw_data: Optional[Dict[str, Any]] = None  # 基本面原始财务数据
+    # 因子分析结果（新结构）
+    technical: FactorAnalysis = field(default_factory=FactorAnalysis)
+    fundamental: FactorAnalysis = field(default_factory=FactorAnalysis)
+    qlib: FactorAnalysis = field(default_factory=FactorAnalysis)
 
 
 @dataclass
