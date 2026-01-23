@@ -17,7 +17,6 @@ class FactorDetail:
     status: str  # 因子状态描述
     bullish_signals: List[str] = field(default_factory=list)
     bearish_signals: List[str] = field(default_factory=list)
-    raw_data: Dict[str, Any] | None = None  # 原始数据（全量）
     data_source: str = ""  # 数据源标识
 
 

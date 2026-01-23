@@ -47,7 +47,6 @@ class FactorDetailResponse(BaseModel):
     status: str
     bullish_signals: List[str]
     bearish_signals: List[str]
-    raw_data: Dict[str, Any] | None
     data_source: str = ""
 
 

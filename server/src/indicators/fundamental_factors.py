@@ -27,7 +27,6 @@ class RevenueGrowthFactor(BaseFactor):
         self,
         financial_data: Optional[Dict[str, Any]] = None,
         data_source: str = "",
-        raw_data: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> FactorDetail:
         """营收增长率因子：返回客观数值"""
@@ -38,7 +37,6 @@ class RevenueGrowthFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -50,7 +48,6 @@ class RevenueGrowthFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -61,7 +58,6 @@ class RevenueGrowthFactor(BaseFactor):
             status=f"{revenue_growth:.1f}%",
             bullish_signals=[],
             bearish_signals=[],
-            raw_data=raw_data,
             data_source=data_source,
         )
 
@@ -73,7 +69,6 @@ class DebtRatioFactor(BaseFactor):
         self,
         financial_data: Optional[Dict[str, Any]] = None,
         data_source: str = "",
-        raw_data: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> FactorDetail:
         """资产负债率因子：返回客观数值"""
@@ -84,7 +79,6 @@ class DebtRatioFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -96,7 +90,6 @@ class DebtRatioFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -107,7 +100,6 @@ class DebtRatioFactor(BaseFactor):
             status=f"{debt_ratio:.1f}%",
             bullish_signals=[],
             bearish_signals=[],
-            raw_data=raw_data,
             data_source=data_source,
         )
 
@@ -119,7 +111,6 @@ class PERatioFactor(BaseFactor):
         self,
         financial_data: Optional[Dict[str, Any]] = None,
         data_source: str = "",
-        raw_data: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> FactorDetail:
         """市盈率（PE）因子：返回客观数值"""
@@ -130,7 +121,6 @@ class PERatioFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -142,7 +132,6 @@ class PERatioFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -153,7 +142,6 @@ class PERatioFactor(BaseFactor):
             status=f"{pe_ratio:.1f}",
             bullish_signals=[],
             bearish_signals=[],
-            raw_data=raw_data,
             data_source=data_source,
         )
 
@@ -165,7 +153,6 @@ class PBRatioFactor(BaseFactor):
         self,
         financial_data: Optional[Dict[str, Any]] = None,
         data_source: str = "",
-        raw_data: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> FactorDetail:
         """市净率（PB）因子：返回客观数值"""
@@ -176,7 +163,6 @@ class PBRatioFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -188,7 +174,6 @@ class PBRatioFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -199,7 +184,6 @@ class PBRatioFactor(BaseFactor):
             status=f"{pb_ratio:.2f}",
             bullish_signals=[],
             bearish_signals=[],
-            raw_data=raw_data,
             data_source=data_source,
         )
 
@@ -211,7 +195,6 @@ class ROEFactor(BaseFactor):
         self,
         financial_data: Optional[Dict[str, Any]] = None,
         data_source: str = "",
-        raw_data: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> FactorDetail:
         """ROE（净资产收益率）因子：返回客观数值"""
@@ -222,7 +205,6 @@ class ROEFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -234,7 +216,6 @@ class ROEFactor(BaseFactor):
                 status="数据不可用",
                 bullish_signals=[],
                 bearish_signals=[],
-                raw_data=raw_data,
                 data_source=data_source,
             )
 
@@ -245,7 +226,6 @@ class ROEFactor(BaseFactor):
             status=f"{roe:.1f}%",
             bullish_signals=[],
             bearish_signals=[],
-            raw_data=raw_data,
             data_source=data_source,
         )
 
@@ -259,7 +239,6 @@ class FundamentalFactorLibrary(FactorLibrary):
         raw_df: pd.DataFrame,
         financial_data: Optional[Dict[str, Any]] = None,
         data_source: str = "",
-        raw_data: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> List[FactorDetail]:
         """
@@ -280,27 +259,27 @@ class FundamentalFactorLibrary(FactorLibrary):
 
         factors.append(
             RevenueGrowthFactor(stock, raw_df).calculate(
-                financial_data=financial_data, data_source=data_source, raw_data=raw_data
+                financial_data=financial_data, data_source=data_source
             )
         )
         factors.append(
             DebtRatioFactor(stock, raw_df).calculate(
-                financial_data=financial_data, data_source=data_source, raw_data=raw_data
+                financial_data=financial_data, data_source=data_source
             )
         )
         factors.append(
             PERatioFactor(stock, raw_df).calculate(
-                financial_data=financial_data, data_source=data_source, raw_data=raw_data
+                financial_data=financial_data, data_source=data_source
             )
         )
         factors.append(
             PBRatioFactor(stock, raw_df).calculate(
-                financial_data=financial_data, data_source=data_source, raw_data=raw_data
+                financial_data=financial_data, data_source=data_source
             )
         )
         factors.append(
             ROEFactor(stock, raw_df).calculate(
-                financial_data=financial_data, data_source=data_source, raw_data=raw_data
+                financial_data=financial_data, data_source=data_source
             )
         )
 

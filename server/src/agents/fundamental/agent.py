@@ -130,10 +130,6 @@ class FundamentalAgent(BaseAgent):
                 )
 
             # 流式输出 LLM 响应
-            if not self.llm or not self.llm.is_available:
-                yield ("LLM 未配置", None)
-                return
-
             assert self.llm is not None  # Type narrowing
 
             # 标签常量

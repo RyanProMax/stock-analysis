@@ -86,24 +86,21 @@ class LLMManager:
 
     def __init__(self, default_provider: Union[str, LLMProvider] = LLMProvider.DEEPSEEK):
         self.default_provider = default_provider
-        self.llm: Optional[OpenAILLM] = None
-        self.is_available = False
-        self._initialize_llm()
+        self.llm = self._initialize_llm()
 
-    def _initialize_llm(self):
-        """初始化默认 LLM"""
+    def _initialize_llm(self) -> OpenAILLM:
+        """初始化默认 LLM，失败时直接抛出异常"""
+        provider_name = (
+            self.default_provider.value
+            if isinstance(self.default_provider, LLMProvider)
+            else self.default_provider
+        )
         try:
-            self.llm = LLMFactory.create_llm(self.default_provider)
-            self.is_available = True
-            provider_name = (
-                self.default_provider.value
-                if isinstance(self.default_provider, LLMProvider)
-                else self.default_provider
-            )
+            llm = LLMFactory.create_llm(self.default_provider)
             print(f"[LLM] 成功初始化 {provider_name} LLM")
+            return llm
         except Exception as e:
-            self.is_available = False
-            print(f"[LLM] 初始化失败: {str(e)}")
+            raise RuntimeError(f"LLM 初始化失败 ({provider_name}): {str(e)}") from e
 
     async def chat_completion_stream(
         self,
@@ -113,11 +110,6 @@ class LLMManager:
         **kwargs,
     ) -> AsyncGenerator[str, None]:
         """执行流式聊天完成"""
-        if not self.is_available or not self.llm:
-            raise RuntimeError("LLM 未初始化或不可用")
-
-        assert self.llm is not None  # Type narrowing for type checker
-
         async for chunk in self.llm.chat_completion_stream(
             messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
         ):

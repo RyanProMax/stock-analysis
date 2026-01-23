@@ -103,10 +103,6 @@ class CoordinatorAgent(BaseAgent):
         ]
 
         # 流式输出 LLM 响应
-        if not self.llm or not self.llm.is_available:
-            yield ("LLM 未配置，无法生成综合分析。", None)
-            return
-
         assert self.llm is not None  # Type narrowing for type checker
 
         # 标签常量

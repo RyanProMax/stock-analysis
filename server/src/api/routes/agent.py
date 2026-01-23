@@ -4,6 +4,7 @@ Agent控制器 - 流式股票分析接口 (Multi-Agent 架构)
 
 import json
 import asyncio
+from dataclasses import asdict
 from typing import Optional, Any
 from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
@@ -15,9 +16,24 @@ router = APIRouter()
 llm_manager = LLMManager()
 
 
+def _json_default(obj: Any) -> Any:
+    """
+    json.dumps 的 default 处理函数
+    当遇到不可序列化的对象时调用
+    """
+    # dataclass → 转为 dict
+    if hasattr(obj, "__dataclass_fields__"):
+        return asdict(obj)
+    # 兜底：转字符串
+    return str(obj)
+
+
 def send_event(event_type: str, data: dict) -> dict:
     """创建 SSE 事件"""
-    return {"event": event_type, "data": json.dumps(data, ensure_ascii=False)}
+    return {
+        "event": event_type,
+        "data": json.dumps(data, default=_json_default, ensure_ascii=False),
+    }
 
 
 def send_progress(step: str, status: str, message: str, data: Optional[dict] = None) -> dict:
@@ -49,7 +65,6 @@ async def analyze_stock_stream(
     子 Agents 并行执行，提升分析速度。
     """
     symbol = symbol.upper()
-    use_llm = llm_manager.is_available
     system = MultiAgentSystem(llm_manager)
 
     async def generate():
@@ -149,30 +164,13 @@ async def analyze_stock_stream(
             return
 
         # 构建最终决策
-        if use_llm:
-            decision = {
-                "action": "分析完成",
-                "analysis": coordinator_full_response
-                or (state.coordinator_analysis if state else "")
-                or "",
-                "thinking": coordinator_thinking or (state.thinking_process if state else "") or "",
-            }
-        else:
-            # 如果没有 LLM，返回因子数据
-            fundamental_text = (
-                state.fundamental_analysis or "基本面分析: " + str(state.fundamental_factors)
-                if state
-                else "基本面分析: 无数据"
-            )
-            technical_text = (
-                state.technical_analysis or "技术面分析: " + str(state.technical_factors)
-                if state
-                else "技术面分析: 无数据"
-            )
-            decision = {
-                "action": "LLM未配置",
-                "analysis": f"{fundamental_text}\n\n{technical_text}",
-            }
+        decision = {
+            "action": "分析完成",
+            "analysis": coordinator_full_response
+            or (state.coordinator_analysis if state else "")
+            or "",
+            "thinking": coordinator_thinking or (state.thinking_process if state else "") or "",
+        }
 
         # 更新最后一个节点状态为完成
         execution_time = state.execution_times.get("CoordinatorAgent", 0) if state else 0

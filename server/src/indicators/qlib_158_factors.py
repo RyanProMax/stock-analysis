@@ -155,7 +155,6 @@ class Qlib158FactorLibrary(FactorLibrary):
                             factor_name,
                             factor_value,
                             data_source=data_source,
-                            raw_data=raw_data,
                         )
                         if factor_detail:
                             factors.append(factor_detail)
@@ -605,6 +604,5 @@ class Qlib158FactorLibrary(FactorLibrary):
             status=status,
             bullish_signals=[],
             bearish_signals=[],
-            raw_data=raw_data,
             data_source=data_source,
         )

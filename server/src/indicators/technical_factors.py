@@ -405,38 +405,20 @@ class TechnicalFactorLibrary(FactorLibrary):
         factors = []
 
         # 趋势因子
-        factors.append(
-            MAFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
-        )
-        factors.append(
-            EMAFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
-        )
-        factors.append(
-            MACDFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
-        )
+        factors.append(MAFactor(stock, raw_df).calculate(data_source=data_source))
+        factors.append(EMAFactor(stock, raw_df).calculate(data_source=data_source))
+        factors.append(MACDFactor(stock, raw_df).calculate(data_source=data_source))
 
         # 动量因子
-        factors.append(
-            RSIFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
-        )
-        factors.append(
-            KDJFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
-        )
-        factors.append(
-            WRFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
-        )
+        factors.append(RSIFactor(stock, raw_df).calculate(data_source=data_source))
+        factors.append(KDJFactor(stock, raw_df).calculate(data_source=data_source))
+        factors.append(WRFactor(stock, raw_df).calculate(data_source=data_source))
 
         # 波动率因子
+        factors.append(BollingerFactor(stock, raw_df).calculate(data_source=data_source))
+        factors.append(ATRFactor(stock, raw_df).calculate(data_source=data_source))
         factors.append(
-            BollingerFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
-        )
-        factors.append(
-            ATRFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
-        )
-        factors.append(
-            SentimentFactor(stock, raw_df).calculate(
-                fg_index=fg_index, data_source=data_source, raw_data=raw_data
-            )
+            SentimentFactor(stock, raw_df).calculate(fg_index=fg_index, data_source=data_source)
         )
 
         # 量能因子
@@ -445,11 +427,8 @@ class TechnicalFactorLibrary(FactorLibrary):
                 volume_ma5=volume_ma5,
                 volume_ma20=volume_ma20,
                 data_source=data_source,
-                raw_data=raw_data,
             )
         )
-        factors.append(
-            VRFactor(stock, raw_df).calculate(data_source=data_source, raw_data=raw_data)
-        )
+        factors.append(VRFactor(stock, raw_df).calculate(data_source=data_source))
 
         return factors

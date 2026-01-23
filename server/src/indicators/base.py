@@ -41,9 +41,8 @@ class BaseFactor(ABC):
         key: str,
         name: str,
         status: str,
-        bullish_signals: List[str] = None,
-        bearish_signals: List[str] = None,
-        raw_data: Optional[dict] = None,
+        bullish_signals: Optional[List[str]] = None,
+        bearish_signals: Optional[List[str]] = None,
         data_source: str = "",
     ) -> FactorDetail:
         """
@@ -55,7 +54,6 @@ class BaseFactor(ABC):
             status: 因子状态
             bullish_signals: 看涨信号列表
             bearish_signals: 看跌信号列表
-            raw_data: 原始数据
             data_source: 数据源标识
 
         Returns:
@@ -67,7 +65,6 @@ class BaseFactor(ABC):
             status=status,
             bullish_signals=bullish_signals or [],
             bearish_signals=bearish_signals or [],
-            raw_data=raw_data,
             data_source=data_source,
         )
 
