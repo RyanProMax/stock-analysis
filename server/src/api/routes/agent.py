@@ -60,7 +60,7 @@ async def analyze_stock_stream(
 
     分析流程：
     1. FundamentalAgent + TechnicalAgent 并行分析（各自负责获取数据）
-    2. CoordinatorAgent 综合分析并给出最终投资建议（流式输出���包含思考过程）
+    2. CoordinatorAgent 综合分析并给出最终投资建议（流式输出报告包含思考过程）
 
     子 Agents 并行执行，提升分析速度。
     """
@@ -144,11 +144,8 @@ async def analyze_stock_stream(
             if ":" in event_type:
                 step, status = event_type.split(":", 1)
                 message = event_message or status
-                # 如果有 data 参数，将其包装为 factors 格式
-                data = None
-                if event_data is not None:
-                    data = {"factors": event_data}
-                yield send_progress(step, status, message, data)
+                # event_data 是 FactorAnalysis 对象，直接使用
+                yield send_progress(step, status, message, event_data)
 
                 # 收集 coordinator 的完整响应用于最终结果
                 if step == "coordinator" and status == "streaming":
