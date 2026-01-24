@@ -40,20 +40,34 @@ const SPINNER_SVG = (
 export function StepCard({ icon, status, message, isLoading, isSelected, onClick }: StepCardProps) {
   return (
     <div
-      className={`relative rounded-lg cursor-pointer transition-all duration-300 ${
+      className={`relative rounded-lg cursor-pointer select-none transition-all duration-300 focus:outline-none ${
         isSelected
-          ? 'ai-rainbow-border'
-          : 'p-[2px] border border-gray-200/60 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30 hover:bg-linear-to-r hover:from-cyan-50/80 hover:via-purple-50/80 hover:to-pink-50/80 dark:hover:from-cyan-950/50 dark:hover:via-purple-950/50 dark:hover:to-pink-950/50'
+          ? 'p-[1.5px] bg-linear-to-r from-cyan-400 via-purple-400 to-pink-400 bg-size-[200%_100%] animate-gradient-flow'
+          : 'p-[1.5px] bg-gray-50/50 dark:bg-gray-800/30 hover:bg-linear-to-r hover:from-cyan-50/80 hover:via-purple-50/80 hover:to-pink-50/80 dark:hover:from-cyan-950/50 dark:hover:via-purple-950/50 dark:hover:to-pink-950/50'
       }`}
       onClick={onClick}
     >
-      <div className="bg-white dark:bg-gray-900 rounded-md flex flex-col items-center gap-2 py-3 px-4">
+      <div
+        className={`bg-white dark:bg-gray-900 rounded-md flex flex-col items-center gap-2 py-3 px-4 border ${
+          isSelected ? 'border-transparent' : 'border-gray-200/60 dark:border-gray-700/50'
+        }`}
+      >
         <div className={NODE_ICON_COLORS[status]}>{icon}</div>
         <div className={`flex items-center gap-1.5 ${isLoading ? 'shimmer-icon' : ''}`}>
           {status === 'running' && SPINNER_SVG}
-          {status === 'completed' && <CheckCircle className="h-4 w-4 shrink-0" />}
+          {status === 'completed' && (
+            <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
+          )}
           {status === 'error' && <AlertCircle className="h-4 w-4 shrink-0" />}
-          <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{message}</span>
+          <span
+            className={`text-xs truncate ${
+              status === 'completed'
+                ? 'text-emerald-500 dark:text-emerald-400'
+                : 'text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            {message}
+          </span>
         </div>
       </div>
     </div>

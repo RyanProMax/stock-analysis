@@ -8,7 +8,7 @@ const { Title } = Typography
 
 // AI 彩虹标题样式
 const aiRainbowTitleClassName =
-  'mb-0! bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent font-medium dark:from-cyan-400 dark:via-purple-400 dark:to-pink-400'
+  'mb-0! bg-linear-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent font-medium dark:from-cyan-400 dark:via-purple-400 dark:to-pink-400'
 
 type ViewMode = 'thinking' | 'report'
 

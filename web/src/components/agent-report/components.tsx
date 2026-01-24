@@ -6,7 +6,7 @@ const { Title } = Typography
 
 // AI 彩虹标题样式
 export const aiRainbowTitleClassName =
-  'mb-0! bg-gradient-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent font-medium dark:from-cyan-400 dark:via-purple-400 dark:to-pink-400'
+  'mb-0! bg-linear-to-r from-cyan-600 via-purple-600 to-pink-600 bg-clip-text text-transparent font-medium dark:from-cyan-400 dark:via-purple-400 dark:to-pink-400'
 
 // AI 彩虹边框卡片组件
 export function AIRainbowCard({ title, children }: { title: string; children: React.ReactNode }) {
