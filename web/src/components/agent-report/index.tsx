@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Spin, Card, Typography, Alert } from 'antd'
-import { CheckCircle, AlertCircle, BarChart3, Brain, FileText } from 'lucide-react'
+import { BarChart3, Brain, FileText } from 'lucide-react'
 import { merge } from 'lodash-es'
 import { stockApi } from '../../api/client'
 import {
@@ -13,55 +13,38 @@ import {
 } from '../../types'
 import { FactorList as DesktopFactorList } from '../stock-analysis/desktop/DesktopFactorList'
 import { ThinkingAndReport } from './ThinkingAndReport'
+import { StepCard } from './StepCard'
 
 const { Title, Text } = Typography
+
+// 选中步骤枚举
+enum AgentStep {
+  Fundamental = 'fundamental_analyzer',
+  Technical = 'technical_analyzer',
+  Coordinator = 'coordinator',
+}
 
 // 步骤配置
 const STEP_CONFIG: Record<string, { name: string; icon: React.ReactNode; defaultMessage: string }> =
   {
-    fundamental_analyzer: {
+    [AgentStep.Fundamental]: {
       name: '基本面分析',
       icon: <FileText className="h-5 w-5" />,
       defaultMessage: '等待基本面分析...',
     },
-    technical_analyzer: {
+    [AgentStep.Technical]: {
       name: '技术面分析',
       icon: <BarChart3 className="h-5 w-5" />,
       defaultMessage: '等待技术面分析...',
     },
-    coordinator: {
+    [AgentStep.Coordinator]: {
       name: '综合决策',
       icon: <Brain className="h-5 w-5" />,
       defaultMessage: '等待综合决策...',
     },
   } as const
 
-const STEP_ORDER = ['fundamental_analyzer', 'technical_analyzer', 'coordinator'] as const
-
-// 节点样式配置
-const NODE_STYLES: Record<NodeStatus, string> = {
-  [NodeStatus.pending]:
-    'border border-gray-200/60 bg-gradient-to-r from-gray-50/50 via-gray-50/30 to-gray-100/50 dark:border-gray-700/50 dark:from-gray-800/30 dark:via-gray-800/20 dark:to-gray-700/30 opacity-70',
-  [NodeStatus.fetching]:
-    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
-  [NodeStatus.running]:
-    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
-  [NodeStatus.analyzing]:
-    'border border-cyan-400/60 bg-gradient-to-r from-cyan-50 via-blue-50 to-purple-50 dark:from-cyan-950/40 dark:via-blue-950/40 dark:to-purple-950/40 shadow-lg shadow-cyan-500/10',
-  [NodeStatus.completed]:
-    'border border-emerald-400/60 bg-gradient-to-r from-emerald-50/80 via-green-50/80 to-teal-50/80 dark:from-emerald-950/30 dark:from-green-950/30 dark:to-teal-950/30',
-  [NodeStatus.error]:
-    'border border-red-400/60 bg-gradient-to-r from-red-50/80 via-orange-50/80 to-yellow-50/80 dark:from-red-950/30 dark:from-orange-950/30 dark:to-yellow-950/30',
-}
-
-const NODE_ICON_COLORS: Record<NodeStatus, string> = {
-  [NodeStatus.pending]: 'text-gray-400 dark:text-gray-500',
-  [NodeStatus.fetching]: 'shimmer-icon',
-  [NodeStatus.running]: 'shimmer-icon',
-  [NodeStatus.analyzing]: 'shimmer-icon',
-  [NodeStatus.completed]: 'text-emerald-500 dark:text-emerald-400',
-  [NodeStatus.error]: 'text-red-500 dark:text-red-400',
-}
+const STEP_ORDER = [AgentStep.Fundamental, AgentStep.Technical, AgentStep.Coordinator] as const
 
 // 每个 step 的流式内容状态
 interface StepContent {
@@ -76,19 +59,20 @@ export function AgentReport() {
   const [progressNodes, setProgressNodes] = useState<Record<string, ProgressNode>>({})
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [stepContents, setStepContents] = useState<Record<string, StepContent>>({
-    fundamental_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
-    technical_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
-    coordinator: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+    [AgentStep.Fundamental]: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+    [AgentStep.Technical]: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+    [AgentStep.Coordinator]: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
   })
   const [error, setError] = useState<string | null>(null)
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null)
   const [hasStarted, setHasStarted] = useState(false)
+  const [selectedStep, setAgentStep] = useState<AgentStep>(AgentStep.Fundamental)
 
   // 获取 step 的根名称（处理 coordinator_streaming 等情况）
   const getStepKey = (step: string): string => {
-    if (step.startsWith('fundamental_analyzer')) return 'fundamental_analyzer'
-    if (step.startsWith('technical_analyzer')) return 'technical_analyzer'
-    if (step.startsWith('coordinator')) return 'coordinator'
+    if (step.startsWith(AgentStep.Fundamental)) return AgentStep.Fundamental
+    if (step.startsWith(AgentStep.Technical)) return AgentStep.Technical
+    if (step.startsWith(AgentStep.Coordinator)) return AgentStep.Coordinator
     return step
   }
 
@@ -98,14 +82,24 @@ export function AgentReport() {
         setCurrentSymbol(event.symbol)
         setHasStarted(true)
         setStepContents({
-          fundamental_analyzer: {
+          [AgentStep.Fundamental]: {
             streaming: '',
             thinking: '',
             isStreaming: false,
             executionTime: 0,
           },
-          technical_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
-          coordinator: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+          [AgentStep.Technical]: {
+            streaming: '',
+            thinking: '',
+            isStreaming: false,
+            executionTime: 0,
+          },
+          [AgentStep.Coordinator]: {
+            streaming: '',
+            thinking: '',
+            isStreaming: false,
+            executionTime: 0,
+          },
         })
         break
 
@@ -213,9 +207,24 @@ export function AgentReport() {
       setProgressNodes({})
       setAnalysisResult(null)
       setStepContents({
-        fundamental_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
-        technical_analyzer: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
-        coordinator: { streaming: '', thinking: '', isStreaming: false, executionTime: 0 },
+        [AgentStep.Fundamental]: {
+          streaming: '',
+          thinking: '',
+          isStreaming: false,
+          executionTime: 0,
+        },
+        [AgentStep.Technical]: {
+          streaming: '',
+          thinking: '',
+          isStreaming: false,
+          executionTime: 0,
+        },
+        [AgentStep.Coordinator]: {
+          streaming: '',
+          thinking: '',
+          isStreaming: false,
+          executionTime: 0,
+        },
       })
       setError(null)
       setCurrentSymbol(null)
@@ -232,9 +241,9 @@ export function AgentReport() {
   }, [symbol, handleMessage, handleError])
 
   const fundamental_factors: FactorDetail[] =
-    progressNodes['fundamental_analyzer']?.data?.factors || []
+    progressNodes[AgentStep.Fundamental]?.data?.factors || []
 
-  const technical_factors: FactorDetail[] = progressNodes['technical_analyzer']?.data?.factors || []
+  const technical_factors: FactorDetail[] = progressNodes[AgentStep.Technical]?.data?.factors || []
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950 transition-colors min-h-screen">
@@ -271,114 +280,115 @@ export function AgentReport() {
                 NodeStatus.running,
                 NodeStatus.analyzing,
               ].includes(status)
+              const isSelected = selectedStep === step
 
               return (
-                <Card
+                <StepCard
                   key={step}
-                  size="small"
-                  className={`text-center transition-all duration-500 ${NODE_STYLES[status]}`}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <div className={NODE_ICON_COLORS[status]}>{config.icon}</div>
-                    <div className={`flex items-center gap-1.5 ${isLoading ? 'shimmer-icon' : ''}`}>
-                      {status === NodeStatus.running && <Spin size="small" />}
-                      {status === NodeStatus.completed && (
-                        <CheckCircle className="h-4 w-4 shrink-0" />
-                      )}
-                      {status === NodeStatus.error && <AlertCircle className="h-4 w-4 shrink-0" />}
-                      <Text className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                        {displayMessage}
-                      </Text>
-                    </div>
-                  </div>
-                </Card>
+                  icon={config.icon}
+                  status={status}
+                  message={displayMessage}
+                  isLoading={isLoading}
+                  isSelected={isSelected}
+                  onClick={() => setAgentStep(step)}
+                />
               )
             })}
           </div>
         )}
 
-        {/* 分析因子 - 合并基本面和技术面 */}
+        {/* 分析因子 - 根据选中步骤过滤 */}
         {fundamental_factors.length > 0 || technical_factors.length > 0 ? (
           <Card className="mb-8! animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div>
-              {fundamental_factors.length > 0 && (
-                <DesktopFactorList
-                  title={`基本面 (${fundamental_factors.length})`}
-                  factors={fundamental_factors}
-                  showAll={true}
-                />
-              )}
-              {fundamental_factors.length > 0 && technical_factors.length > 0 && (
-                <div className="border-t border-gray-100 dark:border-gray-800 my-6" />
-              )}
-              {technical_factors.length > 0 && (
-                <DesktopFactorList
-                  title={`技术面 (${technical_factors.length})`}
-                  factors={technical_factors}
-                />
-              )}
+              {/* 根据 selectedStep 决定显示哪些因子 */}
+              {(selectedStep === AgentStep.Fundamental || selectedStep === AgentStep.Coordinator) &&
+                fundamental_factors.length > 0 && (
+                  <DesktopFactorList
+                    title={`基本面 (${fundamental_factors.length})`}
+                    factors={fundamental_factors}
+                    showAll={true}
+                  />
+                )}
+              {selectedStep === AgentStep.Coordinator &&
+                fundamental_factors.length > 0 &&
+                technical_factors.length > 0 && (
+                  <div className="border-t border-gray-100 dark:border-gray-800 my-6" />
+                )}
+              {(selectedStep === AgentStep.Technical || selectedStep === AgentStep.Coordinator) &&
+                technical_factors.length > 0 && (
+                  <DesktopFactorList
+                    title={`技术面 (${technical_factors.length})`}
+                    factors={technical_factors}
+                  />
+                )}
             </div>
           </Card>
         ) : null}
 
         {/* 基本面分析 - 思考过程和分析报告 */}
-        {(stepContents.fundamental_analyzer.thinking ||
-          stepContents.fundamental_analyzer.streaming) && (
-          <div className="mb-6">
-            <ThinkingAndReport
-              title="基本面分析"
-              thinkingContent={stepContents.fundamental_analyzer.thinking}
-              reportContent={
-                stepContents.fundamental_analyzer.streaming ||
-                (analysisResult && progressNodes.fundamental_analyzer?.status === 'completed'
-                  ? '分析完成'
-                  : '')
-              }
-              isStreaming={stepContents.fundamental_analyzer.isStreaming}
-              executionTime={stepContents.fundamental_analyzer.executionTime}
-            />
-          </div>
-        )}
+        {selectedStep === AgentStep.Fundamental &&
+          (stepContents[AgentStep.Fundamental].thinking ||
+            stepContents[AgentStep.Fundamental].streaming) && (
+            <div className="mb-6">
+              <ThinkingAndReport
+                title="基本面分析"
+                thinkingContent={stepContents[AgentStep.Fundamental].thinking}
+                reportContent={
+                  stepContents[AgentStep.Fundamental].streaming ||
+                  (analysisResult && progressNodes[AgentStep.Fundamental]?.status === 'completed'
+                    ? '分析完成'
+                    : '')
+                }
+                isStreaming={stepContents[AgentStep.Fundamental].isStreaming}
+                executionTime={stepContents[AgentStep.Fundamental].executionTime}
+              />
+            </div>
+          )}
 
         {/* 技术面分析 - 思考过程和分析报告 */}
-        {(stepContents.technical_analyzer.thinking ||
-          stepContents.technical_analyzer.streaming) && (
-          <div className="mb-6">
-            <ThinkingAndReport
-              title="技术面分析"
-              thinkingContent={stepContents.technical_analyzer.thinking}
-              reportContent={
-                stepContents.technical_analyzer.streaming ||
-                (analysisResult && progressNodes.technical_analyzer?.status === 'completed'
-                  ? '分析完成'
-                  : '')
-              }
-              isStreaming={stepContents.technical_analyzer.isStreaming}
-              executionTime={stepContents.technical_analyzer.executionTime}
-            />
-          </div>
-        )}
+        {selectedStep === AgentStep.Technical &&
+          (stepContents[AgentStep.Technical].thinking ||
+            stepContents[AgentStep.Technical].streaming) && (
+            <div className="mb-6">
+              <ThinkingAndReport
+                title="技术面分析"
+                thinkingContent={stepContents[AgentStep.Technical].thinking}
+                reportContent={
+                  stepContents[AgentStep.Technical].streaming ||
+                  (analysisResult && progressNodes[AgentStep.Technical]?.status === 'completed'
+                    ? '分析完成'
+                    : '')
+                }
+                isStreaming={stepContents[AgentStep.Technical].isStreaming}
+                executionTime={stepContents[AgentStep.Technical].executionTime}
+              />
+            </div>
+          )}
 
         {/* 综合分析 - 思考过程和分析报告 */}
-        {(stepContents.coordinator.thinking ||
-          stepContents.coordinator.streaming ||
-          analysisResult?.decision) && (
-          <div className="mb-6">
-            <ThinkingAndReport
-              title="综合分析"
-              thinkingContent={stepContents.coordinator.thinking}
-              reportContent={
-                stepContents.coordinator.streaming || analysisResult?.decision?.analysis || ''
-              }
-              isStreaming={stepContents.coordinator.isStreaming}
-              executionTime={
-                stepContents.coordinator.executionTime ||
-                analysisResult?.execution_times?.CoordinatorAgent ||
-                0
-              }
-            />
-          </div>
-        )}
+        {selectedStep === AgentStep.Coordinator &&
+          (stepContents[AgentStep.Coordinator].thinking ||
+            stepContents[AgentStep.Coordinator].streaming ||
+            analysisResult?.decision) && (
+            <div className="mb-6">
+              <ThinkingAndReport
+                title="综合分析"
+                thinkingContent={stepContents[AgentStep.Coordinator].thinking}
+                reportContent={
+                  stepContents[AgentStep.Coordinator].streaming ||
+                  analysisResult?.decision?.analysis ||
+                  ''
+                }
+                isStreaming={stepContents[AgentStep.Coordinator].isStreaming}
+                executionTime={
+                  stepContents[AgentStep.Coordinator].executionTime ||
+                  analysisResult?.execution_times?.CoordinatorAgent ||
+                  0
+                }
+              />
+            </div>
+          )}
 
         {/* 初始加载状态 */}
         {!hasStarted && !analysisResult && !error && (
