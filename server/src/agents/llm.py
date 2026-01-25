@@ -1,9 +1,9 @@
 """
-LLM 封装模块 - 仅保留流式接口
+LLM 封装模块 - 支持 DeepSeek reasoning_content
 """
 
 import os
-from typing import List, Optional, Union, AsyncGenerator
+from typing import List, Optional, Union, AsyncGenerator, Tuple
 from enum import Enum
 
 from openai import AsyncOpenAI
@@ -24,8 +24,15 @@ class LLMProvider(Enum):
 class OpenAILLM:
     """OpenAI 兼容的 LLM 实现"""
 
-    def __init__(self, api_key: str, base_url: Optional[str] = None, model: str = "gpt-3.5-turbo"):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: Optional[str] = None,
+        model: str = "gpt-3.5-turbo",
+        provider: LLMProvider = LLMProvider.OPENAI,
+    ):
         self.model = model
+        self.provider = provider
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
     async def chat_completion_stream(
@@ -34,8 +41,15 @@ class OpenAILLM:
         temperature: float = DEFAULT_TEMPERATURE,
         max_tokens: Optional[int] = None,
         **kwargs,
-    ) -> AsyncGenerator[str, None]:
-        """流式聊天完成"""
+    ) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
+        """
+        流式聊天完成
+
+        Returns:
+            AsyncGenerator[Tuple[str, Optional[str]], None]:
+                - 第一个元素: content 文本片段
+                - 第二个元素: reasoning_content 文本片段（仅 DeepSeek），其他模型为 None
+        """
         stream = await self.client.chat.completions.create(
             model=self.model,
             messages=messages,
@@ -46,8 +60,26 @@ class OpenAILLM:
         )
 
         async for chunk in stream:
-            if chunk.choices and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+            if not chunk.choices:
+                continue
+
+            delta = chunk.choices[0].delta
+
+            # DeepSeek 使用 reasoning_content 字段返回推理过程
+            if self.provider == LLMProvider.DEEPSEEK:
+                reasoning = getattr(delta, "reasoning_content", None)
+                content = delta.content
+
+                # 优先返回 reasoning_content，标记为 "thinking"
+                if reasoning:
+                    yield ("", reasoning)
+                # 然后返回正常 content
+                elif content:
+                    yield (content, "")
+            else:
+                # 其他模型只返回 content
+                if delta.content:
+                    yield (delta.content, "")
 
 
 class LLMFactory:
@@ -78,7 +110,9 @@ class LLMFactory:
         if not api_key:
             raise ValueError(f"未找到 {provider} 的 API 密钥")
 
-        return OpenAILLM(api_key=api_key, base_url=base_url, model=model, **kwargs)
+        return OpenAILLM(
+            api_key=api_key, base_url=base_url, model=model, provider=provider, **kwargs
+        )
 
 
 class LLMManager:
@@ -108,8 +142,15 @@ class LLMManager:
         temperature: float = DEFAULT_TEMPERATURE,
         max_tokens: Optional[int] = None,
         **kwargs,
-    ) -> AsyncGenerator[str, None]:
-        """执行流式聊天完成"""
+    ) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
+        """
+        执行流式聊天完成
+
+        Returns:
+            AsyncGenerator[Tuple[str, Optional[str]], None]:
+                - 第一个元素: content 文本片段
+                - 第二个元素: reasoning_content 文本片段（仅 DeepSeek），其他模型为 None
+        """
         async for chunk in self.llm.chat_completion_stream(
             messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
         ):

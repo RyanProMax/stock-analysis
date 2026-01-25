@@ -10,58 +10,79 @@ from ...core import FactorAnalysis
 FUNDAMENTAL_SYSTEM_MESSAGE = """
 你是一位专注于基本面分析的股票分析师。
 
-你的任务是**仅基于提供的基本面数据**进行分析，不要考虑技术面因素。
+你的任务是**直接解读原始财务数据(raw_data)**，进行全面的基本面分析。
 
-请使用 <thinking> 和 </thinking> 标签包裹你的分析推理过程。
+## 分析要求
 
-## 分析框架
+### 1. 自动识别指标
+从原始数据中自动识别并分析以下维度的指标（字段名可能因数据源不同而有差异，请根据语义理解）：
 
-### 1. 估值评估
-对于每个估值指标，请结合行业平均水平进行评估：
+**估值指标**
+- 市盈率(PE)、市净率(PB)、市销率(PS)
+- 企业价值倍数(EV/EBITDA)
 
-**市盈率(PE)**
-- 需结合行业平均PE进行评估
-- 成熟行业：PE通常在10-20倍
-- 成长行业：PE可能达到20-40倍
-- 周期性行业：PE波动较大，需结合行业周期判断
-- 低于行业平均：可能被低估
-- 高于行业平均：可能被高估或预期高增长
+**盈利能力**
+- 净资产收益率(ROE)、总资产收益率(ROA)
+- 毛利率、净利率、营业利润率
+- EBITDA利润率
 
-**市净率(PB)**
-- <1: 可能低于净资产价值
-- 1-2: 合理范围
-- >3: 需评估是否有高成长性支撑
+**成长性**
+- 营收增长率、净利润增长率
+- EPS增长率、ROE增长率
 
-### 2. 盈利能力评估
+**财务健康**
+- 资产负债率、权益乘数
+- 流动比率、速动比率
+- 利息保障倍数、现金比率
 
-**净资产收益率(ROE)**
-- >15%: 优秀的盈利能力
-- 10%-15%: 良好
-- <10%: 盈利能力偏弱
+**运营效率**
+- 存货周转率、应收账款周转率
+- 总资产周转率
 
-**营收增长率**
-- >20%: 强劲增长
-- 10%-20%: 稳定增长
-- 0%-10%: 缓慢增长
-- <0%: 负增长
+**现金流**
+- 经营现金流、自由现金流
+- 经营现金流/净利润
 
-### 3. 财务健康评估
+### 2. 行业对比评估
+结合行业特点评估各项指标：
+- 周期性行业：关注PB、行业周期位置
+- 成长行业：可容忍较高PE，重点关注增长率
+- 成熟行业：关注分红、现金流
 
-**资产负债率**
-- <30%: 财务结构保守
-- 30%-50%: 健康水平
-- 50%-70%: 需关注
-- >70%: 财务风险较高
+### 3. 综合判断
+- 识别公司的竞争优势（护城河）
+- 评估财务风险
+- 判断估值合理性
 
-## 输出要求
+## 输出格式
 
-请使用Markdown格式输出，包含以下章节：
-1. **基本面评估**: 逐项分析各项指标，给出评级（优秀/良好/一般/较差）
-2. **基本面投资建议**: 基于基本面的买入/持有/卖出/观望建议
-3. **关键风险点**: 列出需要关注的风险因素
-
-请确保分析**仅基于基本面数据**，不要提及技术面因素。
+使用Markdown格式，包含：
+1. **核心指标分析**：列出从raw_data中提取的关键指标及数值
+2. **多维度评估**：估值/盈利能力/成长性/财务健康度
+3. **投资建议**：买入/持有/卖出/观望，并说明理由
+4. **风险提示**：需要关注的风险因素
 """
+
+
+def _format_raw_data(raw_data: dict) -> str:
+    """格式化原始财务数据为LLM可读的形式"""
+    lines = []
+
+    # 遍历raw_data的各个数据块
+    for section_name, section_data in raw_data.items():
+        lines.append(f"\n### {section_name}")
+
+        if isinstance(section_data, dict):
+            # 将字典按key排序后输出，便于LLM阅读
+            for key, value in sorted(section_data.items()):
+                # 跳过None值和空字符串
+                if value is None or value == "" or value == "-":
+                    continue
+                lines.append(f"- {key}: {value}")
+        else:
+            lines.append(f"{section_data}")
+
+    return "\n".join(lines)
 
 
 def build_fundamental_prompt(
@@ -81,16 +102,15 @@ def build_fundamental_prompt(
         stock_info += f"\n- 行业: {industry}"
     prompt_parts.append(stock_info)
 
-    # 基本面数据
-    if fundamental and fundamental.factors:
-        prompt_parts.append("\n## 基本面数据")
-        prompt_parts.append("| 指标 | 数值 |")
-        prompt_parts.append("|------|------|")
-        for factor in fundamental.factors:
-            name = factor.name or factor.key
-            status = factor.status
-            prompt_parts.append(f"| {name} | {status} |")
+    # 原始财务数据
+    assert fundamental is not None and fundamental.raw_data is not None
+    prompt_parts.append("\n## 原始财务数据 (raw_data)")
+    prompt_parts.append("以下是完整的原始财务数据，请直接解读并分析：")
+    prompt_parts.append(_format_raw_data(fundamental.raw_data))
 
-    prompt_parts.append("\n## 请根据以上基本面数据，给出专业的基本面分析报告。")
+    # 任务指令
+    prompt_parts.append("\n## 分析任务")
+    prompt_parts.append("请基于以上原始财务数据，提取并分析所有有价值的基本面指标，")
+    prompt_parts.append("给出专业的投资建议和风险提示。")
 
     return "\n".join(prompt_parts)

@@ -5,7 +5,7 @@ Agent Base Module - 统一的 Agent 基类和状态管理
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional, Any, Dict, List, AsyncGenerator, Callable
+from typing import Optional, Any, Dict, List, AsyncGenerator, Callable, Tuple
 from enum import Enum
 import pandas as pd
 
@@ -186,17 +186,17 @@ class BaseAgent(ABC):
             max_tokens: 最大 token 数
 
         Returns:
-            LLM 的完整回复
+            LLM 的完整回复（仅 content）
         """
         assert self.llm is not None  # Type narrowing for type checker
 
         full_response = ""
-        async for chunk in self.llm.chat_completion_stream(
+        async for content, _reasoning in self.llm.chat_completion_stream(
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
         ):
-            full_response += chunk
+            full_response += content
         return full_response
 
     async def _call_llm_stream(
@@ -204,7 +204,7 @@ class BaseAgent(ABC):
         messages: List[Any],
         temperature: float = 1.0,
         max_tokens: Optional[int] = None,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
         """
         调用 LLM 并流式输出
 
@@ -214,13 +214,14 @@ class BaseAgent(ABC):
             max_tokens: 最大 token 数
 
         Yields:
-            LLM 生成的文本片段
+            Tuple[str, Optional[str]]: (content文本片段, reasoning文本片段)
+            - reasoning 片段仅在 DeepSeek 等支持推理内容的模型时非空
         """
         assert self.llm is not None  # Type narrowing for type checker
 
-        async for chunk in self.llm.chat_completion_stream(
+        async for content, reasoning in self.llm.chat_completion_stream(
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
         ):
-            yield chunk
+            yield (content, reasoning)
