@@ -7,6 +7,31 @@
 3. **保持架构** - 遵循现有分层和模式，不破坏结构
 4. **测试先行** - 修改后手动测试相关功能
 
+## 数据源架构规范
+
+**重要**: 第三方数据源相关方法必须集中在对应的 `server/src/data/sources/xxx.py` 文件中
+
+- **Tushare**: 所有 Tushare API 调用逻辑放在 `sources/tushare.py`
+- **AkShare**: 所有 AkShare API 调用逻辑放在 `sources/akshare.py`
+- **YFinance**: 所有 yfinance API 调用逻辑放在 `sources/yfinance.py`
+
+**loader.py** 只负责:
+1. 数据源策略选择和降级
+2. 调用 `sources/` 下对应类的方法
+3. 数据格式标准化
+
+**示例**:
+```python
+# ✅ 正确 - 在 loader.py 中调用
+from .sources.tushare import TushareDataSource
+financial_data, raw_data = TushareDataSource.get_cn_financial_data(symbol)
+
+# ❌ 错误 - 不要在 loader.py 中直接写 Tushare API 调用
+import tushare as ts
+pro = ts.pro_api(token)
+df = pro.daily(ts_code=xxx)  # 应该移到 sources/tushare.py
+```
+
 ## 通用流程
 
 ```

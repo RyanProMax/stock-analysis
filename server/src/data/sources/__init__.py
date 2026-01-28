@@ -7,7 +7,7 @@
 - NASDAQ: 美股数据
 """
 
-from .ts import TushareDataSource
+from .tushare import TushareDataSource
 from .akshare import AkShareDataSource
 from .nasdaq import NasdaqDataSource
 from .base import BaseStockDataSource

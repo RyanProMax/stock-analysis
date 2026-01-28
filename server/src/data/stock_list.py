@@ -9,7 +9,7 @@
 
 from typing import List, Dict, Any, Optional
 
-from .sources.ts import TushareDataSource
+from .sources.tushare import TushareDataSource
 from .sources.akshare import AkShareDataSource
 from .sources.nasdaq import NasdaqDataSource
 

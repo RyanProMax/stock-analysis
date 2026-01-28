@@ -11,7 +11,7 @@ import yfinance as yf
 from typing import Optional, Tuple
 
 from .stock_list import StockListService
-from .ts import TushareDataSource
+from .tushare import TushareDataSource
 
 
 class DataLoader:
@@ -190,7 +190,10 @@ class DataLoader:
         try:
             df = ak.stock_us_daily(symbol=symbol, adjust="qfq")
             if df is not None and not df.empty:
-                return DataLoader._standardize_df(df, DataLoader.US_MAP, "US_Sina"), "US_Sina"
+                return (
+                    DataLoader._standardize_df(df, DataLoader.US_MAP, "US_Sina"),
+                    "US_Sina",
+                )
         except Exception as e:
             print(f"❌ 美股接口失败: {e}")
         return None, ""
@@ -251,7 +254,7 @@ class DataLoader:
                 print(f"📊 正在获取美股财务数据: [{symbol}]...")
                 financial_data, raw_data = DataLoader._get_us_financial_data(symbol)
                 data_source = "US_yfinance" if financial_data else ""
-                if raw_data:
+                if raw_data and financial_data is not None:
                     financial_data["raw_data"] = raw_data
             else:
                 # A股财务数据

@@ -11,7 +11,8 @@ import yfinance as yf
 from typing import Optional, Tuple
 
 from .stock_list import StockListService
-from .sources.ts import TushareDataSource
+from .sources.tushare import TushareDataSource
+from .sources.akshare import AkShareDataSource
 
 
 class DataLoader:
@@ -190,7 +191,10 @@ class DataLoader:
         try:
             df = ak.stock_us_daily(symbol=symbol, adjust="qfq")
             if df is not None and not df.empty:
-                return DataLoader._standardize_df(df, DataLoader.US_MAP, "US_Sina"), "US_Sina"
+                return (
+                    DataLoader._standardize_df(df, DataLoader.US_MAP, "US_Sina"),
+                    "US_Sina",
+                )
         except Exception as e:
             print(f"❌ 美股接口失败: {e}")
         return None, ""
@@ -251,63 +255,24 @@ class DataLoader:
                 print(f"📊 正在获取美股财务数据: [{symbol}]...")
                 financial_data, raw_data = DataLoader._get_us_financial_data(symbol)
                 data_source = "US_yfinance" if financial_data else ""
-                if raw_data:
+                if raw_data and financial_data is not None:
                     financial_data["raw_data"] = raw_data
             else:
                 # A股财务数据
                 print(f"📊 正在获取A股财务数据: [{symbol}]...")
-                data_source = "CN_EastMoney"
 
-                # 使用东方财富实时行情获取PE/PB等估值指标
-                try:
-                    df_spot = ak.stock_zh_a_spot_em()  # type: ignore
-                    if df_spot is not None and not df_spot.empty:
-                        stock_row = df_spot[df_spot["代码"] == symbol]
-                        if not stock_row.empty:
-                            raw_data["spot"] = stock_row.iloc[0].to_dict()
-                            # 提取市盈率（动态）
-                            pe = stock_row.iloc[0].get("市盈率-动态")
-                            if pd.notna(pe) and pe != "-":
-                                try:
-                                    financial_data["pe_ratio"] = float(pe)
-                                except (ValueError, TypeError):
-                                    pass
-                            # 提取市净率
-                            pb = stock_row.iloc[0].get("市净率")
-                            if pd.notna(pb) and pb != "-":
-                                try:
-                                    financial_data["pb_ratio"] = float(pb)
-                                except (ValueError, TypeError):
-                                    pass
-                except Exception as e:
-                    print(f"⚠️ 获取估值指标失败: {e}")
+                # 优先使用Tushare Pro获取A股财务数据
+                financial_data, raw_data = TushareDataSource.get_cn_financial_data(symbol)
+                if financial_data:
+                    data_source = "CN_Tushare"
+                else:
+                    # Tushare失败时尝试AkShare
+                    print(f"⚠️ Tushare获取失败，尝试AkShare...")
+                    financial_data, raw_data = AkShareDataSource.get_cn_financial_data(symbol)
+                    if financial_data:
+                        data_source = "CN_EastMoney"
 
-                # 尝试从东方财富获取更多财务指标
-                try:
-                    df_main = ak.stock_financial_analysis_indicator(symbol=symbol)  # type: ignore
-                    if df_main is not None and not df_main.empty:
-                        raw_data["financial_indicator"] = df_main.iloc[-1].to_dict()
-                        latest = df_main.iloc[-1]
-                        # 提取营收增长率
-                        if "营业收入同比增长率" in df_main.columns:
-                            rev_growth = latest.get("营业收入同比增长率", None)
-                            if pd.notna(rev_growth):
-                                financial_data["revenue_growth"] = float(rev_growth)
-                        # 提取资产负债率
-                        if "资产负债率" in df_main.columns:
-                            debt_ratio = latest.get("资产负债率", None)
-                            if pd.notna(debt_ratio):
-                                financial_data["debt_ratio"] = float(debt_ratio)
-                        # 提取ROE
-                        if "净资产收益率" in df_main.columns:
-                            roe = latest.get("净资产收益率", None)
-                            if pd.notna(roe):
-                                financial_data["roe"] = float(roe)
-                except Exception as e:
-                    print(f"⚠️ 获取财务指标数据失败: {e}")
-
-                # 将原始数据添加到结果中
-                if raw_data:
+                if raw_data and financial_data is not None:
                     financial_data["raw_data"] = raw_data
 
         except Exception as e:
