@@ -5,7 +5,6 @@ export interface FactorDetail {
   status: string
   bullish_signals: string[]
   bearish_signals: string[]
-  raw_data: Record<string, any> | null
   data_source: string
 }
 
@@ -70,6 +69,7 @@ export interface BaseSSEEvent {
 export interface StartEvent extends BaseSSEEvent {
   type: 'start'
   symbol: string
+  message?: string
 }
 
 // 进度事件
@@ -122,11 +122,13 @@ export interface AnalysisResult {
   stock_name: string
   decision: AnalysisDecision
   execution_times: Record<string, number>
+  timestamp?: string
 }
 
 export interface CompleteEvent extends BaseSSEEvent {
   type: 'complete'
   result: AnalysisResult
+  message?: string
 }
 
 // Agent报告联合类型
