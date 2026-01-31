@@ -209,14 +209,35 @@ const es = stockApi.getAgentReport(
 
 ## 环境变量
 
-| 变量 | 必需 | 说明 |
-|------|------|------|
-| `TUSHARE_TOKEN` | 否 | A 股数据主数据源 |
-| `OPENAI_API_KEY` | 否 | AI 分析功能 |
-| `GCS_CACHE_BUCKET` | 否 | 生产环境缓存 |
-| `ENV` | 否 | 环境标识 (dev/prod) |
+### LLM 配置
 
-> 注意：没有 API Key 时系统仍可运行，使用备用数据源和简化分析
+| 变量 | 必需 | 说明 | 默认值 |
+|------|:----:|------|--------|
+| `DEEPSEEK_API_KEY` | 否 | AI 分析功能（DeepSeek Reasoner，推荐） | - |
+| `OPENAI_API_KEY` | 否 | AI 分析功能（OpenAI 备选） | - |
+
+### 数据源配置
+
+| 变量 | 必需 | 说明 | 默认值 |
+|------|:----:|------|--------|
+| `TUSHARE_TOKEN` | 否 | A 股数据主数据源（优先级最高） | - |
+
+### 服务配置
+
+| 变量 | 必需 | 说明 | 默认值 |
+|------|:----:|------|--------|
+| `ENV` | 否 | 环境标识：`development`/`dev`/`production`/`prod` | `development` |
+| `PORT` | 否 | 服务端口 | `8080` |
+| `DEBUG` | 否 | 调试模式（设为 `true` 启用开发模式） | `false` |
+
+### 缓存配置
+
+| 变量 | 必需 | 说明 | 默认值 |
+|------|:----:|------|--------|
+| `GCS_CACHE_BUCKET` | 否 | 生产环境 Google Cloud Storage Bucket 名称 | - |
+| `CACHE_DIR` | 否 | 本地缓存目录路径 | `.cache/` |
+
+> **注意**：没有 API Key 时系统仍可运行，使用备用数据源（AkShare/新浪）和简化分析（无 AI 综合建议）。
 
 ## Git 提交
 
