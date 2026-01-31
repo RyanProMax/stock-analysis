@@ -72,3 +72,4 @@ jobs:
             ENV=production
             TUSHARE_TOKEN=${{ secrets.TUSHARE_TOKEN }}
             GCS_CACHE_BUCKET=${{ secrets.GCS_CACHE_BUCKET }}
+            DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}
