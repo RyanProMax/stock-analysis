@@ -12,62 +12,89 @@ from ..core import FactorDetail
 from .base import FactorLibrary
 
 
-def _format_market_cap(value: float, is_us: bool = False) -> str:
-    """格式化市值（亿为单位）"""
-    unit = "美元" if is_us else "人民币"
+def _format_market_cap(value: float) -> str:
+    """格式化市值"""
     if value >= 1e12:
-        return f"{value / 1e12:.2f}万亿{unit}"
-    return f"{value / 1e8:.2f}亿{unit}"
+        return f"{value / 1e12:.2f}万亿"
+    return f"{value / 1e8:.2f}亿"
 
 
-def _format_debt_ratio(value: float) -> str:
-    """格式化负债率（倍数）"""
-    return f"{value:.2f}倍"
+def _format_percent(value: float) -> str:
+    """格式化百分比"""
+    return f"{value * 100:.2f}%"
 
 
-# 各数据源字段 -> 内部key 的映射
-FIELD_TO_KEY = {
-    # 市盈率
-    "trailingPE": "pe_ttm",
-    "forwardPE": "pe_forward",
-    "pe_ratio": "pe_ttm",
-    # 市净率
-    "priceToBook": "pb_ratio",
-    "pb_ratio": "pb_ratio",
+def _format_number(value: float) -> str:
+    """格式化数值"""
+    return f"{value:.2f}"
+
+
+# yfinance info 字段映射: 字段名 -> (中文名, 格式化函数)
+YFINANCE_FIELD_MAP = {
+    # 估值
+    "trailingPE": ("市盈率(TTM)", _format_number),
+    "forwardPE": ("远期市盈率", _format_number),
+    "pegRatio": ("PEG比率", _format_number),
+    "priceToBook": ("市净率", _format_number),
+    "priceToSalesTrailing12Months": ("市销率", _format_number),
+    "enterpriseToEbitda": ("EV/EBITDA", _format_number),
+    "enterpriseToRevenue": ("EV/营收", _format_number),
     # 盈利能力
-    "returnOnEquity": "roe",
-    "roe": "roe",
-    "profitMargins": "profit_margin",
-    "grossMargins": "gross_margin",
-    "operatingMargins": "operating_margin",
+    "profitMargins": ("利润率", _format_percent),
+    "grossMargins": ("毛利率", _format_percent),
+    "operatingMargins": ("营业利润率", _format_percent),
+    "ebitdaMargins": ("EBITDA利润率", _format_percent),
+    "returnOnAssets": ("总资产回报率(ROA)", _format_percent),
+    "returnOnEquity": ("净资产收益率(ROE)", _format_percent),
     # 成长性
-    "revenueGrowth": "revenue_growth",
-    "revenue_growth": "revenue_growth",
+    "revenueGrowth": ("营收增长率", _format_percent),
+    "earningsGrowth": ("盈利增长率", _format_percent),
+    "earningsQuarterlyGrowth": ("季度盈利增长", _format_percent),
     # 财务健康
-    "debtToEquity": "debt_to_equity",
-    "debt_ratio": "debt_ratio",
-    "currentRatio": "current_ratio",
-    "quickRatio": "quick_ratio",
+    "currentRatio": ("流动比率", _format_number),
+    "quickRatio": ("速动比率", _format_number),
+    "debtToEquity": ("负债权益比", _format_number),
     # 规模
-    "marketCap": "market_cap",
+    "marketCap": ("市值", _format_market_cap),
+    "enterpriseValue": ("企业价值", _format_market_cap),
+    "totalCash": ("现金", _format_market_cap),
+    "totalDebt": ("总债务", _format_market_cap),
+    "totalRevenue": ("总收入", _format_market_cap),
+    "bookValue": ("每股账面价值", _format_number),
+    # 现金流
+    "operatingCashflow": ("经营现金流", _format_market_cap),
+    "freeCashflow": ("自由现金流", _format_market_cap),
+    "ebitda": ("EBITDA", _format_market_cap),
+    "netIncomeToCommon": ("净利润", _format_market_cap),
+    "grossProfits": ("毛利润", _format_market_cap),
+    # 交易数据
+    "beta": ("Beta系数", _format_number),
+    "trailingEps": ("每股收益(TTM)", _format_number),
+    "forwardEps": ("远期每股收益", _format_number),
+    "revenuePerShare": ("每股营收", _format_number),
+    "dividendYield": ("股息率", _format_percent),
+    "payoutRatio": ("派息比率", _format_percent),
+    # 分析师预期
+    "targetMeanPrice": ("分析师目标价均值", _format_number),
+    "targetHighPrice": ("分析师目标价上限", _format_number),
+    "targetLowPrice": ("分析师目标价下限", _format_number),
+    "numberOfAnalystOpinions": ("覆盖分析师数", lambda v: f"{int(v)}"),
+    # 股本结构
+    "sharesOutstanding": ("流通股本", lambda v: f"{v / 1e8:.2f}亿股"),
+    "floatShares": ("自由流通股本", lambda v: f"{v / 1e8:.2f}亿股"),
+    "heldPercentInsiders": ("内部人持股比例", _format_percent),
+    "heldPercentInstitutions": ("机构持股比例", _format_percent),
+    "sharesPercentSharesOut": ("做空比例", _format_percent),
 }
 
 
-# 内部key -> (中文名, 格式化函数)
-# 注意: market_cap 的格式化需要 is_us 参数，在 get_factors 中特殊处理
-KEY_FORMAT = {
-    "pe_ttm": ("市盈率(TTM)", lambda v: f"{v:.2f}"),
-    "pe_forward": ("远期市盈率", lambda v: f"{v:.2f}"),
-    "pb_ratio": ("市净率", lambda v: f"{v:.2f}"),
-    "roe": ("净资产收益率(ROE)", lambda v: f"{v * 100:.1f}%"),
-    "profit_margin": ("利润率", lambda v: f"{v * 100:.1f}%"),
-    "gross_margin": ("毛利率", lambda v: f"{v * 100:.1f}%"),
-    "operating_margin": ("营业利润率", lambda v: f"{v * 100:.1f}%"),
-    "revenue_growth": ("营收增长率", lambda v: f"{v * 100:.1f}%"),
-    "debt_to_equity": ("负债权益比", _format_debt_ratio),
-    "debt_ratio": ("资产负债率", lambda v: f"{v * 100:.1f}%"),
-    "current_ratio": ("流动比率", lambda v: f"{v:.2f}"),
-    "quick_ratio": ("速动比率", lambda v: f"{v:.2f}"),
+# A股数据源字段映射
+CN_FIELD_MAP = {
+    "pe_ratio": ("市盈率(PE)", _format_number),
+    "pb_ratio": ("市净率(PB)", _format_number),
+    "roe": ("净资产收益率(ROE)", lambda v: f"{v:.1f}%"),
+    "revenue_growth": ("营收增长率", lambda v: f"{v:.1f}%"),
+    "debt_ratio": ("资产负债率", lambda v: f"{v:.1f}%"),
 }
 
 
@@ -101,43 +128,33 @@ class FundamentalFactorLibrary(FactorLibrary):
         factors = []
         raw_data = financial_data.get("raw_data", {})
         info_data = raw_data.get("info", {})
-        collected = {}  # 内部key -> 值
 
-        # 1. 收集 raw_data.info 字段
-        for field, value in info_data.items():
-            if field in FIELD_TO_KEY and value is not None:
-                inner_key = FIELD_TO_KEY[field]
-                collected[inner_key] = value
-
-        # 2. 收集 financial_data 字段
-        for field, value in financial_data.items():
-            if field == "raw_data":
-                continue
-            if field in FIELD_TO_KEY and value is not None:
-                inner_key = FIELD_TO_KEY[field]
-                # raw_data 优先
-                if inner_key not in collected:
-                    collected[inner_key] = value
-
-        # 3. 生成因子列表
-        is_us = data_source.startswith("US_")
-        for inner_key, value in collected.items():
-            if inner_key == "market_cap":
-                name = "市值"
-                status = _format_market_cap(value, is_us)
-            elif inner_key in KEY_FORMAT:
-                name, formatter = KEY_FORMAT[inner_key]
-                status = formatter(value)
-            else:
-                continue
-            factors.append(
-                FactorDetail(
-                    key=inner_key,
-                    name=name,
-                    status=status,
-                    bullish_signals=[],
-                    bearish_signals=[],
+        # 1. 处理 raw_data.info（美股 yfinance）
+        for field, (name, formatter) in YFINANCE_FIELD_MAP.items():
+            value = info_data.get(field)
+            if value is not None and value != 0:
+                factors.append(
+                    FactorDetail(
+                        key=field,
+                        name=name,
+                        status=formatter(value),
+                        bullish_signals=[],
+                        bearish_signals=[],
+                    )
                 )
-            )
+
+        # 2. 处理 financial_data（A股数据源）
+        for field, (name, formatter) in CN_FIELD_MAP.items():
+            value = financial_data.get(field)
+            if value is not None and value != 0 and field not in info_data:
+                factors.append(
+                    FactorDetail(
+                        key=field,
+                        name=name,
+                        status=formatter(value),
+                        bullish_signals=[],
+                        bearish_signals=[],
+                    )
+                )
 
         return factors

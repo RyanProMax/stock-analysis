@@ -36,35 +36,6 @@ class BaseFactor(ABC):
         self.stock = stock
         self.raw_df = raw_df
 
-    def _create_factor_detail(
-        self,
-        key: str,
-        name: str,
-        status: str,
-        bullish_signals: Optional[List[str]] = None,
-        bearish_signals: Optional[List[str]] = None,
-    ) -> FactorDetail:
-        """
-        创建 FactorDetail 对象的辅助方法
-
-        Args:
-            key: 因子 key
-            name: 因子名称
-            status: 因子状态
-            bullish_signals: 看涨信号列表
-            bearish_signals: 看跌信号列表
-
-        Returns:
-            FactorDetail 对象
-        """
-        return FactorDetail(
-            key=key,
-            name=name,
-            status=status,
-            bullish_signals=bullish_signals or [],
-            bearish_signals=bearish_signals or [],
-        )
-
     @abstractmethod
     def calculate(self, **kwargs) -> FactorDetail:
         """
