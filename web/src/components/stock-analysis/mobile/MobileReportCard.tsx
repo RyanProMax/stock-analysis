@@ -222,8 +222,7 @@ export const MobileReportCard: React.FC<MobileReportCardProps> = ({ symbol, repo
               <MobileFactorList
                 title={`基本面 (${fundamentalFactors.length})`}
                 factors={fundamentalFactors}
-                getFactorStatus={getFactorStatus}
-                getFactorStatusStyle={getFactorStatusStyle}
+                basic={true}
               />
 
               <MobileFactorList

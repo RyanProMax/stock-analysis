@@ -5,8 +5,9 @@ import type { FactorDetail } from '../../../types'
 interface MobileFactorListProps {
   title: string
   factors: FactorDetail[]
-  getFactorStatus: (factor: FactorDetail) => 'bullish' | 'bearish' | 'neutral'
-  getFactorStatusStyle: (status: 'bullish' | 'bearish' | 'neutral') => {
+  basic?: boolean // 是否使用基础卡片（无信号，只展示 key-value）
+  getFactorStatus?: (factor: FactorDetail) => 'bullish' | 'bearish' | 'neutral'
+  getFactorStatusStyle?: (status: 'bullish' | 'bearish' | 'neutral') => {
     bg: string
     text: string
     border: string
@@ -16,16 +17,32 @@ interface MobileFactorListProps {
   }
 }
 
+// 基本面因子卡片 - 无信号，只展示 key 和 value
+const BasicMobileFactorItem: React.FC<{ factor: FactorDetail }> = ({ factor }) => {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-1.5 dark:border-gray-700 dark:bg-gray-800">
+      <span className="text-xs font-light text-gray-600 dark:text-gray-400">{factor.name}</span>
+      <span className="ml-6 text-sm font-medium text-gray-900 dark:text-gray-100">
+        {factor.status || '-'}
+      </span>
+    </div>
+  )
+}
+
 export const MobileFactorList: React.FC<MobileFactorListProps> = ({
   title,
   factors,
+  basic = false,
   getFactorStatus,
   getFactorStatusStyle,
 }) => {
-  // 过滤出有信号的因子
-  const filteredFactors = factors.filter(
-    factor => factor.bullish_signals.length > 0 || factor.bearish_signals.length > 0
-  )
+  // 过滤因子（非 basic 模式下只显示有信号的）
+  const filteredFactors =
+    basic || !getFactorStatus
+      ? factors
+      : factors.filter(
+          factor => factor.bullish_signals.length > 0 || factor.bearish_signals.length > 0
+        )
 
   return (
     <div className="mb-6 last:mb-0">
@@ -33,11 +50,18 @@ export const MobileFactorList: React.FC<MobileFactorListProps> = ({
         <h3 className="text-base font-light text-gray-900 dark:text-gray-100">{title}</h3>
       </div>
 
-      {filteredFactors.length ? (
+      {/* 基础卡片布局 */}
+      {basic ? (
+        <div className="flex flex-col gap-3">
+          {filteredFactors.map(factor => (
+            <BasicMobileFactorItem key={factor.key} factor={factor} />
+          ))}
+        </div>
+      ) : filteredFactors.length ? (
         <div className="space-y-3">
           {filteredFactors.map(factor => {
-            const factorStatus = getFactorStatus(factor)
-            const statusStyle = getFactorStatusStyle(factorStatus)
+            const factorStatus = getFactorStatus!(factor)
+            const statusStyle = getFactorStatusStyle!(factorStatus)
             const hasSignals =
               factor.bullish_signals.length > 0 || factor.bearish_signals.length > 0
 

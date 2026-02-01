@@ -299,7 +299,7 @@ export function AgentReport() {
 
         {/* 分析因子 - 根据选中步骤过滤 */}
         {fundamental_factors.length > 0 || technical_factors.length > 0 ? (
-          <Card className="mb-8! animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <Card className="mb-8! bg-transparent! animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div>
               {/* 根据 selectedStep 决定显示哪些因子 */}
               {(selectedStep === AgentStep.Fundamental || selectedStep === AgentStep.Coordinator) &&
@@ -308,6 +308,7 @@ export function AgentReport() {
                     title={`基本面 (${fundamental_factors.length})`}
                     factors={fundamental_factors}
                     showAll={true}
+                    basic={true}
                   />
                 )}
               {selectedStep === AgentStep.Coordinator &&

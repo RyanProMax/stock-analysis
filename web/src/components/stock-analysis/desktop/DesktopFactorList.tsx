@@ -7,6 +7,7 @@ interface FactorListProps {
   title: string
   factors: FactorDetail[]
   showAll?: boolean
+  basic?: boolean // 是否使用基础卡片（无信号，只展示 key-value）
 }
 
 // 因子状态计算
@@ -60,12 +61,17 @@ const getFactorStatusStyle = (
   }
 }
 
-export const FactorList: React.FC<FactorListProps> = ({ title, factors, showAll = false }) => {
+export const FactorList: React.FC<FactorListProps> = ({
+  title,
+  factors,
+  showAll = false,
+  basic = false,
+}) => {
   const [isFilter, setIsFilter] = useState(true)
 
   // 过滤因子
   const filteredFactors =
-    isFilter && !showAll
+    isFilter && !showAll && !basic
       ? factors.filter(
           factor => factor.bullish_signals.length > 0 || factor.bearish_signals.length > 0
         )
@@ -75,7 +81,7 @@ export const FactorList: React.FC<FactorListProps> = ({ title, factors, showAll 
     <div className="mb-6 last:mb-0">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-base font-light text-gray-900 dark:text-gray-100">{title}</h3>
-        {!showAll && (
+        {!showAll && !basic && (
           <button
             onClick={e => {
               e.stopPropagation()
@@ -87,40 +93,50 @@ export const FactorList: React.FC<FactorListProps> = ({ title, factors, showAll 
           </button>
         )}
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {filteredFactors.length ? (
-          filteredFactors.map(factor => {
-            const factorStatus = getFactorStatus(factor)
-            const statusStyle = getFactorStatusStyle(factorStatus)
-            const hasSignals =
-              factor.bullish_signals.length > 0 || factor.bearish_signals.length > 0
 
-            return (
-              <FactorItem
-                key={factor.key}
-                factor={factor}
-                statusStyle={statusStyle}
-                hasSignals={hasSignals}
+      {/* 基础卡片布局 - 左右一行展示 */}
+      {basic ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {filteredFactors.map(factor => (
+            <BasicFactorItem key={factor.key} factor={factor} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {filteredFactors.length ? (
+            filteredFactors.map(factor => {
+              const factorStatus = getFactorStatus(factor)
+              const statusStyle = getFactorStatusStyle(factorStatus)
+              const hasSignals =
+                factor.bullish_signals.length > 0 || factor.bearish_signals.length > 0
+
+              return (
+                <FactorItem
+                  key={factor.key}
+                  factor={factor}
+                  statusStyle={statusStyle}
+                  hasSignals={hasSignals}
+                />
+              )
+            })
+          ) : (
+            <div className="col-span-full flex justify-center">
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={
+                  <span className="text-gray-600 dark:text-black text-sm">暂无信号因子</span>
+                }
+                style={{
+                  height: 60,
+                  marginBottom: 16,
+                  filter: 'invert(0.7)',
+                }}
+                className="dark:invert"
               />
-            )
-          })
-        ) : (
-          <div className="col-span-full flex justify-center">
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={
-                <span className="text-gray-600 dark:text-black text-sm">暂无信号因子</span>
-              }
-              style={{
-                height: 60,
-                marginBottom: 16,
-                filter: 'invert(0.7)',
-              }}
-              className="dark:invert"
-            />
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -185,6 +201,34 @@ const FactorItem: React.FC<FactorItemProps> = ({ factor, statusStyle, hasSignals
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// 基本面因子卡片 - 无信号，只展示 key 和 value
+interface BasicFactorItemProps {
+  factor: FactorDetail
+}
+
+const BasicFactorItem: React.FC<BasicFactorItemProps> = ({ factor }) => {
+  return (
+    <div
+      className="
+        group
+        flex cursor-default select-none items-center justify-between
+        rounded-xl
+        bg-gray-50/80 px-4 py-2
+        shadow-sm
+        transition hover:shadow-md
+        dark:bg-gray-800/60
+      "
+    >
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 group-hover:text-(--color-primary) transition-colors">
+        {factor.name}
+      </span>
+      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-(--color-primary) transition-colors">
+        {factor.status || '-'}
+      </span>
     </div>
   )
 }

@@ -146,7 +146,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+      className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-transparent"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -272,6 +272,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
             title={`基本面 (${fundamentalFactors.length})`}
             factors={fundamentalFactors}
             showAll={true}
+            basic={true}
           />
 
           <FactorList title={`技术面 (${technicalFactors.length})`} factors={technicalFactors} />
