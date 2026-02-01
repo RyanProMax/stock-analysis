@@ -43,7 +43,6 @@ class BaseFactor(ABC):
         status: str,
         bullish_signals: Optional[List[str]] = None,
         bearish_signals: Optional[List[str]] = None,
-        data_source: str = "",
     ) -> FactorDetail:
         """
         创建 FactorDetail 对象的辅助方法
@@ -54,7 +53,6 @@ class BaseFactor(ABC):
             status: 因子状态
             bullish_signals: 看涨信号列表
             bearish_signals: 看跌信号列表
-            data_source: 数据源标识
 
         Returns:
             FactorDetail 对象
@@ -65,7 +63,6 @@ class BaseFactor(ABC):
             status=status,
             bullish_signals=bullish_signals or [],
             bearish_signals=bearish_signals or [],
-            data_source=data_source,
         )
 
     @abstractmethod

@@ -47,7 +47,6 @@ class FactorDetailResponse(BaseModel):
     status: str
     bullish_signals: List[str]
     bearish_signals: List[str]
-    data_source: str = ""
 
 
 class FearGreedResponse(BaseModel):

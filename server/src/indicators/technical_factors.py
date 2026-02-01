@@ -382,8 +382,6 @@ class TechnicalFactorLibrary(FactorLibrary):
         fg_index: float = 50.0,
         volume_ma5: float = 0.0,
         volume_ma20: float = 0.0,
-        data_source: str = "",
-        raw_data: Optional[dict] = None,
         **kwargs,
     ) -> List[FactorDetail]:
         """
@@ -405,30 +403,27 @@ class TechnicalFactorLibrary(FactorLibrary):
         factors = []
 
         # 趋势因子
-        factors.append(MAFactor(stock, raw_df).calculate(data_source=data_source))
-        factors.append(EMAFactor(stock, raw_df).calculate(data_source=data_source))
-        factors.append(MACDFactor(stock, raw_df).calculate(data_source=data_source))
+        factors.append(MAFactor(stock, raw_df).calculate())
+        factors.append(EMAFactor(stock, raw_df).calculate())
+        factors.append(MACDFactor(stock, raw_df).calculate())
 
         # 动量因子
-        factors.append(RSIFactor(stock, raw_df).calculate(data_source=data_source))
-        factors.append(KDJFactor(stock, raw_df).calculate(data_source=data_source))
-        factors.append(WRFactor(stock, raw_df).calculate(data_source=data_source))
+        factors.append(RSIFactor(stock, raw_df).calculate())
+        factors.append(KDJFactor(stock, raw_df).calculate())
+        factors.append(WRFactor(stock, raw_df).calculate())
 
         # 波动率因子
-        factors.append(BollingerFactor(stock, raw_df).calculate(data_source=data_source))
-        factors.append(ATRFactor(stock, raw_df).calculate(data_source=data_source))
-        factors.append(
-            SentimentFactor(stock, raw_df).calculate(fg_index=fg_index, data_source=data_source)
-        )
+        factors.append(BollingerFactor(stock, raw_df).calculate())
+        factors.append(ATRFactor(stock, raw_df).calculate())
+        factors.append(SentimentFactor(stock, raw_df).calculate(fg_index=fg_index))
 
         # 量能因子
         factors.append(
             VolumeRatioFactor(stock, raw_df).calculate(
                 volume_ma5=volume_ma5,
                 volume_ma20=volume_ma20,
-                data_source=data_source,
             )
         )
-        factors.append(VRFactor(stock, raw_df).calculate(data_source=data_source))
+        factors.append(VRFactor(stock, raw_df).calculate())
 
         return factors

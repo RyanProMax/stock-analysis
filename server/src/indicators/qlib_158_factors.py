@@ -72,8 +72,6 @@ class Qlib158FactorLibrary(FactorLibrary):
         stock: StockDataFrame,
         raw_df: pd.DataFrame,
         symbol: Optional[str] = None,
-        data_source: str = "",
-        raw_data: Optional[dict] = None,
         **kwargs,
     ) -> List[FactorDetail]:
         """
@@ -83,8 +81,6 @@ class Qlib158FactorLibrary(FactorLibrary):
             stock: StockDataFrame 对象
             raw_df: 原始行情数据 DataFrame，需要包含 open, close, high, low, volume 列
             symbol: 股票代码（可选）
-            data_source: 数据源标识
-            raw_data: 原始数据
             **kwargs: 其他参数
 
         Returns:
@@ -100,7 +96,7 @@ class Qlib158FactorLibrary(FactorLibrary):
                 return []
 
             # 使用 qlib 的表达式引擎直接计算 Alpha158 因子
-            factors = self._calculate_alpha158_with_qlib(raw_df, symbol, data_source, raw_data)
+            factors = self._calculate_alpha158_with_qlib(raw_df, symbol)
 
         except Exception as e:
             import traceback
@@ -114,8 +110,6 @@ class Qlib158FactorLibrary(FactorLibrary):
         self,
         df: pd.DataFrame,
         symbol: Optional[str] = None,
-        data_source: str = "",
-        raw_data: Optional[dict] = None,
     ) -> List[FactorDetail]:
         """
         使用 qlib 的 Alpha158 表达式引擎计算因子
@@ -125,8 +119,6 @@ class Qlib158FactorLibrary(FactorLibrary):
         Args:
             df: 包含 open, close, high, low, volume 的 DataFrame
             symbol: 股票代码
-            data_source: 数据源标识
-            raw_data: 原始数据
 
         Returns:
             List[FactorDetail]: 因子列表
@@ -154,7 +146,6 @@ class Qlib158FactorLibrary(FactorLibrary):
                             factor_name.lower(),
                             factor_name,
                             factor_value,
-                            data_source=data_source,
                         )
                         if factor_detail:
                             factors.append(factor_detail)
@@ -571,9 +562,6 @@ class Qlib158FactorLibrary(FactorLibrary):
         key: str,
         name: str,
         value: float,
-        base_key: str = "",
-        data_source: str = "",
-        raw_data: Optional[dict] = None,
     ) -> Optional[FactorDetail]:
         """
         将因子值转换为 FactorDetail
@@ -585,9 +573,6 @@ class Qlib158FactorLibrary(FactorLibrary):
             key: 因子 key
             name: 因子名称
             value: 因子值
-            base_key: 基础因子 key（未使用，保留以兼容接口）
-            data_source: 数据源标识
-            raw_data: 原始数据
 
         Returns:
             FactorDetail 对象
@@ -604,5 +589,4 @@ class Qlib158FactorLibrary(FactorLibrary):
             status=status,
             bullish_signals=[],
             bearish_signals=[],
-            data_source=data_source,
         )

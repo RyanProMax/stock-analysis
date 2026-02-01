@@ -272,8 +272,6 @@ class StockService:
                         status=f.get("status", ""),
                         bullish_signals=f.get("bullish_signals", []),
                         bearish_signals=f.get("bearish_signals", []),
-                        raw_data=f.get("raw_data"),
-                        data_source=f.get("data_source", ""),
                     )
                     for f in factors_data
                 ]

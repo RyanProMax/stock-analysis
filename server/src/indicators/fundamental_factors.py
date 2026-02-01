@@ -137,7 +137,6 @@ class FundamentalFactorLibrary(FactorLibrary):
                     status=status,
                     bullish_signals=[],
                     bearish_signals=[],
-                    data_source=data_source,
                 )
             )
 

@@ -1,7 +1,7 @@
 """
 核心数据模型定义
 
-包含所有业务实体的数据类定义��
+包含所有业务实体的数据类定义
 """
 
 from dataclasses import dataclass, field
@@ -17,7 +17,6 @@ class FactorDetail:
     status: str  # 因子状态描述
     bullish_signals: List[str] = field(default_factory=list)
     bearish_signals: List[str] = field(default_factory=list)
-    data_source: str = ""  # 数据源标识
 
 
 @dataclass
