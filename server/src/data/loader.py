@@ -37,6 +37,15 @@ class DataLoader:
         "成交量": "volume",
     }
 
+    US_YFINANCE_MAP = {
+        "Date": "date",
+        "Open": "open",
+        "High": "high",
+        "Low": "low",
+        "Close": "close",
+        "Volume": "volume",
+    }
+
     @staticmethod
     def get_stock_daily(symbol: str) -> Tuple[Optional[pd.DataFrame], str, str]:
         """
@@ -188,6 +197,20 @@ class DataLoader:
     @staticmethod
     def _get_us_stock_data(symbol: str) -> Tuple[Optional[pd.DataFrame], str]:
         print(f"🇺🇸 正在获取 美股数据: [{symbol}] ...")
+
+        # 策略1: yfinance
+        try:
+            df = yf.Ticker(symbol).history(period="2y", auto_adjust=False)
+            if not df.empty:
+                df.reset_index(inplace=True)
+                return (
+                    DataLoader._standardize_df(df, DataLoader.US_YFINANCE_MAP, "US_yfinance"),
+                    "US_yfinance",
+                )
+        except Exception as e:
+            print(f"⚠️ yfinance 失败，尝试 AkShare: {e}")
+
+        # 策略2: AkShare
         try:
             df = ak.stock_us_daily(symbol=symbol, adjust="qfq")
             if df is not None and not df.empty:
@@ -197,6 +220,7 @@ class DataLoader:
                 )
         except Exception as e:
             print(f"❌ 美股接口失败: {e}")
+
         return None, ""
 
     # ---------------------------------------------------------
