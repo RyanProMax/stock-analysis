@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from src.api.routes import index as controller
 from src.api.schemas import StandardResponse
-from src.env import is_development
+from src.config import is_development
 
 port = int(os.environ.get("PORT", 8080))
 

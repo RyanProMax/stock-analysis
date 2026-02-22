@@ -8,7 +8,7 @@ from typing import Optional, Callable, List, AsyncGenerator, Tuple
 from openai.types.chat import ChatCompletionMessageParam
 
 from ..base import BaseAgent, AnalysisState
-from ...services.stock_service import stock_service
+from ...core.pipeline import stock_service
 from .prompts import (
     FUNDAMENTAL_SYSTEM_MESSAGE,
     build_fundamental_prompt,

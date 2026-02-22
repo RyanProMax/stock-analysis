@@ -12,7 +12,7 @@ import tushare as ts
 
 load_dotenv()
 
-from .base import BaseStockDataSource
+from ..base import BaseStockDataSource
 
 
 class TushareDataSource(BaseStockDataSource):

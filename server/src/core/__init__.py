@@ -1,10 +1,10 @@
 """
-核心层 - 数据模型和基础设施
+核心层 - 数据模型、基础设施和流程编排
 
 包含:
 - 数据模型定义 (FactorDetail, AnalysisReport 等)
 - 配置常量
-- 自定义异常
+- 流程编排 (pipeline)
 """
 
 from .models import (
@@ -15,6 +15,7 @@ from .models import (
     FactorSignal,
 )
 from .constants import Config
+from .pipeline import StockService, stock_service
 
 __all__ = [
     "FactorDetail",
@@ -23,4 +24,6 @@ __all__ = [
     "AnalysisReport",
     "FactorSignal",
     "Config",
+    "StockService",
+    "stock_service",
 ]

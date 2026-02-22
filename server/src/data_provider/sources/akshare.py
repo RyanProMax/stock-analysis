@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional, cast
 import pandas as pd
 import akshare as ak
 
-from .base import BaseStockDataSource
+from ..base import BaseStockDataSource
 
 
 class AkShareDataSource(BaseStockDataSource):

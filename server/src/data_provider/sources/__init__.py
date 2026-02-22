@@ -10,7 +10,7 @@
 from .tushare import TushareDataSource
 from .akshare import AkShareDataSource
 from .nasdaq import NasdaqDataSource
-from .base import BaseStockDataSource
+from ..base import BaseStockDataSource
 
 __all__ = [
     "TushareDataSource",

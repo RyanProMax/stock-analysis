@@ -1,7 +1,7 @@
 """
-统一的股票服务类
+股票分析流程编排
 
-提供股票数据的统一接口，包括：
+提供股票分析的统一流程编排，包括：
 - 股票列表服务
 - 基础数据获取
 - 基本面分析
@@ -14,10 +14,11 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import asdict
 import pandas as pd
 
-from ..data import DataLoader, StockListService, CacheUtil
-from ..indicators import MultiFactorAnalyzer
+from ..data_provider import DataLoader, StockListService
+from ..storage import CacheUtil
+from ..analyzer import MultiFactorAnalyzer
 from ..core import AnalysisReport, FactorAnalysis, FactorDetail, FearGreed
-from ..env import is_development
+from ..config import is_development
 
 
 class StockService:
@@ -153,7 +154,7 @@ class StockService:
 
             # 开发环境输出控制台报告
             if report is not None and is_development():
-                from .console_report import console_report
+                from ..notification.formatters import console_report
 
                 console_report(report)
 

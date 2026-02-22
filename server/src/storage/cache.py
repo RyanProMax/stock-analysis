@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Optional, Dict, List
 from google.cloud import storage
 
-from ..env import is_production
+from ..config import is_production
 
 
 class CacheUtil:

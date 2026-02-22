@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from typing import List, Optional
 from dataclasses import asdict
 
-from ...services.stock_service import stock_service
+from ...core.pipeline import stock_service
 from ..schemas import (
     AnalysisReportResponse,
     StockAnalysisRequest,

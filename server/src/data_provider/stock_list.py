@@ -30,7 +30,7 @@ class StockListService:
     @classmethod
     def _get_cached(cls, market: str) -> Optional[List[Dict[str, Any]]]:
         """从所有数据源获取缓存"""
-        from .cache import CacheUtil
+        from ..storage import CacheUtil
 
         # 检查内存缓存
         for source in cls._a_stock_sources + cls._us_stock_sources:

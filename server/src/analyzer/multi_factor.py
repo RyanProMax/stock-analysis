@@ -2,7 +2,7 @@ from stockstats import StockDataFrame
 import pandas as pd
 
 from ..core import AnalysisReport, FactorAnalysis, FearGreed
-from ..data import DataLoader
+from ..data_provider import DataLoader
 from .technical_factors import TechnicalFactorLibrary
 from .fundamental_factors import FundamentalFactorLibrary
 from .qlib_158_factors import Qlib158FactorLibrary

@@ -12,7 +12,7 @@ from ..base import BaseAgent, AnalysisState
 from ..fundamental import FundamentalAgent
 from ..technical import TechnicalAgent
 from ..llm import LLMManager
-from src.env import is_development
+from src.config import is_development
 from .prompts import (
     COORDINATOR_SYSTEM_MESSAGE,
     build_coordinator_prompt,

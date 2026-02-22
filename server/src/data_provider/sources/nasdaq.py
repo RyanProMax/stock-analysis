@@ -7,7 +7,7 @@ NASDAQ 数据源
 from typing import List, Dict, Any
 import requests
 
-from .base import BaseStockDataSource
+from ..base import BaseStockDataSource
 
 
 class NasdaqDataSource(BaseStockDataSource):
