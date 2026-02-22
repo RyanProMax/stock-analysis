@@ -4,7 +4,8 @@ NASDAQ 数据源
 使用 NASDAQ API 获取美股股票列表
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import pandas as pd
 import requests
 
 from ..base import BaseStockDataSource
@@ -14,6 +15,7 @@ class NasdaqDataSource(BaseStockDataSource):
     """NASDAQ API 数据源"""
 
     SOURCE_NAME = "NASDAQ"
+    priority: int = 1  # 美股备用
     API_URL = "https://api.nasdaq.com/api/screener/stocks"
     HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
@@ -64,5 +66,15 @@ class NasdaqDataSource(BaseStockDataSource):
         return stocks
 
     def is_available(self, market: str) -> bool:
-        """NASDAQ API 仅支持美股"""
+        """NASDAQ API 仅支持美股列表"""
         return market == "美股"
+
+    # ==================== 日线数据（不支持）====================
+
+    def _fetch_raw_daily(self, symbol: str) -> Optional[pd.DataFrame]:
+        """NASDAQ 不支持日线数据"""
+        return None
+
+    def _normalize_daily(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
+        """不需要标准化"""
+        return df

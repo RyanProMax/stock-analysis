@@ -19,6 +19,7 @@ class TushareDataSource(BaseStockDataSource):
     """Tushare 数据源"""
 
     SOURCE_NAME: str = "Tushare"
+    priority: int = 0  # 优先级最高
     TOKEN: ClassVar[str] = os.environ.get("TUSHARE_TOKEN", "")
     _pro: ClassVar[Optional[Any]] = None
 
@@ -42,18 +43,11 @@ class TushareDataSource(BaseStockDataSource):
             print(f"⚠️ Tushare 初始化失败: {e}")
             return None
 
-    @classmethod
-    def get_daily_data(cls, symbol: str) -> Optional[pd.DataFrame]:
-        """
-        获取 A 股日线数据
+    # ==================== 日线数据实现 ====================
 
-        Args:
-            symbol: 股票代码（6位，如 600519）
-
-        Returns:
-            包含日线数据的 DataFrame，失败返回 None
-        """
-        pro = cls.get_pro()
+    def _fetch_raw_daily(self, symbol: str) -> Optional[pd.DataFrame]:
+        """获取原始日线数据"""
+        pro = self.get_pro()
         if pro is None:
             return None
 
@@ -62,25 +56,35 @@ class TushareDataSource(BaseStockDataSource):
             ts_symbol = f"{symbol}.SH" if symbol.startswith("6") else f"{symbol}.SZ"
             df = pro.daily(ts_code=ts_symbol, start_date="20100101")
             if df is not None and not df.empty:
-                # Tushare 返回的列名是英文，需要映射
                 df = df.sort_values("trade_date").reset_index(drop=True)
-                df.rename(
-                    columns={
-                        "trade_date": "date",
-                        "vol": "volume",
-                    },
-                    inplace=True,
-                )
-                # 删除不需要的列，保持与其他数据源一致
-                cols_to_drop = ["ts_code", "pre_close", "change", "pct_chg"]
-                for col in cols_to_drop:
-                    if col in df.columns:
-                        df.drop(columns=[col], inplace=True)
                 return df
         except Exception as e:
-            print(f"⚠️ Tushare 获取失败 [{symbol}]: {e}")
+            print(f"⚠️ Tushare 获取日线失败 [{symbol}]: {e}")
 
         return None
+
+    def _normalize_daily(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
+        """标准化日线数据"""
+        df = df.copy()
+
+        # Tushare 列名映射
+        df.rename(
+            columns={
+                "trade_date": "date",
+                "vol": "volume",
+            },
+            inplace=True,
+        )
+
+        # 删除不需要的列
+        cols_to_drop = ["ts_code", "pre_close", "change", "pct_chg"]
+        for col in cols_to_drop:
+            if col in df.columns:
+                df.drop(columns=[col], inplace=True)
+
+        return df
+
+    # ==================== 股票列表 ====================
 
     def fetch_a_stocks(self) -> List[Dict[str, Any]]:
         """获取 A 股股票列表"""
@@ -107,6 +111,22 @@ class TushareDataSource(BaseStockDataSource):
             return False
         pro = self.get_pro()
         return pro is not None
+
+    # ==================== 财务数据 ====================
+
+    @classmethod
+    def get_daily_data(cls, symbol: str) -> Optional[pd.DataFrame]:
+        """
+        获取 A 股日线数据（兼容旧接口）
+
+        Args:
+            symbol: 股票代码（6位，如 600519）
+
+        Returns:
+            包含日线数据的 DataFrame，失败返回 None
+        """
+        instance = cls()
+        return instance.get_daily_data(symbol)
 
     @classmethod
     def get_cn_financial_data(cls, symbol: str) -> tuple[Optional[dict], dict]:

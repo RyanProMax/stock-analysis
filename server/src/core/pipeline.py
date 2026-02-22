@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import asdict
 import pandas as pd
 
-from ..data_provider import DataLoader, StockListService
+from ..data_provider import data_manager, StockListService
 from ..storage import CacheUtil
 from ..analyzer import MultiFactorAnalyzer
 from ..core import AnalysisReport, FactorAnalysis, FactorDetail, FearGreed
@@ -44,7 +44,7 @@ class StockService:
         Returns:
             (DataFrame, stock_name, data_source): 数据、股票名称和数据源，失败时返回 (None, symbol, "")
         """
-        return DataLoader.get_stock_daily(symbol)
+        return data_manager.get_stock_daily(symbol)
 
     def get_financial_data(self, symbol: str) -> Tuple[Optional[Dict[str, Any]], str]:
         """
@@ -56,7 +56,7 @@ class StockService:
         Returns:
             (财务数据字典, 数据源): 包含PE、PB、ROE等指标
         """
-        return DataLoader.get_financial_data(symbol)
+        return data_manager.get_financial_data(symbol)
 
     # ==================== 股票列表服务 ====================
 

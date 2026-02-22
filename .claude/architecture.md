@@ -37,7 +37,7 @@ server/src/
 | Core | `core/` | `pipeline` | 流程编排、数据模型 |
 | Agents | `agents/` | `coordinator`, `llm` | Multi-Agent 分析系统 |
 | Analyzer | `analyzer/` | `multi_factor` | 因子计算 (技术/基本面/qlib158) |
-| Data Provider | `data_provider/` | `loader` | 多数据源获取、统一接口 |
+| Data Provider | `data_provider/` | `manager` | 多数据源获取、统一接口、熔断机制 |
 | Storage | `storage/` | `cache` | 缓存 + 持久化 (预留) |
 | Notification | `notification/` | `formatters` | 消息格式化 |
 
@@ -58,7 +58,7 @@ LLM 返回的思考过程通过接口专用字段 `reasoning` 返回，与正常
 
 ### 批量分析
 ```
-POST /stock/analyze → pipeline.batch_analyze() → DataLoader → 因子计算 → JSON
+POST /stock/analyze → pipeline.batch_analyze() → DataManager → 因子计算 → JSON
 ```
 
 ### 流式分析 (SSE)
@@ -110,7 +110,7 @@ enum AgentStep {
 
 ```python
 from src.config import is_development, is_production, config
-from src.data_provider import DataLoader, StockListService
+from src.data_provider import data_manager, DataManager, StockListService
 from src.storage import CacheUtil
 from src.analyzer import MultiFactorAnalyzer
 from src.core.pipeline import stock_service

@@ -74,7 +74,7 @@ FactorDetail(
 | 同步 I/O | async/await |
 | Agent 抛异常 | `state.set_error()` |
 | 硬编码配置 | `os.getenv()` |
-| Agent 操作 DB | 通过 DataLoader/CacheUtil |
+| Agent 操作 DB | 通过 DataManager/CacheUtil |
 | 前端 `any` 类型 | 定义 interface |
 | Bash 读文件 | 用 Read 工具 |
 | Bash 改文件 | 用 Edit 工具 |

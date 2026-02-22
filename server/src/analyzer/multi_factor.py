@@ -2,7 +2,7 @@ from stockstats import StockDataFrame
 import pandas as pd
 
 from ..core import AnalysisReport, FactorAnalysis, FearGreed
-from ..data_provider import DataLoader
+from ..data_provider import data_manager
 from .technical_factors import TechnicalFactorLibrary
 from .fundamental_factors import FundamentalFactorLibrary
 from .qlib_158_factors import Qlib158FactorLibrary
@@ -178,7 +178,7 @@ class MultiFactorAnalyzer:
         financial_data_source = self.financial_data_source
         financial_raw_data = None
         try:
-            financial_data, source = DataLoader.get_financial_data(self.symbol)
+            financial_data, source = data_manager.get_financial_data(self.symbol)
             if source:
                 financial_data_source = source
             # 提取原始数据
@@ -194,7 +194,7 @@ class MultiFactorAnalyzer:
         # --- 获取股票信息（行业等）---
         stock_info = {}
         try:
-            stock_info = DataLoader.get_stock_info(self.symbol)
+            stock_info = data_manager.get_stock_info(self.symbol)
         except Exception as e:
             print(f"⚠️ 获取股票信息失败: {e}")
 

@@ -19,6 +19,9 @@ class BaseStockDataSource(ABC):
     # 数据源名称
     SOURCE_NAME: str = "base"
 
+    # 标准列名常量
+    STANDARD_DAILY_COLUMNS: List[str] = ["date", "open", "high", "low", "close", "volume"]
+
     def __init__(self):
         # 内存缓存：{market: [stocks]}
         self._cache: Dict[str, List[Dict[str, Any]]] = {}
@@ -99,6 +102,8 @@ class BaseStockDataSource(ABC):
                     stock[key] = str(value)
         return stocks
 
+    # ==================== 抽象方法：股票列表 ====================
+
     @abstractmethod
     def fetch_a_stocks(self) -> List[Dict[str, Any]]:
         """
@@ -125,6 +130,147 @@ class BaseStockDataSource(ABC):
             标准格式的股票列表
         """
         pass
+
+    # ==================== 抽象方法：日线数据 ====================
+
+    @abstractmethod
+    def _fetch_raw_daily(self, symbol: str) -> Optional[pd.DataFrame]:
+        """
+        从数据源获取原始日线数据（子类实现）
+
+        Args:
+            symbol: 股票代码
+
+        Returns:
+            原始 DataFrame，失败返回 None
+        """
+        pass
+
+    @abstractmethod
+    def _normalize_daily(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
+        """
+        将原始日线数据标准化（子类实现）
+
+        Args:
+            df: 原始 DataFrame
+            symbol: 股票代码
+
+        Returns:
+            标准化后的 DataFrame
+        """
+        pass
+
+    def get_daily_data(self, symbol: str) -> Optional[pd.DataFrame]:
+        """
+        获取日线数据（统一入口）
+
+        流程：
+        1. _fetch_raw_daily() - 获取原始数据
+        2. _normalize_daily() - 标准化列名
+        3. _clean_daily() - 数据清洗
+        4. _calculate_indicators() - 计算技术指标
+
+        Args:
+            symbol: 股票代码
+
+        Returns:
+            标准化后的 DataFrame，失败返回 None
+        """
+        try:
+            # Step 1: 获取原始数据
+            df = self._fetch_raw_daily(symbol)
+            if df is None or df.empty:
+                return None
+
+            # Step 2: 标准化列名
+            df = self._normalize_daily(df, symbol)
+
+            # Step 3: 数据清洗
+            df = self._clean_daily(df)
+
+            # Step 4: 计算技术指标
+            df = self._calculate_indicators(df)
+
+            return df
+
+        except Exception as e:
+            print(f"⚠️ {self.SOURCE_NAME} 获取日线失败 [{symbol}]: {e}")
+            return None
+
+    @staticmethod
+    def _clean_daily(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        数据清洗
+
+        处理：
+        1. 确保日期列格式正确
+        2. 数值类型转换
+        3. 去除空值行
+        4. 按日期排序
+        """
+        df = df.copy()
+
+        # 确保日期列为 datetime 类型
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"])
+
+        # 数值列类型转换
+        numeric_cols = ["open", "high", "low", "close", "volume"]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        # 去除关键列为空的行
+        if "close" in df.columns and "volume" in df.columns:
+            df = df.dropna(subset=["close", "volume"])
+
+        # 按日期升序排序
+        if "date" in df.columns:
+            df = df.sort_values("date", ascending=True).reset_index(drop=True)
+
+        return df
+
+    @staticmethod
+    def _calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        计算技术指标
+
+        计算指标：
+        - ma5, ma10, ma20: 移动平均线
+        """
+        if df is None or df.empty:
+            return df
+
+        df = df.copy()
+
+        if "close" in df.columns:
+            df["ma5"] = df["close"].rolling(window=5, min_periods=1).mean()
+            df["ma10"] = df["close"].rolling(window=10, min_periods=1).mean()
+            df["ma20"] = df["close"].rolling(window=20, min_periods=1).mean()
+
+            # 保留2位小数
+            for col in ["ma5", "ma10", "ma20"]:
+                if col in df.columns:
+                    df[col] = df[col].round(2)
+
+        return df
+
+    # ==================== 抽象方法：可用性检查 ====================
+
+    @abstractmethod
+    def is_available(self, market: str) -> bool:
+        """
+        检查数据源是否可用于指定市场
+
+        Args:
+            market: 市场类型（"A股" 或 "美股"）
+
+        Returns:
+            是否可用
+        """
+        pass
+
+    # ==================== 具体方法：股票列表（带缓存）====================
 
     def get_a_stocks(self, refresh: bool = False) -> List[Dict[str, Any]]:
         """
@@ -191,16 +337,3 @@ class BaseStockDataSource(ABC):
             self.clear_cache(market)
 
         return []
-
-    @abstractmethod
-    def is_available(self, market: str) -> bool:
-        """
-        检查数据源是否可用于指定市场
-
-        Args:
-            market: 市场类型（"A股" 或 "美股"）
-
-        Returns:
-            是否可用
-        """
-        pass
