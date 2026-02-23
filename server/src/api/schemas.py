@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Dict, Any, Optional, Generic, TypeVar
 
 # This Pydantic model defines the structure of the API response.
@@ -16,27 +16,29 @@ class StandardResponse(BaseModel, Generic[T]):
     data: Optional[T] = None  # 响应数据
     err_msg: Optional[str] = None  # 错误信息
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "status_code": 200,
                 "data": None,
                 "err_msg": None,
             }
         }
+    )
 
 
 class StockAnalysisRequest(BaseModel):
     symbols: List[str]
     include_qlib_factors: bool = False  # 是否包含 Qlib 158 因子，默认 False
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "symbols": ["NVDA", "AAPL", "600519"],
                 "include_qlib_factors": False,
             }
         }
+    )
 
 
 class FactorDetailResponse(BaseModel):
@@ -73,8 +75,7 @@ class AnalysisReportResponse(BaseModel):
     fundamental: FactorAnalysisResponse
     qlib: FactorAnalysisResponse
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StockInfoResponse(BaseModel):
@@ -102,10 +103,11 @@ class StockSearchRequest(BaseModel):
     keyword: str
     market: Optional[str] = None  # "A股" 或 "美股"，None 表示搜索所有市场
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "keyword": "NVDA",
                 "market": None,
             }
         }
+    )

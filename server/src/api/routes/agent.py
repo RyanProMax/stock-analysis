@@ -51,7 +51,11 @@ def send_progress(step: str, status: str, message: str, data: Optional[dict] = N
 
 @router.get("/analyze")
 async def analyze_stock_stream(
-    symbol: str = Query(..., description="股票代码", example="NVDA"),
+    symbol: str = Query(
+        ...,
+        description="股票代码",
+        examples=[{"description": "股票代码示例", "value": "NVDA"}],
+    ),
     refresh: Optional[bool] = Query(False, description="是否强制刷新缓存"),
     max_tokens: Optional[int] = Query(None, description="LLM 最大生成token数，默认不限制"),
 ):

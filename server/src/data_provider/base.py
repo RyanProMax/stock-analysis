@@ -4,10 +4,12 @@
 定义所有数据源的统一接口和返回格式
 """
 
+import random
+import time
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 import pandas as pd
-import os
+from .realtime_types import UnifiedRealtimeQuote
 
 
 class BaseStockDataSource(ABC):
@@ -20,7 +22,22 @@ class BaseStockDataSource(ABC):
     SOURCE_NAME: str = "base"
 
     # 标准列名常量
-    STANDARD_DAILY_COLUMNS: List[str] = ["date", "open", "high", "low", "close", "volume"]
+    STANDARD_DAILY_COLUMNS: List[str] = [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+    ]
+
+    # User-Agent 池（用于防封禁）
+    USER_AGENTS: List[str] = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+    ]
 
     def __init__(self):
         # 内存缓存：{market: [stocks]}
@@ -93,7 +110,7 @@ class BaseStockDataSource(ABC):
         Returns:
             标准化的字典列表
         """
-        stocks = df.to_dict("records")
+        stocks: List[Dict[str, Any]] = cast(List[Dict[str, Any]], df.to_dict("records"))
         for stock in stocks:
             for key, value in stock.items():
                 if pd.isna(value):
@@ -337,3 +354,55 @@ class BaseStockDataSource(ABC):
             self.clear_cache(market)
 
         return []
+
+    # ==================== 防封禁工具方法 ====================
+
+    @staticmethod
+    def random_sleep(min_seconds: float = 1.0, max_seconds: float = 3.0) -> None:
+        """
+        随机休眠（Jitter）
+
+        防封禁策略：每次请求前随机休眠，避免请求频率固定被识别为爬虫
+
+        Args:
+            min_seconds: 最小休眠时间（秒）
+            max_seconds: 最大休眠时间（秒）
+        """
+        sleep_time = random.uniform(min_seconds, max_seconds)
+        time.sleep(sleep_time)
+
+    def _set_random_user_agent(self) -> None:
+        """
+        设置随机 User-Agent
+
+        从 USER_AGENTS 池中随机选择一个 UA，并设置到 requests
+        子类可以覆盖此方法来定制 UA 策略
+        """
+        try:
+            import requests
+
+            ua = random.choice(self.USER_AGENTS)
+            headers = requests.utils.default_headers()
+            headers["User-Agent"] = ua
+            # 更新默认 headers
+            requests.utils.default_headers = lambda: headers
+        except Exception:
+            pass
+
+    # ==================== 实时行情接口 ====================
+
+    def get_realtime_quote(self, symbol: str) -> Optional[UnifiedRealtimeQuote]:
+        """
+        获取实时行情（可选实现）
+
+        子类可以覆盖此方法来支持实时行情。
+        默认实现返回 None，表示不支持实时行情。
+
+        Args:
+            symbol: 股票代码
+
+        Returns:
+            UnifiedRealtimeQuote 对象，不支持则返回 None
+        """
+        # 默认不支持实时行情
+        return None

@@ -22,6 +22,10 @@ dependencies = [
     "langchain-core (>=0.3.33,<1.0.0)",
     "sse-starlette (>=2.1.3,<3.0.0)",
     "openai (>=1.0.0,<2.0.0)",
+    "pytdx (>=1.72,<2.0.0)",
+    "baostock (>=0.8.8,<1.0.0)",
+    "tenacity (>=8.2.0,<9.0.0)",
+    "efinance (>=0.5.5.2,<0.6.0.0)",
 ]
 
 [dependency-groups]
