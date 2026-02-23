@@ -1,12 +1,14 @@
+# -*- coding: utf-8 -*-
 """
-核心数据模型定义
+报告数据类型定义
 
-包含所有业务实体的数据类定义
+注意：此模块只包含数据类型定义，不引用项目其他模块，避免循环依赖
 """
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
-from ..analyzer.trend_models import TrendAnalysisResult
+
+from .trend import TrendAnalysisResult
 
 
 @dataclass

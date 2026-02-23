@@ -11,7 +11,7 @@
 
 from .manager import DataManager
 from .stock_list import StockListService
-from .models import DailyData, DailyDataCollection
+from ..model.data_provider import DailyData, DailyDataCollection
 from .realtime_types import UnifiedRealtimeQuote, ChipDistribution, RealtimeSource
 from .sources import (
     EfinanceDataSource,

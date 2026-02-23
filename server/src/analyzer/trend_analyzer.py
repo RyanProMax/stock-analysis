@@ -21,15 +21,16 @@ import logging
 import pandas as pd
 import numpy as np
 
-from .trend_models import (
-    TrendAnalysisResult,
+from ..core.constants import cfg
+from ..model.trend import (
     TrendStatus,
     VolumeStatus,
     BuySignal,
     MACDStatus,
     RSIStatus,
+    TrendAnalysisResult,
 )
-from ..core.constants import cfg
+
 
 logger = logging.getLogger(__name__)
 

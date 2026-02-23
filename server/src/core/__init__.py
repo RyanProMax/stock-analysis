@@ -7,7 +7,7 @@
 - 流程编排 (pipeline)
 """
 
-from .models import (
+from ..model import (
     FactorDetail,
     FactorAnalysis,
     FearGreed,

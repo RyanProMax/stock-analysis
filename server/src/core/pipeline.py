@@ -17,7 +17,7 @@ import pandas as pd
 from ..data_provider import data_manager, StockListService
 from ..storage import CacheUtil
 from ..config import is_development
-from ..core.models import AnalysisReport, FactorAnalysis, FactorDetail, FearGreed
+from ..model import AnalysisReport, FactorAnalysis, FactorDetail, FearGreed
 
 
 class StockService:

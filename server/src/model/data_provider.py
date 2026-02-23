@@ -1,10 +1,12 @@
+# -*- coding: utf-8 -*-
 """
-数据模型定义
+数据提供者数据类型定义
 
 定义统一的日线数据结构。
+注意：此模块只包含数据类型定义，不引用项目其他模块，避免循环依赖
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, List, Any
 import pandas as pd

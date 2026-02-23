@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 持久化模型
 
@@ -21,7 +22,6 @@
 # class StockDaily(Base):
 #     """股票日线数据"""
 #     __tablename__ = "stock_daily"
-#
 #     code = Column(String, primary_key=True)
 #     date = Column(String, primary_key=True)
 #     open = Column(Float)
@@ -31,11 +31,9 @@
 #     volume = Column(Float)
 #     # ... 更多字段
 #
-#
 # class AnalysisHistory(Base):
 #     """分析历史记录"""
 #     __tablename__ = "analysis_history"
-#
 #     id = Column(Integer, primary_key=True, autoincrement=True)
 #     symbol = Column(String, index=True)
 #     created_at = Column(DateTime, default=datetime.now)

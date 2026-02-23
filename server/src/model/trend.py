@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-趋势分析数据模型
+趋势分析数据类型定义
 
-定义趋势分析器使用的所有枚举类型和数���结构
+注意：此模块只包含数据类型定义，不引用项目其他模块，避免循环依赖
 """
 
 from dataclasses import dataclass, field
@@ -26,7 +26,7 @@ class VolumeStatus(Enum):
     """量能状态枚举"""
 
     HEAVY_VOLUME_UP = "放量上涨"  # 量价齐升
-    HEAVY_VOLUME_DOWN = "放量下跌"  # 放量杀��
+    HEAVY_VOLUME_DOWN = "放量下跌"  # 放量杀跌
     SHRINK_VOLUME_UP = "缩量上涨"  # 无量上涨
     SHRINK_VOLUME_DOWN = "缩量回调"  # 缩量回调（好）
     NORMAL = "量能正常"

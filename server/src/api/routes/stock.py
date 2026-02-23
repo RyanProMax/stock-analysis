@@ -15,7 +15,7 @@ from ..schemas import (
     StockInfoResponse,
     StockSearchRequest,
 )
-from ...analyzer.trend_models import TrendAnalysisResult
+from ...model import TrendAnalysisResult
 
 router = APIRouter()
 
