@@ -6,6 +6,7 @@ from ..data_provider import data_manager
 from .technical_factors import TechnicalFactorLibrary
 from .fundamental_factors import FundamentalFactorLibrary
 from .qlib_158_factors import Qlib158FactorLibrary
+from .trend_analyzer import StockTrendAnalyzer
 
 
 class MultiFactorAnalyzer:
@@ -263,6 +264,17 @@ class MultiFactorAnalyzer:
         # 创建贪恐指数对象
         fear_greed = FearGreed(index=fg_index, label=fg_label)
 
+        # --- 趋势分析 ---
+        trend_analysis = None
+        try:
+            trend_analyzer = StockTrendAnalyzer()
+            trend_analysis = trend_analyzer.analyze(self.raw_df, self.symbol)
+        except Exception as e:
+            import traceback
+
+            print(f"⚠️ 趋势分析失败: {e}")
+            traceback.print_exc()
+
         report = AnalysisReport(
             symbol=self.symbol,
             stock_name=self.stock_name,
@@ -284,6 +296,7 @@ class MultiFactorAnalyzer:
             ),
             fear_greed=fear_greed,
             industry=stock_info.get("industry", ""),
+            trend_analysis=trend_analysis,
         )
 
         return report

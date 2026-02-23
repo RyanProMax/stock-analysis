@@ -3,7 +3,7 @@
 """
 
 from fastapi import APIRouter
-from typing import List, Optional
+from typing import List, Optional, Any
 from dataclasses import asdict
 
 from ...core.pipeline import stock_service
@@ -15,8 +15,64 @@ from ..schemas import (
     StockInfoResponse,
     StockSearchRequest,
 )
+from ...analyzer.trend_models import TrendAnalysisResult
 
 router = APIRouter()
+
+
+def _convert_trend_analysis(trend: TrendAnalysisResult | None) -> dict[str, Any] | None:
+    """将趋势分析结果转换为可序列化的字典"""
+    if trend is None:
+        return None
+    return {
+        "code": trend.code,
+        "trend_status": trend.trend_status.value,
+        "ma_alignment": trend.ma_alignment,
+        "trend_strength": trend.trend_strength,
+        "ma5": trend.ma5,
+        "ma10": trend.ma10,
+        "ma20": trend.ma20,
+        "ma60": trend.ma60,
+        "current_price": trend.current_price,
+        "bias_ma5": trend.bias_ma5,
+        "bias_ma10": trend.bias_ma10,
+        "bias_ma20": trend.bias_ma20,
+        "volume_status": trend.volume_status.value,
+        "volume_ratio_5d": trend.volume_ratio_5d,
+        "volume_trend": trend.volume_trend,
+        "support_ma5": trend.support_ma5,
+        "support_ma10": trend.support_ma10,
+        "resistance_levels": trend.resistance_levels,
+        "support_levels": trend.support_levels,
+        "macd_dif": trend.macd_dif,
+        "macd_dea": trend.macd_dea,
+        "macd_bar": trend.macd_bar,
+        "macd_status": trend.macd_status.value,
+        "macd_signal": trend.macd_signal,
+        "rsi_6": trend.rsi_6,
+        "rsi_12": trend.rsi_12,
+        "rsi_24": trend.rsi_24,
+        "rsi_status": trend.rsi_status.value,
+        "rsi_signal": trend.rsi_signal,
+        "buy_signal": trend.buy_signal.value,
+        "signal_score": trend.signal_score,
+        "signal_reasons": trend.signal_reasons,
+        "risk_factors": trend.risk_factors,
+    }
+
+
+def _convert_report_to_response(report: Any) -> AnalysisReportResponse:
+    """将 AnalysisReport 转换为 API 响应格式"""
+    # 基础转换
+    report_dict = asdict(report)
+
+    # 处理趋势分析的特殊序列化
+    if hasattr(report, "trend_analysis") and report.trend_analysis is not None:
+        report_dict["trend_analysis"] = _convert_trend_analysis(report.trend_analysis)
+    else:
+        report_dict["trend_analysis"] = None
+
+    return AnalysisReportResponse(**report_dict)
 
 
 @router.post(
@@ -51,8 +107,8 @@ def analyze_stocks(payload: StockAnalysisRequest):
                 err_msg="无法获取任何股票的数据，请确认代码是否有效。",
             )
 
-        # 内部结构已与 API 响应结构一致，直接使用 asdict 转换
-        response_reports = [AnalysisReportResponse(**asdict(r)) for r in reports]
+        # 转换报告为响应格式（处理特殊序列化需求）
+        response_reports = [_convert_report_to_response(r) for r in reports]
 
         return StandardResponse(
             status_code=200,

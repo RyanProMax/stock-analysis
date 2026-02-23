@@ -6,6 +6,7 @@
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
+from ..analyzer.trend_models import TrendAnalysisResult
 
 
 @dataclass
@@ -51,6 +52,8 @@ class AnalysisReport:
     technical: FactorAnalysis = field(default_factory=FactorAnalysis)
     fundamental: FactorAnalysis = field(default_factory=FactorAnalysis)
     qlib: FactorAnalysis = field(default_factory=FactorAnalysis)
+    # 趋势分析结果
+    trend_analysis: Optional[TrendAnalysisResult] = None
 
 
 @dataclass

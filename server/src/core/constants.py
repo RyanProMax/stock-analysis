@@ -16,6 +16,9 @@ class Config:
     KDJ_J_OVERSOLD = 10
     KDJ_J_OVERBOUGHT = 90
 
+    # BIAS 阈值（乖离率上限，超过此值不追高）
+    BIAS_THRESHOLD = 5.0
+
 
 # 全局配置实例
 cfg = Config()

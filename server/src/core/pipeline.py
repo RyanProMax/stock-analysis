@@ -16,9 +16,8 @@ import pandas as pd
 
 from ..data_provider import data_manager, StockListService
 from ..storage import CacheUtil
-from ..analyzer import MultiFactorAnalyzer
-from ..core import AnalysisReport, FactorAnalysis, FactorDetail, FearGreed
 from ..config import is_development
+from ..core.models import AnalysisReport, FactorAnalysis, FactorDetail, FearGreed
 
 
 class StockService:
@@ -129,6 +128,10 @@ class StockService:
             # 执行分析
             print(f"Update Data: {symbol}")
             df, stock_name, data_source = self.get_stock_data(symbol)
+
+            # 延迟导入避免循环依赖
+            from ..analyzer import MultiFactorAnalyzer
+
             if df is None or df.empty:
                 self.cache[cache_key] = None
                 return None

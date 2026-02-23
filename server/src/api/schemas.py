@@ -66,6 +66,52 @@ class FactorAnalysisResponse(BaseModel):
     raw_data: Dict[str, Any] | None
 
 
+class TrendAnalysisResponse(BaseModel):
+    """趋势分析响应"""
+
+    code: str
+    # 趋势判断
+    trend_status: str
+    ma_alignment: str
+    trend_strength: float
+    # 均线数据
+    ma5: float
+    ma10: float
+    ma20: float
+    ma60: float
+    current_price: float
+    # 乖离率
+    bias_ma5: float
+    bias_ma10: float
+    bias_ma20: float
+    # 量能分析
+    volume_status: str
+    volume_ratio_5d: float
+    volume_trend: str
+    # 支撑压力
+    support_ma5: bool
+    support_ma10: bool
+    resistance_levels: List[float]
+    support_levels: List[float]
+    # MACD 指标
+    macd_dif: float
+    macd_dea: float
+    macd_bar: float
+    macd_status: str
+    macd_signal: str
+    # RSI 指标
+    rsi_6: float
+    rsi_12: float
+    rsi_24: float
+    rsi_status: str
+    rsi_signal: str
+    # 买入信号
+    buy_signal: str
+    signal_score: int
+    signal_reasons: List[str]
+    risk_factors: List[str]
+
+
 class AnalysisReportResponse(BaseModel):
     symbol: str
     stock_name: str | None = None
@@ -74,6 +120,7 @@ class AnalysisReportResponse(BaseModel):
     technical: FactorAnalysisResponse
     fundamental: FactorAnalysisResponse
     qlib: FactorAnalysisResponse
+    trend_analysis: TrendAnalysisResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
