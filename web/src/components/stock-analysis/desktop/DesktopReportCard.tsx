@@ -1,9 +1,32 @@
-import { X, ChevronDown, ChevronUp, AlertCircle, FileText } from 'lucide-react'
+import {
+  X,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  FileText,
+  TrendingUp,
+  BarChart3,
+} from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from 'antd'
 import type { AnalysisReport } from '../../../types'
 import { FactorList } from './DesktopFactorList'
+import { TrendAnalysisTab } from './TrendAnalysisTab'
+
+type TabType = 'trend' | 'factors'
+
+// Tab 配置
+const TAB_CONFIG = {
+  trend: {
+    name: '趋势交易',
+    icon: <TrendingUp className="h-4 w-4" />,
+  },
+  factors: {
+    name: '多因子分析',
+    icon: <BarChart3 className="h-4 w-4" />,
+  },
+} as const
 
 interface ReportCardProps {
   symbol: string
@@ -12,6 +35,7 @@ interface ReportCardProps {
 }
 
 export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove }) => {
+  const [activeTab, setActiveTab] = useState<TabType>('trend')
   const [isStockExpanded, setIsStockExpanded] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const navigate = useNavigate()
@@ -128,7 +152,6 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
 
   const technicalFactors = report.technical.factors
   const fundamentalFactors = report.fundamental.factors
-  // const qlibFactors = report.qlib.factors
   const fearGreedTheme = getFearGreedTheme(report.fear_greed.index)
   const emoji = getEmojiFromLabel(report.fear_greed.label)
   const labelText = report.fear_greed.label
@@ -153,10 +176,10 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
       {/* 股票头部信息 - 可点击展开/收起 */}
       <div
         onClick={() => setIsStockExpanded(!isStockExpanded)}
-        className="w-full border-b border-gray-200 bg-gray-50 px-4 py-4 text-left transition-colors hover:bg-gray-100 sm:px-6 dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800 cursor-pointer"
+        className="w-full cursor-pointer border-b border-gray-200 bg-gray-50 px-4 py-4 text-left transition-colors hover:bg-gray-100 sm:px-6 dark:border-gray-700 dark:bg-gray-900/50 dark:hover:bg-gray-800"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          {/* 移动端：股票名、当前价格、贪恐指数并排一行 */}
+          {/* 股票名、当前价格、贪恐指数 */}
           <div
             className={`flex items-center gap-3 sm:gap-4 transition-all duration-200 ${isHovered ? 'sm:-mr-8' : ''}`}
           >
@@ -265,26 +288,62 @@ export const ReportCard: React.FC<ReportCardProps> = ({ symbol, report, onRemove
         </div>
       </div>
 
-      {/* 因子列表 - 可折叠 */}
+      {/* 标签页切换和内容 - 仅在展开时显示 */}
       {isStockExpanded && (
-        <div className="p-4 sm:p-6">
-          <FactorList
-            title={`基本面 (${fundamentalFactors.length})`}
-            factors={fundamentalFactors}
-            showAll={true}
-            basic={true}
-          />
+        <>
+          {/* 标签页切换 - 参考 agent-report 样式 */}
+          <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              {(Object.keys(TAB_CONFIG) as TabType[]).map(tab => {
+                const config = TAB_CONFIG[tab]
+                const isActive = activeTab === tab
 
-          <FactorList title={`技术面 (${technicalFactors.length})`} factors={technicalFactors} />
+                return (
+                  <Button
+                    key={tab}
+                    type="text"
+                    icon={config.icon}
+                    onClick={e => {
+                      e.stopPropagation()
+                      setActiveTab(tab)
+                    }}
+                    className={
+                      isActive
+                        ? 'text-(--color-primary)! font-medium'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                    }
+                  >
+                    {config.name}
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
 
-          {/* Qlib 因子暂时注释 */}
-          {/* <FactorList
-            title={`Qlib因子 (${qlibFactors.length})`}
-            factors={qlibFactors}
-            getFactorStatus={getFactorStatus}
-            getFactorStatusStyle={getFactorStatusStyle}
-          /> */}
-        </div>
+          {/* 标签页内容 */}
+          <div className="p-4 sm:p-6">
+            {activeTab === 'trend' && report.trend_analysis ? (
+              <TrendAnalysisTab trend={report.trend_analysis} />
+            ) : activeTab === 'trend' ? (
+              <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                暂无趋势分析数据
+              </div>
+            ) : (
+              <div>
+                <FactorList
+                  title={`基本面 (${fundamentalFactors.length})`}
+                  factors={fundamentalFactors}
+                  showAll={true}
+                  basic={true}
+                />
+                <FactorList
+                  title={`技术面 (${technicalFactors.length})`}
+                  factors={technicalFactors}
+                />
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   )

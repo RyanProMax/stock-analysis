@@ -17,6 +17,7 @@ const genErrorReport = ({ symbol, error }: { symbol: string; error: Error }): An
   fundamental: { factors: [], data_source: '', raw_data: null },
   qlib: { factors: [], data_source: '', raw_data: null },
   fear_greed: { index: 0, label: '' },
+  trend_analysis: null,
   status: 'error',
   error: error.message || '未知错误',
 })

@@ -19,6 +19,61 @@ export interface FactorAnalysis {
   raw_data: Record<string, any> | null
 }
 
+// 趋势分析枚举类型
+export type TrendStatus =
+  | '强势多头'
+  | '多头排列'
+  | '弱势多头'
+  | '盘整'
+  | '弱势空头'
+  | '空头排列'
+  | '强势空头'
+
+export type VolumeStatus = '放量上涨' | '放量下跌' | '缩量上涨' | '缩量回调' | '量能正常'
+
+export type BuySignal = '强烈买入' | '买入' | '持有' | '观望' | '卖出' | '强烈卖出'
+
+export type MACDStatus = '零轴上金叉' | '金叉' | '多头' | '上穿零轴' | '下穿零轴' | '空头' | '死叉'
+
+export type RSIStatus = '超买' | '强势买入' | '中性' | '弱势' | '超卖'
+
+// 趋势分析结果
+export interface TrendAnalysisResult {
+  code: string
+  trend_status: TrendStatus
+  ma_alignment: string
+  trend_strength: number
+  ma5: number
+  ma10: number
+  ma20: number
+  ma60: number
+  current_price: number
+  bias_ma5: number
+  bias_ma10: number
+  bias_ma20: number
+  volume_status: VolumeStatus
+  volume_ratio_5d: number
+  volume_trend: string
+  support_ma5: boolean
+  support_ma10: boolean
+  resistance_levels: number[]
+  support_levels: number[]
+  macd_dif: number
+  macd_dea: number
+  macd_bar: number
+  macd_status: MACDStatus
+  macd_signal: string
+  rsi_6: number
+  rsi_12: number
+  rsi_24: number
+  rsi_status: RSIStatus
+  rsi_signal: string
+  buy_signal: BuySignal
+  signal_score: number
+  signal_reasons: string[]
+  risk_factors: string[]
+}
+
 export interface AnalysisReport {
   symbol: string
   stock_name: string | null
@@ -27,6 +82,7 @@ export interface AnalysisReport {
   fundamental: FactorAnalysis
   qlib: FactorAnalysis
   fear_greed: FearGreed
+  trend_analysis: TrendAnalysisResult | null
   status?: 'success' | 'error'
   error?: string
 }
