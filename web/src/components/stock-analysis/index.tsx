@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
-import { DesktopLayout } from './desktop/DesktopLayout'
-import { MobileLayout } from './mobile/MobileLayout'
+import { DesktopPage } from './DesktopPage'
+import { MobileNotSupported } from './MobileNotSupported'
 import { ServiceStartupProgress } from './ServiceStartupProgress'
 import { stockApi } from '../../api/client'
 
-import type { ComponentProps } from '../layout/constant'
 import type { AnalysisReport } from '../../types'
 
 const SAVED_SYMBOLS_KEY = 'stock-analysis-saved-symbols'
+const PC_BREAKPOINT = 1024
 
 const genErrorReport = ({ symbol, error }: { symbol: string; error: Error }): AnalysisReport => ({
   symbol,
@@ -22,10 +22,25 @@ const genErrorReport = ({ symbol, error }: { symbol: string; error: Error }): An
   error: error.message || '未知错误',
 })
 
-export function StockAnalysis({ isMobile }: ComponentProps) {
+export function StockAnalysis() {
+  const [isDesktopView, setIsDesktopView] = useState(false)
   const [startupProgress, setStartupProgress] = useState(0)
   const [symbolList, setSymbolList] = useState<string[]>([])
   const [reports, setReports] = useState<Map<string, AnalysisReport>>(new Map())
+
+  useEffect(() => {
+    const checkIsDesktop = () => {
+      setIsDesktopView(window.innerWidth >= PC_BREAKPOINT)
+    }
+
+    checkIsDesktop()
+
+    window.addEventListener('resize', checkIsDesktop)
+
+    return () => {
+      window.removeEventListener('resize', checkIsDesktop)
+    }
+  }, [])
 
   useEffect(() => {
     ;(async () => {
@@ -92,15 +107,12 @@ export function StockAnalysis({ isMobile }: ComponentProps) {
     return <ServiceStartupProgress progress={startupProgress} />
   }
 
-  return isMobile ? (
-    <MobileLayout
-      symbolList={symbolList}
-      reports={reports}
-      onAddSymbol={handleAddSymbol}
-      onRemoveReport={handleRemoveReport}
-    />
-  ) : (
-    <DesktopLayout
+  if (!isDesktopView) {
+    return <MobileNotSupported />
+  }
+
+  return (
+    <DesktopPage
       symbolList={symbolList}
       reports={reports}
       onAddSymbol={handleAddSymbol}

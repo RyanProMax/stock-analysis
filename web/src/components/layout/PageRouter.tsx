@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { useMediaQuery } from 'react-responsive'
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 
 import { TitleBar } from './TitleBar'
@@ -8,8 +7,6 @@ import { AgentReport } from '../agent-report'
 import { TabKey } from './constant'
 
 export const PageRouter = () => {
-  // 使用 react-responsive 检测屏幕尺寸
-  const isMobile = useMediaQuery({ maxWidth: 768 })
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -34,9 +31,9 @@ export const PageRouter = () => {
       <TitleBar activeTab={activeTab} onTabChange={handleTabChange} />
 
       <Routes>
-        <Route path="/" element={<StockAnalysis isMobile={isMobile} />} />
+        <Route path="/" element={<StockAnalysis />} />
         <Route path="/agent/:symbol" element={<AgentReport />} />
-        <Route path="*" element={<StockAnalysis isMobile={isMobile} />} />
+        <Route path="*" element={<StockAnalysis />} />
       </Routes>
     </div>
   )
