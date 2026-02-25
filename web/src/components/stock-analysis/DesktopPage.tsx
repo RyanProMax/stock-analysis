@@ -22,6 +22,9 @@ export const DesktopPage: React.FC<DesktopPageProps> = ({
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState('')
 
+  // 派生状态：实际显示的股票（如果未选中且有列表，默认选中第一支）
+  const displaySymbol = selectedSymbol ?? (symbolList.length > 0 ? symbolList[0] : null)
+
   // 处理添加股票
   const handleAdd = () => {
     const symbol = inputValue.trim().toUpperCase()
@@ -49,6 +52,7 @@ export const DesktopPage: React.FC<DesktopPageProps> = ({
   // 处理删除股票
   const handleRemoveSymbol = (symbol: string) => {
     onRemoveReport(symbol)
+    // 如果删除的是当前选中的股票，清空选中状态（会自动选择列表中的第一支）
     if (selectedSymbol === symbol) {
       setSelectedSymbol(null)
     }
@@ -107,9 +111,9 @@ export const DesktopPage: React.FC<DesktopPageProps> = ({
 
           {/* 右侧股票详情 */}
           <StockDetailPanel
-            symbol={selectedSymbol}
-            report={selectedSymbol ? reports.get(selectedSymbol) : undefined}
-            onRemove={() => selectedSymbol && handleRemoveSymbol(selectedSymbol)}
+            symbol={displaySymbol}
+            report={displaySymbol ? reports.get(displaySymbol) : undefined}
+            onRemove={displaySymbol ? () => handleRemoveSymbol(displaySymbol) : undefined}
           />
         </div>
       </div>

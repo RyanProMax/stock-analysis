@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useMediaQuery } from 'react-responsive'
 import { DesktopPage } from './DesktopPage'
 import { MobileNotSupported } from './MobileNotSupported'
 import { ServiceStartupProgress } from './ServiceStartupProgress'
@@ -7,7 +8,6 @@ import { stockApi } from '../../api/client'
 import type { AnalysisReport } from '../../types'
 
 const SAVED_SYMBOLS_KEY = 'stock-analysis-saved-symbols'
-const PC_BREAKPOINT = 1024
 
 const genErrorReport = ({ symbol, error }: { symbol: string; error: Error }): AnalysisReport => ({
   symbol,
@@ -23,24 +23,10 @@ const genErrorReport = ({ symbol, error }: { symbol: string; error: Error }): An
 })
 
 export function StockAnalysis() {
-  const [isDesktopView, setIsDesktopView] = useState(false)
+  const isMobile = useMediaQuery({ maxWidth: 768 })
   const [startupProgress, setStartupProgress] = useState(0)
   const [symbolList, setSymbolList] = useState<string[]>([])
   const [reports, setReports] = useState<Map<string, AnalysisReport>>(new Map())
-
-  useEffect(() => {
-    const checkIsDesktop = () => {
-      setIsDesktopView(window.innerWidth >= PC_BREAKPOINT)
-    }
-
-    checkIsDesktop()
-
-    window.addEventListener('resize', checkIsDesktop)
-
-    return () => {
-      window.removeEventListener('resize', checkIsDesktop)
-    }
-  }, [])
 
   useEffect(() => {
     ;(async () => {
@@ -107,7 +93,7 @@ export function StockAnalysis() {
     return <ServiceStartupProgress progress={startupProgress} />
   }
 
-  if (!isDesktopView) {
+  if (isMobile) {
     return <MobileNotSupported />
   }
 
