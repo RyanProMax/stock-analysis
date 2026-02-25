@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, ChevronRight } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { AnalysisReport } from '../../../types'
 
 interface StockListSidebarProps {
@@ -56,22 +56,20 @@ export const StockListSidebar: React.FC<StockListSidebarProps> = ({
                 key={symbol}
                 className={`group relative cursor-pointer rounded-lg border transition-all ${
                   isSelected
-                    ? 'border-gray-400 bg-gray-100 dark:border-gray-600 dark:bg-gray-800'
+                    ? 'border-(--color-primary) bg-(--color-primary)/5 dark:bg-(--color-primary)/10'
                     : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-800/80'
                 }`}
                 onClick={() => onSelectSymbol(symbol)}
               >
                 <div className="flex items-center gap-3 p-3">
-                  {/* 展开/选中指示器 */}
-                  <div
-                    className={`shrink-0 transition-transform ${
-                      isSelected
-                        ? 'rotate-90 text-gray-600 dark:text-gray-400'
-                        : 'text-gray-300 dark:text-gray-600'
-                    }`}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </div>
+                  {/* 选中指示条 */}
+                  {isSelected && (
+                    <div
+                      className="shrink-0 h-4 w-1 rounded-full"
+                      style={{ backgroundColor: 'var(--color-primary)' }}
+                    />
+                  )}
+                  {!isSelected && <div className="shrink-0 h-4 w-1" />}
 
                   {/* 股票信息 */}
                   <div className="min-w-0 flex-1">
