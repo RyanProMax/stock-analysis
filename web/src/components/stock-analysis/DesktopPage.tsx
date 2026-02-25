@@ -20,7 +20,7 @@ export const DesktopPage: React.FC<DesktopPageProps> = ({
   onRemoveReport,
 }) => {
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
-  const [inputValue, setInputValue] = useState<string>('')
+  const [inputValue, setInputValue] = useState('')
 
   // 处理添加股票
   const handleAdd = () => {
@@ -29,9 +29,7 @@ export const DesktopPage: React.FC<DesktopPageProps> = ({
       onAddSymbol(symbol)
       setInputValue('')
       // 自动选中新添加的股票
-      if (!selectedSymbol) {
-        setSelectedSymbol(symbol)
-      }
+      setSelectedSymbol(symbol)
     }
   }
 
@@ -48,72 +46,72 @@ export const DesktopPage: React.FC<DesktopPageProps> = ({
     setSelectedSymbol(symbol)
   }
 
-  // 处理移除股票
+  // 处理删除股票
   const handleRemoveSymbol = (symbol: string) => {
     onRemoveReport(symbol)
-    // 如果移除的是当前选中的股票，清空选中状态
     if (selectedSymbol === symbol) {
       setSelectedSymbol(null)
     }
   }
 
   return (
-    <div className="min-w-[1024px] overflow-x-auto">
-      {/* 顶部标题和免责声明 */}
-      <div className="mb-4">
-        <h1 className="text-2xl font-light text-gray-900 dark:text-gray-100">��票分析</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          本分析仅供参考，不构成投资建议
-        </p>
+    <div className="mx-auto max-w-[1800px] px-4 py-12 sm:px-6 lg:px-8">
+      {/* 标题 */}
+      <div className="mb-2 text-center">
+        <h1
+          className="font-light tracking-tight text-gray-900 dark:text-gray-100"
+          style={{ fontSize: '1.5rem' }}
+        >
+          股票分析报告
+        </h1>
       </div>
 
       {/* 风险提示 */}
-      <div className="mb-6 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/20">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-        <p className="text-sm text-amber-800 dark:text-amber-300">
-          <strong>风险提示：</strong>
-          股票市场有风险，投资需谨慎。本分析基于历史数据和算法模型，不保证准确性。
-        </p>
+      <div className="mb-8 flex items-center justify-center gap-1.5 text-center text-sm text-gray-500 dark:text-gray-400">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        <p>投资有风险，入市需谨慎。此报告仅供参考。</p>
       </div>
 
-      {/* 输入表单 */}
-      <div className="mb-6">
-        <div className="flex gap-2">
-          <Input
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value.toUpperCase())}
-            onKeyDown={handleKeyDown}
-            placeholder="输入股票代码（如：000001、NVDA、AAPL）"
-            size="large"
-            className="flex-1"
-            suffix={
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleAdd}
-                disabled={!inputValue.trim()}
-                size="small"
-                className="border-0 shadow-none"
-              />
-            }
+      {/* 分析表单 */}
+      <div className="mb-8">
+        <Input
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value.toUpperCase())}
+          onKeyDown={handleKeyDown}
+          placeholder="输入股票代码（如：000001、NVDA、AAPL）"
+          size="large"
+          suffix={
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAdd}
+              disabled={!inputValue.trim()}
+              size="small"
+              className="border-0 shadow-none"
+            />
+          }
+        />
+      </div>
+
+      {/* 主内容区 - 左右分栏 */}
+      <div className="min-w-[1024px] overflow-x-auto">
+        <div className="flex gap-6" style={{ minWidth: '1024px' }}>
+          {/* 左侧股票列表 */}
+          <StockListSidebar
+            symbolList={symbolList}
+            reports={reports}
+            selectedSymbol={selectedSymbol}
+            onSelectSymbol={handleSelectSymbol}
+            onRemoveSymbol={handleRemoveSymbol}
+          />
+
+          {/* 右侧股票详情 */}
+          <StockDetailPanel
+            symbol={selectedSymbol}
+            report={selectedSymbol ? reports.get(selectedSymbol) : undefined}
+            onRemove={() => selectedSymbol && handleRemoveSymbol(selectedSymbol)}
           />
         </div>
-      </div>
-
-      {/* 分栏视图：左侧股票列表，右侧详情面板 */}
-      <div className="flex gap-4">
-        <StockListSidebar
-          symbolList={symbolList}
-          reports={reports}
-          selectedSymbol={selectedSymbol}
-          onSelectSymbol={handleSelectSymbol}
-          onRemoveSymbol={handleRemoveSymbol}
-        />
-        <StockDetailPanel
-          symbol={selectedSymbol}
-          report={selectedSymbol ? reports.get(selectedSymbol) : undefined}
-          onRemove={() => selectedSymbol && handleRemoveSymbol(selectedSymbol)}
-        />
       </div>
     </div>
   )
