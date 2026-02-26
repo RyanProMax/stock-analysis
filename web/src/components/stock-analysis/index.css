@@ -1,0 +1,16 @@
+.home-input {
+  /* 输入框样式优化 */
+  &.ant-input-affix-wrapper {
+    background: transparent;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: var(--color-primary);
+    }
+  }
+
+  &.ant-input-affix-wrapper-focused {
+    border-color: var(--ant-color-primary);
+    box-shadow: 0 0 0 2px var(--ant-color-primary-bg);
+  }
+}

@@ -6,6 +6,8 @@ import { StockListSidebar } from './desktop/StockListSidebar'
 import { StockDetailPanel } from './desktop/StockDetailPanel'
 import type { AnalysisReport } from '../../types'
 
+import './index.css'
+
 interface DesktopPageProps {
   symbolList: string[]
   reports: Map<string, AnalysisReport>
@@ -58,7 +60,7 @@ export const DesktopPage: React.FC<DesktopPageProps> = ({
   }
 
   return (
-    <div className="mx-auto max-w-[1800px] px-4 py-12 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1800px] px-4 py-12 sm:px-6 lg:px-8 flex flex-col items-center">
       {/* 标题 */}
       <div className="mb-2 text-center">
         <h1
@@ -76,7 +78,7 @@ export const DesktopPage: React.FC<DesktopPageProps> = ({
       </div>
 
       {/* 分析表单 */}
-      <div className="mb-8">
+      <div className="mb-8 w-[720px]">
         <Input
           value={inputValue}
           onChange={e => setInputValue(e.target.value.toUpperCase())}
@@ -93,12 +95,13 @@ export const DesktopPage: React.FC<DesktopPageProps> = ({
               className="border-0 shadow-none"
             />
           }
+          className="home-input"
         />
       </div>
 
       {/* 主内容区 - 左右分栏 */}
-      <div className="min-w-[1024px] overflow-x-auto">
-        <div className="flex gap-6" style={{ minWidth: '1024px' }}>
+      <div className="min-w-5xl max-w-[1440px] overflow-x-auto flex w-full">
+        <div className="flex flex-1 gap-6 min-w-5xl">
           {/* 左侧股票列表 */}
           <StockListSidebar
             symbolList={symbolList}
