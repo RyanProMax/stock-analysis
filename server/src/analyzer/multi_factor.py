@@ -96,40 +96,99 @@ class MultiFactorAnalyzer:
         self.fundamental_library = FundamentalFactorLibrary()
         self.qlib158_library = Qlib158FactorLibrary()
 
-    def _calculate_fear_greed(self, row, close) -> tuple[float, str]:
+    def _calculate_fear_greed(self, row, prev_row, close) -> tuple[float, str]:
         """
         计算个股贪恐指数（Fear & Greed Index）
 
-        基于 RSI、布林带 %B、威廉指标 WR 合成
+        基于7个技术指标加权合成，参考成熟方案：
+        - CNN Fear & Greed Index (7个等权重指标)
+        - alternative.me Crypto Fear & Greed Index (6个加权指标)
+
+        指标体系：
+        | 指标 | 权重 | 作用 |
+        |------|------|------|
+        | RSI-14 | 20% | 超买超卖 |
+        | 布林带 %B | 20% | 价格位置 |
+        | WR-14 | 15% | 超买超卖 |
+        | KDJ J值 | 15% | 超买超卖 |
+        | MACD 柱 | 15% | 动量方向 |
+        | 价格动量 | 10% | 短期趋势 |
+        | VR 量比 | 5% | 成交量变化 |
         """
         try:
             # 1. RSI (0-100)
             rsi = float(row.get("rsi_14", 50) or 50)
 
             # 2. 布林带 %B (0-100)
-            lb = float(row.get("boll_lb", close * 0.9) or close * 0.9)
-            ub = float(row.get("boll_ub", close * 1.1) or close * 1.1)
+            lb = float(row.get("boll_lb", close * 0.9))
+            ub = float(row.get("boll_ub", close * 1.1))
             if ub != lb:
                 pct_b = (close - lb) / (ub - lb) * 100
             else:
                 pct_b = 50
-            pct_b = max(0, min(100, pct_b))  # 截断极端值
+            pct_b = max(0, min(100, pct_b))
 
-            # 3. 威廉指标 WR (-100 到 0) -> 映射为 (0 到 100)
-            wr = float(row.get("wr_14", -50) or -50)
-            wr_score = wr + 100
+            # 3. WR (0-100)
+            wr = float(row.get("wr_14", -50))
+            wr_score = max(0, min(100, wr + 100))
 
-            # 合成指数
-            fg_index = (rsi * 0.4) + (pct_b * 0.4) + (wr_score * 0.2)
+            # 4. KDJ J值 (0-100)
+            # J值范围通常是 -50 到 150，映射到 0-100
+            kdjj = float(row.get("kdjj", 50))
+            kdj_score = max(0, min(100, (kdjj + 50) * 100 / 200))
+
+            # 5. MACD 柱 (0-100)
+            # 正值表示多头，负值表示空头
+            # 映射到 0-100: 50 为中性，100 为强势多头，0 为强势空头
+            macd_h = float(row.get("macdh", 0))
+            if macd_h > 0:
+                # 正值：50-100，强度取决于绝对值
+                # 假设 macd_h 最大约 5（经验值）
+                macd_score = 50 + min(macd_h * 10, 50)
+            else:
+                # 负值：0-50
+                macd_score = 50 + max(macd_h * 10, -50)
+            macd_score = max(0, min(100, macd_score))
+
+            # 6. 价格动量 - 近5日涨跌幅
+            # 使用 close 和前5日收盘价计算
+            prev_close_5 = close
+            if len(self.stock) >= 5:
+                prev_close_5 = float(self.stock.iloc[-5].get("close", close) or close)
+            if prev_close_5 > 0:
+                change_pct = (close - prev_close_5) / prev_close_5 * 100
+            else:
+                change_pct = 0
+            # 涨跌幅映射到 0-100: -10% => 0, 0 => 50, +10% => 100
+            momentum_score = 50 + (change_pct * 5)
+            momentum_score = max(0, min(100, momentum_score))
+
+            # 7. VR 量比 (0-100)
+            # VR 正常范围 100-200，映射到 0-100
+            vr = float(row.get("vr", 100) or 100)
+            # VR=100 => 50 分, VR=200 => 100 分, VR=0 => 0 分
+            volume_score = max(0, min(100, vr * 0.5))
+            volume_score = max(0, min(100, volume_score))
+
+            # 加权合成
+            fg_index = (
+                rsi * 0.20
+                + pct_b * 0.20
+                + wr_score * 0.15
+                + kdj_score * 0.15
+                + macd_score * 0.15
+                + momentum_score * 0.10
+                + volume_score * 0.05
+            )
 
             # 生成标签
-            if fg_index <= 20:
+            if fg_index < 20:
                 label = "🥶 极度恐慌"
-            elif fg_index <= 40:
+            elif fg_index < 40:
                 label = "😨 恐慌"
-            elif fg_index <= 60:
+            elif fg_index < 60:
                 label = "😐 中性"
-            elif fg_index <= 80:
+            elif fg_index < 80:
                 label = "🤤 贪婪"
             else:
                 label = "🔥 极度贪婪"
@@ -159,7 +218,7 @@ class MultiFactorAnalyzer:
             return None
 
         # 计算贪恐指数（用于波动率因子）
-        fg_index, fg_label = self._calculate_fear_greed(last_row, close)
+        fg_index, fg_label = self._calculate_fear_greed(last_row, prev_row, close)
 
         # 计算成交量均线（用于量能因子）
         volume_series = (

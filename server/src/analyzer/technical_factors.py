@@ -269,22 +269,35 @@ class ATRFactor(BaseFactor):
 
 
 class SentimentFactor(BaseFactor):
-    """贪恐指数因子"""
+    """
+    贪恐指数因子
+
+    基于7个技术指标加权合成：
+    - RSI (20%)、布林带 %B (20%)、WR (15%)、KDJ J值 (15%)
+    - MACD 柱 (15%)、价格动量 (10%)、VR 量比 (5%)
+
+    情绪等级：
+    - 0-19: 极度恐慌（买入机会）
+    - 20-39: 恐慌
+    - 40-59: 中性
+    - 60-79: 贪婪
+    - 80-100: 极度贪婪（警惕回调）
+    """
 
     def calculate(self, fg_index: float = 50.0, **kwargs) -> FactorDetail:
         """贪恐指数分析：评估指标：逆向情绪指标（恐慌买入/贪婪卖出）"""
         bull, bear = [], []
 
-        if fg_index <= 20:
+        if fg_index < 20:
             status = f"情绪极度恐慌 ({fg_index:.0f})"
             bull.append(
                 self._create_signal("technical", f"情绪极度恐慌 ({fg_index:.0f})，具备逆向价值")
             )
-        elif fg_index <= 40:
+        elif fg_index < 40:
             status = f"情绪恐慌 ({fg_index:.0f})"
-        elif fg_index <= 60:
+        elif fg_index < 60:
             status = f"情绪中性 ({fg_index:.0f})"
-        elif fg_index <= 80:
+        elif fg_index < 80:
             status = f"情绪贪婪 ({fg_index:.0f})"
         else:
             status = f"情绪极度贪婪 ({fg_index:.0f})"
