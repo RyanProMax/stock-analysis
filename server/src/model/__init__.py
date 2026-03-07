@@ -27,6 +27,15 @@ from .data_provider import (
     DailyDataCollection,
 )
 
+from .dcf import (
+    WACCComponents,
+    FCFProjection,
+    TerminalValue,
+    SensitivityMatrix,
+    ValuationRange,
+    DCFResult,
+)
+
 __all__ = [
     # 趋势分析
     "TrendStatus",
@@ -44,4 +53,11 @@ __all__ = [
     # 数据提供者
     "DailyData",
     "DailyDataCollection",
+    # DCF 估值
+    "WACCComponents",
+    "FCFProjection",
+    "TerminalValue",
+    "SensitivityMatrix",
+    "ValuationRange",
+    "DCFResult",
 ]
