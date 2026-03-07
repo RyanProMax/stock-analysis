@@ -69,7 +69,10 @@ src/
 ├── analyzer/         # Factor calculation modules
 │   ├── technical_factors.py    # MA, MACD, RSI, KDJ, etc.
 │   ├── fundamental_factors.py  # PE, PB, ROE, revenue growth
+│   ├── dcf_model.py            # DCF valuation model (75-cell sensitivity)
 │   └── trend_analyzer.py       # Trend analysis
+├── model/            # Data type definitions
+│   └── dcf.py                  # DCF result types (WACC, FCF, SensitivityMatrix)
 ├── data_provider/    # Multi-source data management
 │   ├── base.py       # BaseStockDataSource abstract class
 │   ├── manager.py    # Data source manager with circuit breaker
@@ -156,6 +159,40 @@ VITE_API_BASE_URL=http://localhost:8080  # Backend API URL
    - `CoordinatorAgent` synthesizes both → generates final recommendation
 4. **Progress**: Each agent sends progress via `progress_callback` → SSE → frontend `AgentReport` component
 5. **Response**: Final state serialized to `StandardResponse<AnalysisReport>`
+
+## API Endpoints
+
+### Stock Analysis API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/stock/analyze` | POST | 批量分析股票列表 (技术+基本面) |
+| `/stock/list` | GET | 获取股票列表 |
+| `/stock/search` | POST | 搜索股票 |
+
+### Agent Analysis API (SSE Streaming)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/agent/analyze` | GET | 流式分析 (Multi-Agent 架构) |
+
+**Parameters**: `symbol` (required)
+
+**Returns**: SSE 事件流 - 实时推送分析进度和结果
+
+### Valuation API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/valuation/dcf` | GET | DCF 估值分析 (仅美股) |
+
+**Parameters**:
+- `symbol` (required): 股票代码
+- `risk_free_rate` (optional): 无风险利率，默认 4.2%
+- `equity_risk_premium` (optional): 股权风险溢价，默认 5.5%
+- `terminal_growth_rate` (optional): 永续增长率，默认 2.5%
+
+**Returns**: 75格敏感性分析矩阵 (3 × 5×5) + 估值区间
 
 ## Python Tooling
 
