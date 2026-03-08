@@ -36,6 +36,14 @@ from .dcf import (
     DCFResult,
 )
 
+from .comps import (
+    CompCompany,
+    OperatingMetrics,
+    ValuationMultiples,
+    PercentileAnalysis,
+    CompsResult,
+)
+
 __all__ = [
     # 趋势分析
     "TrendStatus",
@@ -60,4 +68,10 @@ __all__ = [
     "SensitivityMatrix",
     "ValuationRange",
     "DCFResult",
+    # Comps 分析
+    "CompCompany",
+    "OperatingMetrics",
+    "ValuationMultiples",
+    "PercentileAnalysis",
+    "CompsResult",
 ]
