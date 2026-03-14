@@ -9,6 +9,12 @@
 - AI 智能分析报告
 - 响应式设计 (桌面/移动端)
 
+## 前置要求
+
+本项目需要后端 API 服务支持。请先部署后端服务：
+
+- **后端仓库**: <https://github.com/RyanProMax/stock-analysis-api>
+
 ## 快速开始
 
 ```bash
@@ -36,3 +42,7 @@ pnpm run build
 ```
 
 构建产物在 `dist/` 目录。
+
+## 相关项目
+
+- [stock-analysis-api](https://github.com/RyanProMax/stock-analysis-api) - 后端 API 服务

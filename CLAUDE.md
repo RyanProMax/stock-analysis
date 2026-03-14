@@ -49,3 +49,10 @@ src/
 ## 部署
 
 构建后部署到 GitHub Pages。
+
+## 后端服务
+
+本项目需要搭配后端 API 服务使用：
+
+- **仓库**: <https://github.com/RyanProMax/stock-analysis-api>
+- **本地开发**: 启动后端服务后，设置 `VITE_API_BASE_URL=http://localhost:8080`
