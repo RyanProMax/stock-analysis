@@ -11,9 +11,9 @@
 
 ## 前置要求
 
-本项目需要后端 API 服务支持。请先部署后端服务：
-
-- **后端仓库**: <https://github.com/RyanProMax/stock-analysis-api>
+- **Node.js**: >= 24.0.0
+- **包管理器**: pnpm
+- **后端服务**: [stock-analysis-api](https://github.com/RyanProMax/stock-analysis-api)
 
 ## 快速开始
 
@@ -25,7 +25,7 @@ pnpm install
 pnpm run dev
 ```
 
-访问 http://localhost:3000 查看应用。
+访问 <http://localhost:3000> 查看应用。
 
 ## 环境变量
 
