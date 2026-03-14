@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'web/**'
+      - 'src/**'
+      - 'public/**'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
 
@@ -35,14 +36,12 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: './web/pnpm-lock.yaml'
+          cache-dependency-path: './pnpm-lock.yaml'
 
       - name: Install dependencies
-        working-directory: ./web
         run: pnpm install --frozen-lockfile
 
       - name: Build web
-        working-directory: ./web
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
           GITHUB_ACTIONS: 'true'
@@ -54,7 +53,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './web/dist'
+          path: './dist'
 
   deploy:
     environment:
@@ -66,4 +65,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
